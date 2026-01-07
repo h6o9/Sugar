@@ -46,6 +46,13 @@
 				<a href="{{ route('referral-reward-settings') }}" class="nav-link">
 					<i class="fas fa-gift"></i><span>Referral Link Reward Settings</span></a>
 	        </li>
+
+						{{-- Reward Settings  --}}
+			 <li class="dropdown {{ request()->is('admin/reward-settings*') ? 'active' : '' }}">
+				<a href="{{ route('reward-settings') }}" class="nav-link">
+					<i class="fas fa-gift"></i><span>Reward Settings</span></a>
+	        </li>
+
 			
             {{-- Sales  --}}
             <li class="dropdown {{ request()->is('admin/sales*') ? 'active' : '' }}">

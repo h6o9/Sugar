@@ -627,6 +627,31 @@ public function resetPassword(Request $request)
 }
 
 
+public function getLoggedInUser()
+{
+    $user = auth()->user();
+
+	if(!$user){
+		return response()->json([
+			'status'  => false,
+			'message' => 'User not authenticated',
+		], 404);
+	}
+
+    return response()->json([
+        'status'  => true,
+        'message' => 'User fetched successfully',
+        'data'    => [
+            'id'    => $user->id,
+            'name'  => $user->name,
+            'email' => $user->email,
+            'image' => $user->image 
+                ? asset('storage/users/' . $user->image)
+                : null
+        ]
+    ], 200);
+}
+
 
     public function notification()
     {

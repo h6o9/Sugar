@@ -4,7 +4,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\HomeController;
+use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\FilterController;
 use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\AddToCartController;
 use App\Http\Controllers\Api\PlaceOrderController;
@@ -42,6 +44,7 @@ Route::post('/user-reset-password', [AuthController::class, 'resetPassword']);
 Route::middleware('auth:sanctum')->group(function () {
 	Route::post('/user-update-profile', [AuthController::class, 'updateProfile']);
 	Route::post('/verify-update-profile-otp', [AuthController::class, 'verifyUpdateprofileOtp']);
+	Route::get('/user-login-info', [AuthController::class, 'getLoggedInUser']);
     Route::post('/logout', [AuthController::class, 'logout']);
 	Route::get('/home-products', [HomeController::class, 'homeProducts']);
 	Route::get('/menu-items', [HomeController::class, 'Menueitems']);
@@ -53,6 +56,14 @@ Route::get('/get-user-cart-items', [AddToCartController::class, 'getUserCartItem
 Route::post('/delete-cart-item/{id}', [AddToCartController::class, 'deleteCartItem']);
 Route::post('/continue-to-payments', [AddToCartController::class, 'proceedToPayment']);
 Route::post('/place-order', [PlaceOrderController::class, 'placeOrder']);
+// filter data 
+
+Route::get('/filter-data', [FilterController::class, 'filterData']);
+Route::get('/terms-and-conditions', [PageController::class, 'termsAndConditions']);
+Route::get('/privacy-policy', [PageController::class, 'privacyPolicy']);
+Route::get('/faq', [PageController::class, 'faq']);
+Route::get('/gallery', [PageController::class, 'getGalleryImages']);
+Route::get('/get-user-reward-amount', [PageController::class, 'getUserRewardAmount']);
 
 
 });

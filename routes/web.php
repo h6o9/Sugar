@@ -86,7 +86,10 @@ Route::prefix('admin')->middleware('admin')->group(function () {
 	Route::get('/referral-reward-settings', [App\Http\Controllers\Admin\ReferralLinkSettingController::class, 'referralRewardSettings'])->name('referral-reward-settings');
 	Route::get('/referral-reward-settings-edit/{id}', [App\Http\Controllers\Admin\ReferralLinkSettingController::class, 'EditreferralRewardSettings'])->name('edit-referral-reward-settings');
 	Route::post('/update-referral-reward-settings/{id}', [App\Http\Controllers\Admin\ReferralLinkSettingController::class, 'UpdatereferralRewardSettings'])->name('update-referral-reward-settings');
-
+    // Reward Settings
+	Route::get('/reward-settings', [App\Http\Controllers\Admin\RewardSetingsController::class, 'RewardSettings'])->name('reward-settings');
+	Route::get('/reward-settings-edit/{id}', [App\Http\Controllers\Admin\RewardSetingsController::class, 'EditRewardSettings'])->name('edit-reward-settings');
+	Route::post('/update-reward-settings/{id}', [App\Http\Controllers\Admin\RewardSetingsController::class, 'updateRewardSettings'])->name('update-reward-settings');
 
     // User Views
     Route::get('user', [UserController::class, 'userView'])->name('users.index');

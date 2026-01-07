@@ -251,7 +251,6 @@
                                 </span>
                                 <span class="small"><span class="separator">•</span> Desserts</span>
                                 <span class="small"><span class="separator">•</span> Comfort Food</span>
-                                <span class="small"><span class="separator">•</span> Cakes</span>
                                 <span class="small"><span class="separator">•</span> Cupcakes</span>
                                 <span class="small"><span class="separator">•</span> Bubble Tea</span>
                                 <span class="small"><span class="separator">•</span> Coffee & Tea</span>
@@ -748,91 +747,91 @@
                             {{ \Carbon\Carbon::parse($timeSlots->first()->start_pickup_time)->format('g:i A') }} –
                             {{ \Carbon\Carbon::parse($timeSlots->first()->end_pickup_time)->format('g:i A') }}
                         </h5>
-                    @endif
-                        <h3 class="m-0">Explore Our Complete Menu</h3>
-                    </div>
-                    <div class="w-100 d-flex align-items-center justify-content-end gap-2">
-                        <button class="tab-scroll-btn left" onclick="scrollTabs('left')">
-                            <span class="ri-arrow-left-line"></span>
-                        </button>
-                        <button class="tab-scroll-btn right" onclick="scrollTabs('right')">
-                            <span class="ri-arrow-right-line"></span>
-                        </button>
-                    </div>
-                </div>
-            </div>
+						@endif
+							<h3 class="m-0">Explore Our Complete Menu</h3>
+						</div>
+						<div class="w-100 d-flex align-items-center justify-content-end gap-2">
+							<button class="tab-scroll-btn left" onclick="scrollTabs('left')">
+								<span class="ri-arrow-left-line"></span>
+							</button>
+							<button class="tab-scroll-btn right" onclick="scrollTabs('right')">
+								<span class="ri-arrow-right-line"></span>
+							</button>
+						</div>
+					</div>
+				</div>
 
-            @if ($menuCategories && $menuCategories->isNotEmpty())
-                <!-- Menu Tabs -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="menu-tabs-wrapper">
-                            <div class="menu-tabs-container">
-                                <ul class="nav nav-tabs nav-justified menu-category-tabs" id="menuTabs"
-                                    role="tablist">
-                                    @foreach ($menuCategories as $index => $menuCat)
-                                        <li class="nav-item" role="presentation">
-                                            <button class="nav-link @if ($index == 0) active @endif"
-                                                id="tab{{ $menuCat->id }}" data-bs-toggle="tab"
-                                                data-bs-target="#menuTab{{ $menuCat->id }}" type="button"
-                                                role="tab" aria-controls="menuTab{{ $menuCat->id }}"
-                                                aria-selected="@if ($index == 0) true @else false @endif">
-                                                {{ $menuCat->name }}
-                                            </button>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+				@if ($menuCategories && $menuCategories->isNotEmpty())
+					<!-- Menu Tabs -->
+					<div class="row mb-4">
+						<div class="col-12">
+							<div class="menu-tabs-wrapper">
+								<div class="menu-tabs-container">
+									<ul class="nav nav-tabs nav-justified menu-category-tabs" id="menuTabs"
+										role="tablist">
+										@foreach ($menuCategories as $index => $menuCat)
+											<li class="nav-item" role="presentation">
+												<button class="nav-link @if ($index == 0) active @endif"
+													id="tab{{ $menuCat->id }}" data-bs-toggle="tab"
+													data-bs-target="#menuTab{{ $menuCat->id }}" type="button"
+													role="tab" aria-controls="menuTab{{ $menuCat->id }}"
+													aria-selected="@if ($index == 0) true @else false @endif">
+													{{ $menuCat->name }}
+												</button>
+											</li>
+										@endforeach
+									</ul>
+								</div>
+							</div>
+						</div>
+					</div>
 
-                <!-- Menu Content -->
-                <div class="tab-content" id="menuContent">
-                    @foreach ($menuCategories as $index => $menuCat)
-                        <div class="tab-pane fade @if ($index == 0) show active @endif"
-                            id="menuTab{{ $menuCat->id }}" role="tabpanel"
-                            aria-labelledby="tab{{ $menuCat->id }}">
-                            @if ($menuCat->product && $menuCat->product->isNotEmpty())
-                                <div class="row g-4">
-                                    @foreach ($menuCat->product as $prod)
-                                        <div class="col-xl-3 col-lg-4 col-md-6">
-                                            <a class="popular-item bg-transparent border rounded p-4 d-block text-start h-100"
-                                                href="#" data-bs-toggle="modal"
-                                                data-bs-target="#menuModalFull-{{ $prod->id }}">
-                                                <div class="text-center mb-3">
-                                                    <img class="img-fluid" src="{{ asset($prod->image) }}"
-                                                        style="width: 150px; height: 150px; object-fit: cover; border-radius: 10px;">
-                                                </div>
-                                                <div class="mb-2">
-                                                    <h5 class="mb-1 main-heading text-center">{{ $prod->name }}</h5>
-                                                    <p class="text-center mb-2">
-                                                        @if ($prod->variants && $prod->variants->isNotEmpty())
-                                                            <span class="badge bg-primary">From
-                                                                £{{ $prod->variants->first()->price }}</span>
-                                                        @else
-                                                            <span class="badge bg-primary">£{{ $prod->price }}</span>
-                                                        @endif
-                                                    </p>
-                                                </div>
-                                                {{-- <p class="mb-0 text-muted small text-center">{!! $prod->description !!}</p> --}}
-                                            </a>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @else
-                                <div class="alert alert-warning text-center">
-                                    <h5>No products found in {{ $menuCat->name }}!</h5>
-                                    <p class="mb-0">We're currently updating this section. Please check back soon!
-                                    </p>
-                                </div>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-        </div>
-    </div>
+					<!-- Menu Content -->
+					<div class="tab-content" id="menuContent">
+						@foreach ($menuCategories as $index => $menuCat)
+							<div class="tab-pane fade @if ($index == 0) show active @endif"
+								id="menuTab{{ $menuCat->id }}" role="tabpanel"
+								aria-labelledby="tab{{ $menuCat->id }}">
+								@if ($menuCat->product && $menuCat->product->isNotEmpty())
+									<div class="row g-4">
+										@foreach ($menuCat->product as $prod)
+											<div class="col-xl-3 col-lg-4 col-md-6">
+												<a class="popular-item bg-transparent border rounded p-4 d-block text-start h-100"
+													href="#" data-bs-toggle="modal"
+													data-bs-target="#menuModalFull-{{ $prod->id }}">
+													<div class="text-center mb-3">
+														<img class="img-fluid" src="{{ asset($prod->image) }}"
+															style="width: 150px; height: 150px; object-fit: cover; border-radius: 10px;">
+													</div>
+													<div class="mb-2">
+														<h5 class="mb-1 main-heading text-center">{{ $prod->name }}</h5>
+														<p class="text-center mb-2">
+															@if ($prod->variants && $prod->variants->isNotEmpty())
+																<span class="badge bg-primary">From
+																	£{{ $prod->variants->first()->price }}</span>
+															@else
+																<span class="badge bg-primary">£{{ $prod->price }}</span>
+															@endif
+														</p>
+													</div>
+													{{-- <p class="mb-0 text-muted small text-center">{!! $prod->description !!}</p> --}}
+												</a>
+											</div>
+										@endforeach
+									</div>
+								@else
+									<div class="alert alert-warning text-center">
+										<h5>No products found in {{ $menuCat->name }}!</h5>
+										<p class="mb-0">We're currently updating this section. Please check back soon!
+										</p>
+									</div>
+								@endif
+							</div>
+						@endforeach
+					</div>
+				@endif
+			</div>
+		</div>
     <!-- Full Menu End -->
 
     <!-- FAQs Section Start -->

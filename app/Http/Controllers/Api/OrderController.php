@@ -1,0 +1,182 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use Log;
+use Exception;
+use App\Models\Order;
+use App\Models\Branch;
+use App\Models\Reward;
+use App\Models\OrderItem;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\Models\OrderComplationReward;
+use App\Models\OrderCompletionRecord;
+
+class OrderController extends Controller
+{
+    //
+
+public function myOrders(Request $request)
+{
+    $user   = auth()->user();
+    $status = $request->status;
+
+    // 🟢 Orders fetch
+    $orders = Order::where('user_id', $user->id)
+        ->where('status', $status)
+        ->orderBy('created_at', 'desc')
+  		->latest()
+        ->get();
+
+		if(!$orders){
+			return response()->json([
+				'status' => 'error',
+				'message' => 'No orders found.'
+			]);
+		}
+
+    // 🟢 No orders
+    if ($orders->isEmpty()) {
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'items' => []
+            ]
+        ]);
+    }
+
+    $allItems = collect();
+
+    // 🟢 Loop orders
+    foreach ($orders as $order) {
+
+        $orderItems = OrderItem::where('order_id', $order->id)
+            ->with([
+                'product:id,name,image',
+                'orderToppings' => function ($q) {
+                    $q->with([
+                        'category:id,name',
+                        'toppings:id,name'   // 🔥 toppings SAME
+                    ]);
+                }
+            ])
+            ->get()
+            ->map(function ($item) {
+
+                $toppings = $item->orderToppings->map(function ($t) {
+                    return [
+                        'category_name' => $t->category->name ?? null,
+                        'topping_name'  => $t->toppings->name ?? null
+                    ];
+                });
+
+                return [
+                    'product_id'       => $item->product_id,
+                    'product_name'     => $item->product_name,
+                    'product_image'    => $item->product->image ?? null,
+                    'product_size'     => $item->product_size,
+                    'product_price'    => $item->product_price,
+                    'delivery_address' => $item->delivery_address,
+                    'order_type'       => $item->order_type,
+                    'toppings'         => $toppings,
+                ];
+            });
+
+        $allItems = $allItems->merge($orderItems);
+    }
+
+    $order = $orders->first();
+
+    // 🔴 PENDING / ORDERREADY → ITEMS ONLY
+    if (in_array($status, ['Pending', 'Order Ready'])) {
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'items' => $allItems
+            ]
+        ]);
+    }
+
+    // 🟢 DELIVERED → FULL DETAILS
+    if ($status === 'Delivered') {
+
+		/* ===================== 🔒 HIDDEN REWARD PROCESS START ===================== */
+
+    try {
+
+        // 🔹 Reward points config
+        $rewardConfig = OrderComplationReward::first();
+        $rewardPoints = $rewardConfig?->points ?? 0;
+
+        foreach ($orders as $deliveredOrder) {
+
+            // ❌ Already rewarded check
+            $alreadyExists = OrderCompletionRecord::where('order_id', $deliveredOrder->id)->exists();
+
+            if ($alreadyExists) {
+                continue; // skip duplicate reward
+            }
+
+            // 🟢 Insert into order_completion_records
+            OrderCompletionRecord::create([
+                'order_id'    => $deliveredOrder->id,
+                'order_code'  => $deliveredOrder->order_code ?? null,
+                'reward_type' => 'order_completion',
+                'points'      => $rewardPoints,
+            ]);
+
+            // 🟢 Update rewards table
+            $reward = Reward::where('user_id', $deliveredOrder->user_id)->first();
+
+            if ($reward) {
+                $reward->increment('rewards', $rewardPoints);
+            } else {
+                Reward::create([
+                    'user_id'  => $deliveredOrder->user_id,
+                    'rewards'  => $rewardPoints,
+                    'redeemed' => 0
+                ]);
+            }
+        }
+
+    } catch (Exception $e) {
+        // silently fail (no response change)
+        Log::error('Order reward error: ' . $e->getMessage());
+    }
+
+    /* ===================== 🔒 HIDDEN REWARD PROCESS END ===================== */
+
+
+        $branchId = $order?->orderItem?->first()?->branch_id;
+        $branch   = $branchId ? Branch::find($branchId) : null;
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'message'            => 'Your order has been placed successfully.',
+                'total_amount'       => $order->total_amount ?? 0,
+                'estimated_tax'      => $branch->tax ?? 0,
+                'estimated_amount'   => $order->estimated_total ?? 0,
+                'order_type'         => $order?->orderItem?->first()?->order_type,
+                'delivery_address'   => $order?->orderItem?->first()?->delivery_address,
+                'items'              => $allItems,
+            ]
+        ]);
+    }
+
+    // 🟡 Fallback
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'items' => $allItems
+        ]
+    ]);
+}
+
+
+
+
+
+
+}

@@ -1,8 +1,14 @@
 <?php
 
-use App\Http\Controllers\Api\FcmTokenController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\HomeController;
+use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\FcmTokenController;
+use App\Http\Controllers\Api\AddToCartController;
+use App\Http\Controllers\Api\PlaceOrderController;
+use App\Http\Controllers\Api\ProductDetailsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,4 +32,27 @@ use Illuminate\Support\Facades\Route;
 
 // });
 
-Route::post('/fcmToken', [FcmTokenController::class, 'sendToken']);
+Route::post('/register-user', [AuthController::class, 'register']);
+Route::post('/register-verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/login-user', [AuthController::class, 'socialLogin']);
+Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
+Route::post('/user-forget-password', [AuthController::class, 'forgetPassword']);
+Route::post('/user-verify-forget-password', [AuthController::class, 'verifyForgetOtp']);
+Route::post('/user-reset-password', [AuthController::class, 'resetPassword']);
+Route::middleware('auth:sanctum')->group(function () {
+	Route::post('/user-update-profile', [AuthController::class, 'updateProfile']);
+	Route::post('/verify-update-profile-otp', [AuthController::class, 'verifyUpdateprofileOtp']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+	Route::get('/home-products', [HomeController::class, 'homeProducts']);
+	Route::get('/menu-items', [HomeController::class, 'Menueitems']);
+	Route::get('/toppings', [HomeController::class, 'toppings']);
+	Route::get('/my-orders-status', [OrderController::class, 'myOrders']);
+Route::get('/product-details/{id}', [ProductDetailsController::class, 'getProductDetails']);
+Route::post('/product-add-to-cart', [AddToCartController::class, 'addToCart']);
+Route::get('/get-user-cart-items', [AddToCartController::class, 'getUserCartItems']);
+Route::post('/delete-cart-item/{id}', [AddToCartController::class, 'deleteCartItem']);
+Route::post('/continue-to-payments', [AddToCartController::class, 'proceedToPayment']);
+Route::post('/place-order', [PlaceOrderController::class, 'placeOrder']);
+
+
+});

@@ -40,6 +40,7 @@ class HomeController extends Controller
         $menuCategories = Menu::with(['products' => function ($query) {
             $query->where('status', 1);
         }])->orderBy('id', 'asc')->get();
+
         
         foreach ($menuCategories as $menu) {
             $menuproduct = Product::where('menu_id', $menu->id)->where('status', 1)->with('variants')->get();

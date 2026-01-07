@@ -33,6 +33,20 @@
                     @endif
                 </a>
             </li>
+
+			            {{-- Order Completion Rewards  --}}
+
+			 <li class="dropdown {{ request()->is('admin/completion-order*') ? 'active' : '' }}">
+                <a href="{{ route('order-completion') }}" class="nav-link">
+                    <i class="fas fa-check-circle"></i><span>Order Completion Rewards</span></a>
+            </li>
+
+			{{-- Referral Link Reward Settings  --}}
+			 <li class="dropdown {{ request()->is('admin/referral-reward-settings*') ? 'active' : '' }}">
+				<a href="{{ route('referral-reward-settings') }}" class="nav-link">
+					<i class="fas fa-gift"></i><span>Referral Link Reward Settings</span></a>
+	        </li>
+			
             {{-- Sales  --}}
             <li class="dropdown {{ request()->is('admin/sales*') ? 'active' : '' }}">
                 <a href="{{ route('sales.index') }}" class="nav-link">

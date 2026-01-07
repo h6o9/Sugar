@@ -113,7 +113,7 @@
         <div class="container-xxl position-relative p-0">
             <div class="container-xxl py-5 bg-primary hero-header mb-md-5 mb-3">
                 <div class="container text-center my-lg-5 pt-lg-5 pb-lg-4">
-                    <h1 class="display-3 text-dark mb-3 animated slideInDown">Checkout</h1>
+                    <h1 class="display-3 text-dark mb-3 animated slideInDown">Checkout n</h1>
                 </div>
             </div>
         </div>

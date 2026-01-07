@@ -11,7 +11,7 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $orders = Order::with(['orderItem.orderToppings.category', 'orderItem.orderToppings.toppings', 'user', 'orderItem.branch'])->orderByRaw("FIELD(status, 'Pending', 'Order Ready','Delivered')")->latest()->get();
+        $orders= Order::with(['orderItem.orderToppings.category', 'orderItem.orderToppings.toppings', 'user', 'orderItem.branch'])->latest()->get();
         return view('admin.orders.index', compact('orders'));
     }
 }

@@ -30,6 +30,7 @@ use App\Http\Controllers\Home\BranchUpdateController;
 use App\Http\Controllers\Home\LoyaltyPointController;
 use App\Http\Controllers\Admin\TermConditionController;
 use App\Http\Controllers\Home\LoyalityPointsController;
+use App\Http\Controllers\Admin\OrderCompletionController;
 use App\Http\Controllers\Home\AuthController as HomeAuthController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\SalesController as AdminSalesController;
@@ -74,6 +75,18 @@ Route::prefix('admin')->middleware('admin')->group(function () {
     Route::post('branch-update/{id}', [BranchController::class, 'update'])->name('branch-update');
     Route::delete('/branch-delete/{id}', [BranchController::class, 'destroy'])->name('branch-delete');
     // Branch Views End
+
+
+	// Order Completion Rewards
+	Route::get('/completion-order', [OrderCompletionController::class, 'orderCompletion'])->name('order-completion');
+	Route::get('/completion-order-edit/{id}', [App\Http\Controllers\Admin\OrderCompletionController::class, 'EditorderCompletion'])->name('edit-order-completion');
+	Route::post('/update-completion-order/{id}', [App\Http\Controllers\Admin\OrderCompletionController::class, 'UpdateorderCompletion'])->name('update-order-completion');
+
+	// Referral Reward Settings
+	Route::get('/referral-reward-settings', [App\Http\Controllers\Admin\ReferralLinkSettingController::class, 'referralRewardSettings'])->name('referral-reward-settings');
+	Route::get('/referral-reward-settings-edit/{id}', [App\Http\Controllers\Admin\ReferralLinkSettingController::class, 'EditreferralRewardSettings'])->name('edit-referral-reward-settings');
+	Route::post('/update-referral-reward-settings/{id}', [App\Http\Controllers\Admin\ReferralLinkSettingController::class, 'UpdatereferralRewardSettings'])->name('update-referral-reward-settings');
+
 
     // User Views
     Route::get('user', [UserController::class, 'userView'])->name('users.index');

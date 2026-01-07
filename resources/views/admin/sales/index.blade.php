@@ -56,7 +56,7 @@
                                         <thead>
                                             <tr>
                                                 <th>Order Id</th>
-                                                <th>Branch Location</th>
+                                                <th>Branch Locationn</th>
                                                 <th>User</th>
                                                 <th>Product</th>
                                                 <th>Toppings</th>

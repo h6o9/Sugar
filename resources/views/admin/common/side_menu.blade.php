@@ -107,6 +107,29 @@
                 <a href="{{ route('about.index') }}" class="nav-link"><i data-feather="monitor"></i><span>About
                         Us</span></a>
             </li> --}}
+
+			 {{-- Notification --}}
+
+
+
+           
+            {{-- Notification --}}
+
+
+             <li class="dropdown {{ request()->is('admin/notification*') ? 'active' : '' }}">
+
+            <a href="
+
+                {{ route('notification.index') }}
+
+                " class="nav-link">
+
+                <i data-feather="bell"></i><span>Notifications</span>
+
+            </a>
+
+            </li> 
+
             <li class="dropdown {{ request()->is('admin/policy*') ? 'active' : '' }}">
                 <a href="{{ route('policy.index') }}" class="nav-link"><i class="fas fa-file-alt"></i><span>Privacy
                         Policy</span></a>

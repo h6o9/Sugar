@@ -27,10 +27,6 @@ class OrderItem extends Model
     {
         return $this->hasMany(OrderItemToppings::class,'order_item_id','id');
     }
-
-	public function toppings()
-	{
-		return $this->hasMany(OrderItemToppings::class,'order_item_id','id');
-	}
+	
 
 }

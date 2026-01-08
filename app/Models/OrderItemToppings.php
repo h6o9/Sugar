@@ -23,4 +23,6 @@ class OrderItemToppings extends Model
         return $this->belongsTo(OrderItem::class, 'order_item_id','id');
     }
 
+	
+
 }

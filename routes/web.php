@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\MenuGalleryController;
 use App\Http\Controllers\Branch\BranchAuthController;
 use App\Http\Controllers\Home\BranchUpdateController;
 use App\Http\Controllers\Home\LoyaltyPointController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\TermConditionController;
 use App\Http\Controllers\Home\LoyalityPointsController;
 use App\Http\Controllers\Admin\OrderCompletionController;
@@ -90,6 +91,17 @@ Route::prefix('admin')->middleware('admin')->group(function () {
 	Route::get('/reward-settings', [App\Http\Controllers\Admin\RewardSetingsController::class, 'RewardSettings'])->name('reward-settings');
 	Route::get('/reward-settings-edit/{id}', [App\Http\Controllers\Admin\RewardSetingsController::class, 'EditRewardSettings'])->name('edit-reward-settings');
 	Route::post('/update-reward-settings/{id}', [App\Http\Controllers\Admin\RewardSetingsController::class, 'updateRewardSettings'])->name('update-reward-settings');
+
+	//Notification Routes
+	    Route::controller(NotificationController::class)->group(function () {
+	  Route::get('/notification',  'index')->name('notification.index');
+
+        Route::post('/notification-store',  'store')->name('notification.store');
+
+        Route::delete('/notification-destroy/{id}',  'destroy')->name('notification.destroy');
+        Route::delete('/notifications/delete-all', 'deleteAll')->name('notifications.deleteAll');
+        Route::get('/get-users-by-type', 'getUsersByType');
+    });
 
     // User Views
     Route::get('user', [UserController::class, 'userView'])->name('users.index');

@@ -38,7 +38,9 @@ class OrderController extends Controller
         // return $orders;
         return view('home.my-orders', compact('orders'));
     }
-    // public function updateStatus(Request $request, $orderId)
+    // public function updateStatus(Request $request, $
+	// 
+	// Id)
     // {
     //     $request->validate([
     //         'status' => 'required|in:Pending,Order Ready,Delivered',

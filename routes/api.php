@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\FilterController;
 use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\AddToCartController;
 use App\Http\Controllers\Api\PlaceOrderController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProductDetailsController;
 
 /*
@@ -64,6 +65,14 @@ Route::get('/privacy-policy', [PageController::class, 'privacyPolicy']);
 Route::get('/faq', [PageController::class, 'faq']);
 Route::get('/gallery', [PageController::class, 'getGalleryImages']);
 Route::get('/get-user-reward-amount', [PageController::class, 'getUserRewardAmount']);
+
+//NOTIFICATION ROUTES
+// Notifications
+Route::get('/notifications', [NotificationController::class, 'getUserNotifications'])->middleware('auth:sanctum');
+Route::get('/notification/{id}', [NotificationController::class, 'showNotification'])->middleware('auth:sanctum');
+Route::post('/clearnotification', [NotificationController::class, 'clearAll'])->middleware('auth:sanctum');
+Route::post('/notifications-seen', [NotificationController::class, 'seenNotification'])
+    ->name('notifications.seen');
 
 
 });

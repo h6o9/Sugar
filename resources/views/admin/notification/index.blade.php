@@ -142,158 +142,100 @@
     </div>
 </div>
 @endsection
-<!-- Bootstrap 5 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<!-- Bootstrap 5 JS (MODAL KE LIYE MUST) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
 @section('js')
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js"></script>
+
+<!-- ✅ ADD THIS LINE -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-    $(document).ready(function() {
-        $('#table_id_events').DataTable();
-        $('.select2').select2({
-            placeholder: "Select sellers",
-            allowClear: true
-        });
+$(document).ready(function () {
 
-        // Re-initialize Select2 when modal opens (fix for hidden content)
-        $('#createUserModal').on('shown.bs.modal', function() {
-            $('#users.select2').select2({
-                dropdownParent: $('#createUserModal'),
-                placeholder: "Select sellers",
-                allowClear: true
-            });
-        });
+    // ✅ DataTable
+    $('#table_id_events').DataTable();
 
-        $('#select_all_users').on('change', function() {
-            $('#users > option').prop('selected', this.checked).trigger('change');
-        });
-
-        $('#users').on('change', function() {
-            $('#select_all_users').prop('checked', $('#users option:selected').length === $(
-                '#users option').length);
-        });
-
-        $('form#createUserForm').submit(function() {
-            $("#createSpinner").show();
-            $("#createBtnText").hide();
-            $("#createBtn").prop("disabled", true);
-        });
-
-       
-        $('#createUserModal').on('hidden.bs.modal', function() {
-            
-            this.querySelector('form').reset();
-
-           
-            $('#users').val(null).trigger('change');
-
-            // select all uncheck
-            $('#select_all_users').prop('checked', false);
-        });
-
-        
-
-        $('form#createUserForm').on('submit', function(e) {
-            // ------------------- Validation -------------------
-            var isSelectAllChecked = $('#select_all_users').is(':checked');
-            var selectedUsersCount = $('#users').val() ? $('#users').val().length : 0;
-
-            
-            $('#user_field .custom-error').remove();
-
-            if (!isSelectAllChecked && selectedUsersCount === 0) {
-                e.preventDefault(); 
-
-                
-                $('#user_field').append('<div class="text-danger custom-error">Please select at least one seller or check "Select All".</div>');
-
-                
-                $("#createSpinner").hide();
-                $("#createBtnText").show();
-                $("#createBtn").prop("disabled", false);
-
-                return false; 
-            }
-
-            // ------------------- Spinner on only valid -------------------
-            $("#createSpinner").show();
-            $("#createBtnText").hide();
-            $("#createBtn").prop("disabled", true);
-        });
-
-        
-        $('#users').on('change click', function() {
-            if ($('#users').val().length > 0 || $('#select_all_users').is(':checked')) {
-                $('#user_field .custom-error').remove();
-            }
-        });
-
-        
-        $('#select_all_users').on('change click', function() {
-            if (this.checked || ($('#users').val() && $('#users').val().length > 0)) {
-                $('#user_field .custom-error').remove();
-            }
-        });
-
-
-        // Confirm delete action
-
-        $(document).on('click', '.show_confirm', function(event) {
-            var formId = $(this).data("form");
-            var form = document.getElementById(formId);
-            event.preventDefault();
-            swal({
-                    title: "Are you sure you want to delete this record?",
-                    text: "If you delete this Notification record, it will be gone forever.",
-                    icon: "warning",
-                    buttons: true,
-                    dangerMode: true,
-                })
-                .then((willDelete) => {
-                    if (willDelete) {
-                        // Send AJAX request
-                        $.ajax({
-                            url: form.action,
-                            type: 'POST',
-                            data: {
-                                _method: 'DELETE',
-                                _token: '{{ csrf_token() }}'
-                            },
-                            success: function(response) {
-
-                                swal({
-                                    title: "Success!",
-                                    text: "Record deleted successfully!",
-                                    icon: "success",
-                                    button: false,
-                                    timer: 1000
-                                }).then(() => {
-                                    location.reload();
-                                });
-                            },
-                            error: function(xhr) {
-                                swal("Error!", "Failed to delete record.", "error");
-                            }
-                        });
-                    }
-                });
-        });
-        $('.delete_all').click(function(event) {
-            var form = $(this).closest("form");
-            event.preventDefault();
-            swal({
-                title: "Are you sure you want to delete all records?",
-                text: "If you delete all Notifications records, they will be gone forever.",
-                icon: "warning",
-                buttons: true,
-                dangerMode: true
-            }).then((willDelete) => {
-                if (willDelete) {
-                    form.submit();
-                }
-            });
-        });
+    // ✅ Select2 INIT — ONLY ONCE
+    $('#users').select2({
+        dropdownParent: $('#createUserModal'),
+        placeholder: "Select sellers",
+        allowClear: true,
+        width: '100%'
     });
+
+    // =============================
+    // ✅ SELECT ALL FIXED WORKING
+    // =============================
+    $('#select_all_users').on('change', function () {
+        let $usersSelect = $('#users');
+        let allValues = [];
+        
+        // Get all option values
+        $('#users option').each(function () {
+            allValues.push($(this).val());
+        });
+
+        if ($(this).is(':checked')) {
+            // Set all values and update Select2
+            $usersSelect.val(allValues).trigger('change');
+        } else {
+            // Clear all selections
+            $usersSelect.val(null).trigger('change');
+        }
+    });
+
+    // =============================
+    // ✅ AUTO UNCHECK SELECT ALL
+    // =============================
+    $('#users').on('change', function () {
+        let total = $('#users option').length;
+        let selected = $(this).val() ? $(this).val().length : 0;
+
+        // Update Select All checkbox
+        $('#select_all_users').prop('checked', total === selected);
+        
+        // Clear any existing custom errors
+        $('#user_field .custom-error').remove();
+    });
+
+    // =============================
+    // ✅ MODAL RESET (cross icon fix)
+    // =============================
+    $('#createUserModal').on('hidden.bs.modal', function () {
+        $('#createUserForm')[0].reset();
+        $('#users').val(null).trigger('change');
+        $('#select_all_users').prop('checked', false);
+        $('#user_field .custom-error').remove();
+    });
+
+    // =============================
+    // ✅ FORM VALIDATION
+    // =============================
+    $('#createUserForm').on('submit', function (e) {
+        let selectedUsers = $('#users').val();
+        let selectAll = $('#select_all_users').is(':checked');
+
+        // Clear previous errors
+        $('#user_field .custom-error').remove();
+
+        // If neither select all nor any user is selected
+        if (!selectAll && (!selectedUsers || selectedUsers.length === 0)) {
+            e.preventDefault();
+            
+            // Add custom error message
+            $('#user_field').append(
+                '<div class="text-danger custom-error mt-1">Please select at least one seller or check "Select All".</div>'
+            );
+            
+            return false;
+        }
+
+        // Show loading spinner
+        $('#createSpinner').show();
+        $('#createBtnText').hide();
+        $('#createBtn').prop('disabled', true);
+    });
+
+});
 </script>
+
 @endsection

@@ -44,15 +44,6 @@ public function register(Request $request)
             ]
         );
 
-        // ---------------------------
-        // SEND OTP EMAIL
-        // ---------------------------
-        // Mail::to($request->email)->send(new RegisterMail([
-        //     'name'  => $request->name,
-        //     'otp'   => $otp,
-        //     'email' => $request->email,      // optional
-        //     'password' => $request->password // optional, avoid sending real password
-        // ]));
 
         return response()->json([
             'status'    => 'success',
@@ -137,9 +128,116 @@ public function register(Request $request)
 //     }
 // }
 
+// public function socialLogin(Request $request)
+// {
+//     try {
+//         $data = $request->only([
+//             'social_id',
+//             'login_type',
+//             'fcm_token',
+//             'email',
+//             'name',
+//             'image',
+//             'password'
+//         ]);
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | CASE 0: Manual Login (Email + Password)
+//         |--------------------------------------------------------------------------
+//         */
+//         if (!empty($data['email']) && !empty($data['password']) && empty($data['social_id'])) {
+
+//             $user = User::where('email', $data['email'])->first();
+
+//             if (!$user || !\Hash::check($data['password'], $user->password)) {
+//                 return response()->json([
+//                     'status'  => false,
+//                     'message' => 'Invalid credentials'
+//                 ], 401);
+//             }
+
+
+//             // Update login info (NO access_token save)
+//             $user->fcmtoken     = $data['fcm_token'] ?? $user->fcmtoken;
+//             $user->login_date  = now();
+//             $user->availability = 1;
+//             $user->save();
+
+//             // ✅ Sanctum Token
+//             $token = $user->createToken('auth_token')->plainTextToken;
+
+//             return response()->json([
+//                 'status' => true,
+// 				'access_token' => $token,
+//                 'message' => 'Logged in successfully',
+//                 'user' => $user,
+//             ], 200);
+//         }
+
+//         /*
+//         |--------------------------------------------------------------------------
+//         | CASE 1: Social Login (Google / Apple)
+//         |--------------------------------------------------------------------------
+//         */
+//         if (empty($data['social_id']) || empty($data['login_type']) || empty($data['email'])) {
+//             return response()->json([
+//                 'status'  => false,
+//                 'message' => 'social_id, login_type and email are required'
+//             ], 422);
+//         }
+
+//         $socialColumn = $data['login_type'] === 'apple'
+//             ? 'apple_social_id'
+//             : 'google_social_id';
+
+//         $user = User::where('email', $data['email'])->first();
+
+//         if (!$user) {
+//             return response()->json([
+//                 'status'  => false,
+//                 'message' => 'This email does not exist'
+//             ], 404);
+//         }
+
+        
+
+//         // Save social ID once
+//         if (empty($user->$socialColumn)) {
+//             $user->$socialColumn = $data['social_id'];
+//         }
+
+//         // Update profile info (NO access_token save)
+//         $user->fcmtoken     = $data['fcm_token'] ?? $user->fcmtoken;
+//         $user->login_type  = $data['login_type'];
+//         $user->name        = $data['name'] ?? $user->name;
+//         $user->image       = $data['image'] ?? $user->image;
+//         $user->login_date  = now();
+//         $user->availability = 1;
+//         $user->save();
+
+//         // ✅ Sanctum Token
+//         $token = $user->createToken('auth_token')->plainTextToken;
+
+//         return response()->json([
+//             'status' => true,
+// 			'access_token' => $token,
+//             'message' => 'Logged in successfully',
+//             'user' => $user,
+//         ], 200);
+
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'status'  => false,
+//             'message' => 'Something went wrong'
+//         ], 500);
+//     }
+// }
+
 public function socialLogin(Request $request)
 {
     try {
+
         $data = $request->only([
             'social_id',
             'login_type',
@@ -150,51 +248,34 @@ public function socialLogin(Request $request)
             'password'
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | CASE 0: Manual Login (Email + Password)
-        |--------------------------------------------------------------------------
-        */
+        // CASE 0: Manual Login
         if (!empty($data['email']) && !empty($data['password']) && empty($data['social_id'])) {
 
             $user = User::where('email', $data['email'])->first();
 
-            if (!$user || !\Hash::check($data['password'], $user->password)) {
+            if (!$user || empty($user->password) || !\Hash::check($data['password'], $user->password)) {
                 return response()->json([
                     'status'  => false,
                     'message' => 'Invalid credentials'
                 ], 401);
             }
 
-            if ($user->status == 0) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Your account has been deactivated'
-                ], 403);
-            }
-
-            // Update login info (NO access_token save)
             $user->fcmtoken     = $data['fcm_token'] ?? $user->fcmtoken;
             $user->login_date  = now();
             $user->availability = 1;
             $user->save();
 
-            // ✅ Sanctum Token
             $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([
                 'status' => true,
-				'access_token' => $token,
+                'access_token' => $token,
                 'message' => 'Logged in successfully',
                 'user' => $user,
             ], 200);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | CASE 1: Social Login (Google / Apple)
-        |--------------------------------------------------------------------------
-        */
+        // CASE 1: Social Login
         if (empty($data['social_id']) || empty($data['login_type']) || empty($data['email'])) {
             return response()->json([
                 'status'  => false,
@@ -215,19 +296,10 @@ public function socialLogin(Request $request)
             ], 404);
         }
 
-        if ($user->status == 0) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'Your account has been deactivated'
-            ], 403);
-        }
-
-        // Save social ID once
         if (empty($user->$socialColumn)) {
             $user->$socialColumn = $data['social_id'];
         }
 
-        // Update profile info (NO access_token save)
         $user->fcmtoken     = $data['fcm_token'] ?? $user->fcmtoken;
         $user->login_type  = $data['login_type'];
         $user->name        = $data['name'] ?? $user->name;
@@ -236,24 +308,24 @@ public function socialLogin(Request $request)
         $user->availability = 1;
         $user->save();
 
-        // ✅ Sanctum Token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'status' => true,
-			'access_token' => $token,
+            'access_token' => $token,
             'message' => 'Logged in successfully',
             'user' => $user,
         ], 200);
 
-    } catch (\Exception $e) {
+    } catch (\Throwable $e) {
         return response()->json([
-            'status'  => false,
-            'message' => 'Something went wrong'
+            'status' => false,
+            'error'  => $e->getMessage(),
+            'line'   => $e->getLine(),
+            'file'   => $e->getFile(),
         ], 500);
     }
 }
-
 
 public function updateProfile(Request $request)
 {
@@ -517,11 +589,11 @@ public function forgetPassword(Request $request)
         );
 
         // Send OTP Email
-        // Mail::to($request->email)->send(new RegisterMail([
-        //     'name'  => $user->name,
-        //     'email' => $user->email,
-        //     'otp'   => $otp,
-        // ]));
+        Mail::to($request->email)->send(new RegisterMail([
+            'name'  => $user->name,
+            'email' => $user->email,
+            'otp'   => $otp,
+        ]));
 
         return response()->json([
             'status'    => 'success',
@@ -560,17 +632,17 @@ public function verifyForgetOtp(Request $request)
         }
 
         // Check OTP expiry (5 minutes)
-        $otpCreated = Carbon::parse($otpData->created_at);
-        $now = Carbon::now();
-        $diff = $now->diffInMinutes($otpCreated);
+        // $otpCreated = Carbon::parse($otpData->created_at);
+        // $now = Carbon::now();
+        // $diff = $now->diffInMinutes($otpCreated);
 
-        if ($diff > 5) {
-            $otpData->delete();
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'OTP expired. Please request a new one.'
-            ], 410); // Gone
-        }
+        // if ($diff > 5) {
+        //     $otpData->delete();
+        //     return response()->json([
+        //         'status'  => 'error',
+        //         'message' => 'OTP expired. Please request a new one.'
+        //     ], 410); // Gone
+        // }
 
         // Check OTP correctness
         if ($otpData->otp != $request->otp) {
@@ -609,6 +681,14 @@ public function resetPassword(Request $request)
             ], 404);
         }
 
+        // ❌ New password same as old password
+        if (Hash::check($request->new_password, $user->password)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'This is your old password. please create a new one.'
+            ], 422);
+        }
+
         $user->password = Hash::make($request->new_password);
         $user->save();
 
@@ -625,6 +705,7 @@ public function resetPassword(Request $request)
         ], 500);
     }
 }
+
 
 
 public function getLoggedInUser()

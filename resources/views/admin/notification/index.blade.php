@@ -12,23 +12,20 @@
                             <h4>Notifications</h4>
                         </div>
                         <div class="card-body table-striped table-bordered table-responsive">
-                            @if (Auth::guard('admin')->check() ||
-                            ($sideMenuPermissions->has('Notifications') && $sideMenuPermissions['Notifications']->contains('create')))
-                            <a class="btn mb-3 text-white" data-bs-toggle="modal" style="background-color: #cb84fe;"
+                            
+                            <a class="btn btn-primary mb-3 text-white" data-bs-toggle="modal" 
                                 data-bs-target="#createUserModal">Create</a>
-                            @endif
+                            
 
-                            @if (Auth::guard('admin')->check() ||
-                            ($sideMenuPermissions->has('Notifications') && $sideMenuPermissions['Notifications']->contains('delete')))
+                         
                             <form action="{{ route('notifications.deleteAll') }}" method="POST"
                                 class="d-inline-block float-right">
                                 @csrf
-                                @method('DELETE')
                                 <button type="submit" class="btn btn-primary mb-3 delete_all">
                                     Delete All
                                 </button>
                             </form>
-                            @endif
+
                             <table class="table" id="table_id_events">
                                 <thead>
                                     <tr>
@@ -44,27 +41,22 @@
                                     <tr>
                                         <td>{{ $loop->iteration }}</td>
                                         <td>{{ $notification->title }}</td>
-                                        <td>{{ \Illuminate\Support\Str::limit(strip_tags($notification->description), 150, '...') }}
-                                        </td>
+                                        <td>{{ \Illuminate\Support\Str::limit(strip_tags($notification->description), 150, '...') }}</td>
                                         <td>{{ $notification->created_at->format('d M Y') }}</td>
                                         <td>
-                                            @if (Auth::guard('admin')->check() ||
-                                            ($sideMenuPermissions->has('Notifications') && $sideMenuPermissions['Notifications']->contains('delete')))
-                                            <form id="delete-form-{{ $notification->id }}"
-                                                action="{{ route('notification.destroy', $notification->id) }}"
-                                                method="POST">
+                                            <!-- Delete Form -->
+                                            <form id="delete-form-{{ $notification->id }}" 
+                                                  action="{{ route('notification.destroy', $notification->id) }}" 
+                                                  method="POST" style="display: none;">
                                                 @csrf
                                                 @method('DELETE')
                                             </form>
 
-                                            <button class="show_confirm btn d-flex "
-                                                style="background-color: #cb84fe;"
-                                                data-form="delete-form-{{ $notification->id }}" type="button">
-                                                <span><i class="fa fa-trash"></i></span>
+                                            <button class="delete_btn btn btn-danger" 
+                                                    data-form="delete-form-{{ $notification->id }}" 
+                                                    type="button">
+                                                <i class="fa fa-trash"></i>
                                             </button>
-                                            @endif
-
-
                                         </td>
                                     </tr>
                                     @endforeach
@@ -112,6 +104,7 @@
                         <div class="text-danger">{{ $message }}</div>
                         @enderror
                     </div>
+
                     <div class="form-group">
                         <label><strong>Title <span style="color:red;">*</span></strong></label>
                         <input type="text" name="title" class="form-control" placeholder="Title" required>
@@ -142,19 +135,20 @@
     </div>
 </div>
 @endsection
-@section('js')
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js"></script>
 
-<!-- ✅ ADD THIS LINE -->
+@section('js')
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 $(document).ready(function () {
-
-    // ✅ DataTable
+    // =============================
+    // DataTable
+    // =============================
     $('#table_id_events').DataTable();
 
-    // ✅ Select2 INIT — ONLY ONCE
+    // =============================
+    // Select2
+    // =============================
     $('#users').select2({
         dropdownParent: $('#createUserModal'),
         placeholder: "Select sellers",
@@ -163,43 +157,26 @@ $(document).ready(function () {
     });
 
     // =============================
-    // ✅ SELECT ALL FIXED WORKING
+    // Select All Checkbox
     // =============================
     $('#select_all_users').on('change', function () {
-        let $usersSelect = $('#users');
         let allValues = [];
-        
-        // Get all option values
-        $('#users option').each(function () {
-            allValues.push($(this).val());
-        });
+        $('#users option').each(function () { allValues.push($(this).val()); });
 
         if ($(this).is(':checked')) {
-            // Set all values and update Select2
-            $usersSelect.val(allValues).trigger('change');
+            $('#users').val(allValues).trigger('change');
         } else {
-            // Clear all selections
-            $usersSelect.val(null).trigger('change');
+            $('#users').val(null).trigger('change');
         }
     });
 
-    // =============================
-    // ✅ AUTO UNCHECK SELECT ALL
-    // =============================
     $('#users').on('change', function () {
         let total = $('#users option').length;
         let selected = $(this).val() ? $(this).val().length : 0;
-
-        // Update Select All checkbox
         $('#select_all_users').prop('checked', total === selected);
-        
-        // Clear any existing custom errors
         $('#user_field .custom-error').remove();
     });
 
-    // =============================
-    // ✅ MODAL RESET (cross icon fix)
-    // =============================
     $('#createUserModal').on('hidden.bs.modal', function () {
         $('#createUserForm')[0].reset();
         $('#users').val(null).trigger('change');
@@ -207,35 +184,31 @@ $(document).ready(function () {
         $('#user_field .custom-error').remove();
     });
 
-    // =============================
-    // ✅ FORM VALIDATION
-    // =============================
     $('#createUserForm').on('submit', function (e) {
         let selectedUsers = $('#users').val();
         let selectAll = $('#select_all_users').is(':checked');
-
-        // Clear previous errors
         $('#user_field .custom-error').remove();
 
-        // If neither select all nor any user is selected
         if (!selectAll && (!selectedUsers || selectedUsers.length === 0)) {
             e.preventDefault();
-            
-            // Add custom error message
-            $('#user_field').append(
-                '<div class="text-danger custom-error mt-1">Please select at least one seller or check "Select All".</div>'
-            );
-            
+            $('#user_field').append('<div class="text-danger custom-error mt-1">Please select at least one seller or check "Select All".</div>');
             return false;
         }
 
-        // Show loading spinner
         $('#createSpinner').show();
         $('#createBtnText').hide();
         $('#createBtn').prop('disabled', true);
     });
 
+    // =============================
+    // DELETE BUTTON WITHOUT CONFIRMATION
+    // =============================
+    $('.delete_btn').click(function(e) {
+        e.preventDefault();
+        var formId = $(this).data('form');
+        $('#' + formId).submit(); // Directly delete
+    });
+
 });
 </script>
-
 @endsection

@@ -68,9 +68,9 @@ Route::get('/get-user-reward-amount', [PageController::class, 'getUserRewardAmou
 
 //NOTIFICATION ROUTES
 // Notifications
-Route::get('/notifications', [NotificationController::class, 'getUserNotifications'])->middleware('auth:sanctum');
-Route::get('/notification/{id}', [NotificationController::class, 'showNotification'])->middleware('auth:sanctum');
-Route::post('/clearnotification', [NotificationController::class, 'clearAll'])->middleware('auth:sanctum');
+Route::get('/notifications', [NotificationController::class, 'getUserNotifications']);
+Route::get('/notification/{id}', [NotificationController::class, 'showNotification']);
+Route::post('/clearnotification', [NotificationController::class, 'clearAll']);
 Route::post('/notifications-seen', [NotificationController::class, 'seenNotification'])
     ->name('notifications.seen');
 

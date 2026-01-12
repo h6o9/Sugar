@@ -1,41 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- index.html  21 Nov 2019 03:44:50 GMT -->
 
 <head>
     <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" name="viewport">
-    <title>Admin Dashboard</title>
-    <!-- Favicon -->
-    {{-- <link href="{{ asset('public/img/az-logo.png') }}" rel="icon"> --}}
-        <link href="{{ asset('public/img/logo.png') }}" rel="icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Developed By Ranglerz -->
-      <link rel="stylesheet" href="https://www.ranglerz.com/cost-to-make-a-web-ios-or-android-app-and-how-long-does-it-take.php">
-    <!-- General CSS Files -->
+    <title>@yield('title', 'Admin Dashboard')</title>
+
+    <!-- ========== Favicon ========== -->
+    <link rel="icon" href="{{ asset('public/img/logo.png') }}">
+
+    <!-- ========== Vendor CSS ========== -->
     <link rel="stylesheet" href="{{ asset('public/admin/assets/css/app.min.css') }}">
-    <!-- Template CSS -->
-    <link rel="stylesheet" href="{{ asset('public/admin/assets/css/style.css') }}">
     <link rel="stylesheet" href="{{ asset('public/admin/assets/css/components.css') }}">
-    <!-- Custom style CSS -->
-    <link rel="stylesheet" href="{{ asset('public/admin/assets/toastr/css/toastr.css') }}">
-    <link rel="stylesheet" href="{{ asset('public/admin/assets/css/selectric.css') }}">
+    <link rel="stylesheet" href="{{ asset('public/admin/assets/css/style.css') }}">
     <link rel="stylesheet" href="{{ asset('public/admin/assets/css/custom.css') }}">
-    <!-- Favicon -->
-    {{-- <link href="{{ asset('public/img/az-logo.png') }}" rel="icon"> --}}
-        <link href="{{ asset('public/img/logo.png') }}" rel="icon">
 
-    <link rel="stylesheet" href="{{ asset('public/admin/assets/css/datatables.css') }}">
-    <link rel="stylesheet"
-        href="{{ asset('public/admin/assets/bundles/bootstrap-timepicker/css/bootstrap-timepicker.min.css') }}">
-    <link rel="stylesheet"
-        href="{{ asset('public/admin/assets/bundles/datatables/DataTables-1.10.16/css/dataTables.bootstrap4.min.css') }}">
+    <!-- ========== Plugins CSS ========== -->
     <link rel="stylesheet" href="{{ asset('public/admin/assets/bundles/datatables/datatables.min.css') }}">
-    {{-- CSS --}}
+    <link rel="stylesheet" href="{{ asset('public/admin/assets/toastr/css/toastr.css') }}">
     <link rel="stylesheet" href="{{ asset('public/admin/assets/bundles/summernote/summernote-bs4.css') }}">
-    <link rel="stylesheet" href="{{ asset('public/admin/assets/bundles/codemirror/lib/codemirror.css') }}">
-    <link rel="stylesheet" href="{{ asset('public/admin/assets/bundles/codemirror/theme/duotone-dark.css') }}">
     <link rel="stylesheet" href="{{ asset('public/admin/assets/bundles/jquery-selectric/selectric.css') }}">
+
+    <!-- ========== External CSS ========== -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+
+    @yield('style')
 </head>
 
 <body>
@@ -43,67 +34,58 @@
 
     <div id="app">
         <div class="main-wrapper main-wrapper-1">
+
             @include('admin.common.header')
             @include('admin.common.side_menu')
+
             @yield('content')
+
             @include('admin.common.footer')
+
         </div>
     </div>
-    <!-- General JS Scripts -->
+
+    <!-- ========== Core JS ========== -->
     <script src="{{ asset('public/admin/assets/js/app.min.js') }}"></script>
-    <!-- JS Libraies -->
-    <script src="{{ asset('public/admin/assets/bundles/apexcharts/apexcharts.min.js') }}"></script>
-    <!-- Page Specific JS File -->
-    <script src="{{ asset('public/admin/assets/js/page/index.js') }}"></script>
-    <!-- Template JS File -->
     <script src="{{ asset('public/admin/assets/js/scripts.js') }}"></script>
-    <!-- Custom JS File -->
-    <script src="{{ asset('public/admin/assets/js/custom.js') }}"></script>
+
+    <!-- ========== Plugins JS ========== -->
     <script src="{{ asset('public/admin/assets/toastr/js/toastr.min.js') }}"></script>
-    <script src="{{ asset('public/admin/assets/js/datatables.js') }}"></script>
-    <script src="{{ asset('public/admin/assets/js/jquery.selectric.min.js') }}"></script>
-    <script src="{{ asset('public/admin/assets/bundles/bootstrap-timepicker/js/bootstrap-timepicker.min.js') }}"></script>
-    <script src="{{ asset('public/admin/assets/bundles/datatables/export-tables/buttons.print.min.js') }}"></script>
-    <script src="{{ asset('public/admin/assets/bundles/jquery-ui/jquery-ui.min.js') }}"></script>
-    <script src="{{ asset('publicadmin/assets/bundles/datatables/DataTables-1.10.16/js/dataTables.bootstrap4.min.js') }}">
-    </script>
     <script src="{{ asset('public/admin/assets/bundles/datatables/datatables.min.js') }}"></script>
+    <script src="{{ asset('public/admin/assets/bundles/datatables/DataTables-1.10.16/js/dataTables.bootstrap4.min.js') }}"></script>
     <script src="{{ asset('public/admin/assets/bundles/summernote/summernote-bs4.js') }}"></script>
-    <script src="{{ asset('public/admin/assets/bundles/codemirror/lib/codemirror.js') }}"></script>
-    <script src="{{ asset('public/admin/assets/bundles/codemirror/mode/javascript/javascript.js') }}"></script>
     <script src="{{ asset('public/admin/assets/bundles/jquery-selectric/jquery.selectric.min.js') }}"></script>
     <script src="{{ asset('public/admin/assets/bundles/ckeditor/ckeditor.js') }}"></script>
-    <script src="{{ asset('public/admin/assets/js/page/ckeditor.js') }}"></script>
+    <script src="{{ asset('public/admin/assets/bundles/apexcharts/apexcharts.min.js') }}"></script>
 
+    <!-- ========== External JS ========== -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.0/sweetalert.min.js"></script>
+
+    <!-- ========== Toastr Config ========== -->
     <script>
-        /*toastr popup function*/
-        function toastrPopUp() {
-            toastr.options = {
-                "closeButton": true,
-                "newestOnTop": false,
-                "progressBar": true,
-                "positionClass": "toast-top-right",
-                "preventDuplicates": false,
-                "onclick": null,
-                "showDuration": "3000",
-                "hideDuration": "1000",
-                "timeOut": "5000",
-                "extendedTimeOut": "1000",
-                "showEasing": "swing",
-                "hideEasing": "linear",
-                "showMethod": "fadeIn",
-                "hideMethod": "fadeOut"
-            }
-        }
+        toastr.options = {
+            closeButton: true,
+            progressBar: true,
+            positionClass: "toast-top-right",
+            timeOut: 3000
+        };
 
-        /*toastr popup function*/
-        toastrPopUp();
+        @if (Session::has('success'))
+            toastr.success("{{ Session::get('success') }}");
+        @endif
+
+        @if (Session::has('error'))
+            toastr.error("{{ Session::get('error') }}");
+        @endif
     </script>
 
+   
+
+    <!-- ========== Custom JS ========== -->
+    <script src="{{ asset('public/admin/assets/js/custom.js') }}"></script>
+
     @yield('js')
+
 </body>
-
-
-<!-- index.html  21 Nov 2019 03:47:04 GMT -->
-
 </html>

@@ -74,5 +74,7 @@ Route::post('/clearnotification', [NotificationController::class, 'clearAll']);
 Route::post('/notifications-seen', [NotificationController::class, 'seenNotification'])
     ->name('notifications.seen');
 
+// get reward history
+Route::get('/reward-history', [\App\Http\Controllers\Api\RewardHistoryController::class, 'index']);
 
 });

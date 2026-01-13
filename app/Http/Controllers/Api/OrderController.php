@@ -9,6 +9,7 @@ use App\Models\Branch;
 use App\Models\Reward;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
+use App\Models\RewardHistory;
 use App\Http\Controllers\Controller;
 use App\Models\OrderComplationReward;
 use App\Models\OrderCompletionRecord;
@@ -104,7 +105,6 @@ public function myOrders(Request $request)
 		/* ===================== 🔒 HIDDEN REWARD PROCESS START ===================== */
 
     try {
-
         // 🔹 Reward points config
         $rewardConfig = OrderComplationReward::first();
         $rewardPoints = $rewardConfig?->points ?? 0;
@@ -121,10 +121,29 @@ public function myOrders(Request $request)
             // 🟢 Insert into order_completion_records
             OrderCompletionRecord::create([
                 'order_id'    => $deliveredOrder->id,
-                'order_code'  => $deliveredOrder->order_code ?? null,
+                'order_code'  => $deliveredOrder->code ?? null,
                 'reward_type' => 'order_completion',
                 'points'      => $rewardPoints,
             ]);
+
+		$rewardalreadyExists = RewardHistory::where('order_code', $deliveredOrder->code)->orWhere(
+						'referral_code', $deliveredOrder->referral_code
+					)->exists();
+
+					 if ($alreadyExists) {
+                continue; // skip duplicate reward
+            }
+
+			RewardHistory::create([
+				'reward_type'   => 'order_completion',
+				'reward_title'  => 'Order Points Added!',
+				'points'        => $rewardPoints,
+				'user_id'       => $deliveredOrder->user_id,
+				'description'   => 'You have earned ' . $rewardPoints . ' points for completing recent order.',
+				'order_code'    => $deliveredOrder->code ?? null,
+				'referral_code' => $deliveredOrder->referral_code ?? null,
+			]);
+
 
             // 🟢 Update rewards table
             $reward = Reward::where('user_id', $deliveredOrder->user_id)->first();

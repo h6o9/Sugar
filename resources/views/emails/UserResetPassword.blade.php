@@ -2,7 +2,6 @@
     <div style="text-align:center;">
         <img src="https://a-znutritionandsmoothies.com/public/img/logo.png" alt="App Icon"
             style="vertical-align: middle;margin-bottom: -3px;height: 125px;margin-bottom: 35px">
-        <h3>Welcome to a-znutritionandsmoothies</h3>
         <h3>Reset Your Password</h3>
     </div>
     <div style="text-align:center;">
@@ -17,7 +16,7 @@
     </p>
     <div style="text-align:center;">
         <p style="font-size: 14px; color: #777; margin-top: 20px;">If you didn't request this change, please ignore this
-            email.<br>Thanks,<br>a-znutritionandsmoothies</p>
+            email.<br>Thanks,<br>Sugar-Papi Team</p>
     </div>
 </div>
 

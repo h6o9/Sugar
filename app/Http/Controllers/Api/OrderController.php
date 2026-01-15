@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use Log;
 use Exception;
+use App\Models\User;
 use App\Models\Order;
 use App\Models\Branch;
 use App\Models\Reward;
 use App\Models\OrderItem;
+use App\Models\Notification;
 use Illuminate\Http\Request;
+use App\Jobs\JobNotification;
 use App\Models\RewardHistory;
 use App\Http\Controllers\Controller;
 use App\Models\OrderComplationReward;
@@ -157,6 +160,35 @@ public function myOrders(Request $request)
                     'redeemed' => 0
                 ]);
             }
+
+			// 🔔 PUSH NOTIFICATION
+            $user = User::find($deliveredOrder->user_id);
+
+            $title = '🎉 Order Completed!';
+            $description = "You earned {$rewardPoints} reward points for completing your order.";
+
+            $data = [
+                'type'       => 'order_completion',
+                'points'     => $rewardPoints,
+                'order_code' => $deliveredOrder->code,
+            ];
+
+            if ($user && $user->fcm) {
+                dispatch(new JobNotification(
+                    $user->fcm,
+                    $title,
+                    $description,
+                    $data
+                ));
+            }
+
+            // 🗂 Save notification in DB
+            Notification::create([
+                'user_id'     => $user->id,
+                'title'       => $title,
+                'description' => $description,
+                'seenByUser'  => 0,
+            ]);
         }
 
     } catch (Exception $e) {

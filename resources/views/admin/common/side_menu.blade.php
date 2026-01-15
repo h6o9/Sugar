@@ -113,7 +113,7 @@
 
 
            
-            {{-- Notification --}}
+            <!-- {{-- Notification --}}
 
 
              <li class="dropdown {{ request()->is('admin/notification*') ? 'active' : '' }}">
@@ -128,7 +128,7 @@
 
             </a>
 
-            </li> 
+            </li>  -->
 
             <li class="dropdown {{ request()->is('admin/policy*') ? 'active' : '' }}">
                 <a href="{{ route('policy.index') }}" class="nav-link"><i class="fas fa-file-alt"></i><span>Privacy

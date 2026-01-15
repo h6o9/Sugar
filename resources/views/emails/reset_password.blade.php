@@ -69,7 +69,7 @@
 
     <!-- Logo -->
     <div class="header">
-        <img src="{{ url('public/img/logo.png') }}" alt="Logo">
+        <img src="{{ url('public/img/logo.png') }}" alt="Sugar-Papi Logo">
     </div>
 
     <!-- Content -->

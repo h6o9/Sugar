@@ -7,7 +7,7 @@
 <h2 style="text-align:center; margin-bottom:20px;">Your One Time Password (OTP)</h2>
 
 <p style="font-size:16px; color:#555;">
-Hello <strong>{{ $message['name'] }}</strong>,
+Hi,
 </p>
 
 <p style="font-size:16px; color:#555;">

@@ -4,6 +4,6 @@
 Reset Password
 @endcomponent
 
-<p style="font-size: 14px; color: #777; margin-top: 20px;">Thanks!<br>aznutrition-and-smoothie</p>
+<p style="font-size: 14px; color: #777; margin-top: 20px;">Thanks!<br>Sugar-Papi</p>
 @endcomponent
 

@@ -10,7 +10,7 @@
                             <div class="card-header">
                                 <div class="col-12">
                                     <h4>Reward Settings <small class="font-weight-bold text-danger">
-								(Here we can set how much price will be for one point.)
+								(Here you can set the amount a user will receive for each loyalty point. This defines the value of one loyalty point.)
 								</small>
 								</h4>
                                 </div>
@@ -21,7 +21,7 @@
                                     <thead>
                                         <tr>
                                             <th>Sr.</th>
-                                            <th>Points</th>
+                                            <th>Point</th>
 											<th>Price</th>
                                             <th>Action</th>
                                         </tr>

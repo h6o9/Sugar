@@ -128,111 +128,6 @@ public function register(Request $request)
 //     }
 // }
 
-// public function socialLogin(Request $request)
-// {
-//     try {
-//         $data = $request->only([
-//             'social_id',
-//             'login_type',
-//             'fcm_token',
-//             'email',
-//             'name',
-//             'image',
-//             'password'
-//         ]);
-
-//         /*
-//         |--------------------------------------------------------------------------
-//         | CASE 0: Manual Login (Email + Password)
-//         |--------------------------------------------------------------------------
-//         */
-//         if (!empty($data['email']) && !empty($data['password']) && empty($data['social_id'])) {
-
-//             $user = User::where('email', $data['email'])->first();
-
-//             if (!$user || !\Hash::check($data['password'], $user->password)) {
-//                 return response()->json([
-//                     'status'  => false,
-//                     'message' => 'Invalid credentials'
-//                 ], 401);
-//             }
-
-
-//             // Update login info (NO access_token save)
-//             $user->fcmtoken     = $data['fcm_token'] ?? $user->fcmtoken;
-//             $user->login_date  = now();
-//             $user->availability = 1;
-//             $user->save();
-
-//             // ✅ Sanctum Token
-//             $token = $user->createToken('auth_token')->plainTextToken;
-
-//             return response()->json([
-//                 'status' => true,
-// 				'access_token' => $token,
-//                 'message' => 'Logged in successfully',
-//                 'user' => $user,
-//             ], 200);
-//         }
-
-//         /*
-//         |--------------------------------------------------------------------------
-//         | CASE 1: Social Login (Google / Apple)
-//         |--------------------------------------------------------------------------
-//         */
-//         if (empty($data['social_id']) || empty($data['login_type']) || empty($data['email'])) {
-//             return response()->json([
-//                 'status'  => false,
-//                 'message' => 'social_id, login_type and email are required'
-//             ], 422);
-//         }
-
-//         $socialColumn = $data['login_type'] === 'apple'
-//             ? 'apple_social_id'
-//             : 'google_social_id';
-
-//         $user = User::where('email', $data['email'])->first();
-
-//         if (!$user) {
-//             return response()->json([
-//                 'status'  => false,
-//                 'message' => 'This email does not exist'
-//             ], 404);
-//         }
-
-        
-
-//         // Save social ID once
-//         if (empty($user->$socialColumn)) {
-//             $user->$socialColumn = $data['social_id'];
-//         }
-
-//         // Update profile info (NO access_token save)
-//         $user->fcmtoken     = $data['fcm_token'] ?? $user->fcmtoken;
-//         $user->login_type  = $data['login_type'];
-//         $user->name        = $data['name'] ?? $user->name;
-//         $user->image       = $data['image'] ?? $user->image;
-//         $user->login_date  = now();
-//         $user->availability = 1;
-//         $user->save();
-
-//         // ✅ Sanctum Token
-//         $token = $user->createToken('auth_token')->plainTextToken;
-
-//         return response()->json([
-//             'status' => true,
-// 			'access_token' => $token,
-//             'message' => 'Logged in successfully',
-//             'user' => $user,
-//         ], 200);
-
-//     } catch (\Exception $e) {
-//         return response()->json([
-//             'status'  => false,
-//             'message' => 'Something went wrong'
-//         ], 500);
-//     }
-// }
 
 public function socialLogin(Request $request)
 {
@@ -488,62 +383,71 @@ public function logout(Request $request)
 }
 
 
-   public function resendOtp(Request $request)
+public function resendOtp(Request $request)
 {
     try {
-        $type = $request->type;  
-        // 'email' or 'phone'
+
+        $type = $request->type; // email | phone
         $identifier = trim($request->identifier);
 
         if (!in_array($type, ['email', 'phone'])) {
-            return response()->json(['message' => 'Invalid type provided'], 400);
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid type provided'
+            ], 400);
         }
 
-        // Query record based on type
-        if ($type === 'email') {
-            $recentOtp = EmailOtp::where('email', $identifier)
-                ->latest('id')
-                ->first();
-        } else {
-            $recentOtp = EmailOtp::where('phone', $identifier)
-                ->latest('id')
-                ->first();
-        }
+        // Fetch latest OTP
+        $recentOtp = EmailOtp::where(
+            $type === 'email' ? 'email' : 'phone',
+            $identifier
+        )->latest()->first();
 
         if (!$recentOtp) {
             return response()->json([
-                'message' => $type === 'email' 
-                    ? 'No OTP record found for this email' 
-                    : 'No OTP record found for this phone',
+                'status' => false,
+                'message' => "No OTP record found for this $type"
             ], 404);
         }
 
-        // Generate new OTP and token
+        // Generate OTP
         $otp = rand(1000, 9999);
         $otpToken = Str::uuid();
 
-        // Update OTP record
         $recentOtp->update([
             'otp' => $otp,
             'access_token' => $otpToken,
         ]);
 
         // Send OTP
-        // if ($type === 'email') {
-        //     Mail::to($identifier)->send(new ForgotOTPMail($otp));
-        // } else {
-        //     $twilio = new Client(env('TWILIO_SID'), env('TWILIO_TOKEN'));
-        //     $twilio->messages->create($identifier, [
-        //         'from' => env('TWILIO_PHONE_NUMBER'),
-        //         'body' => "Dear user, your OTP is $otp. Do not share it with anyone.",
-        //     ]);
-        // }
+        if ($type === 'email') {
+
+            Mail::to($identifier)->send(
+                new RegisterMail([
+                    'name'  => $user->name ?? 'User',
+                    'email' => $identifier,
+                    'otp'   => $otp,
+                ])
+            );
+
+        } else {
+            // SMS logic (future)
+            /*
+            $twilio = new Client(
+                env('TWILIO_SID'),
+                env('TWILIO_TOKEN')
+            );
+
+            $twilio->messages->create($identifier, [
+                'from' => env('TWILIO_PHONE_NUMBER'),
+                'body' => "Your Sugar-Papi OTP is $otp. Do not share it.",
+            ]);
+            */
+        }
 
         return response()->json([
             'status' => true,
-            'message' => $type === 'email'
-                ? 'OTP has been resent to your email.'
-                : 'OTP has been resent to your phone.',
+            'message' => "OTP has been resent to your $type.",
             'otp_token' => $otpToken,
         ], 200);
 

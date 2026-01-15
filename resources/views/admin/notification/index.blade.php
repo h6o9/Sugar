@@ -21,6 +21,7 @@
                             <form action="{{ route('notifications.deleteAll') }}" method="POST"
                                 class="d-inline-block float-right">
                                 @csrf
+								@method('DELETE')
                                 <button type="submit" class="btn btn-primary mb-3 delete_all">
                                     Delete All
                                 </button>

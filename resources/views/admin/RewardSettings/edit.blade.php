@@ -16,8 +16,8 @@
                                     <div class="row mx-0 px-4">
                                         <div class="col-sm-6 pl-sm-0 pr-sm-3">
                                             <div class="form-group mb-2">
-                                                <label for="name">Points</label>
-                                                    <input type="text" placeholder="Points" name="points"
+                                                <label for="name">Point</label>
+                                                    <input type="text" placeholder="Point" name="points"
                                                     id="points" value="{{ $data->points }}" class="form-control" readonly>
                                             </div>
                                         </div>

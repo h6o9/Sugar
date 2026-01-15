@@ -3,5 +3,5 @@
 
 <p style="font-size: 16px; color: #555;">Congratulations! Your account has been registered successfully.</p>
 
-<p style="font-size: 14px; color: #777; margin-top: 20px;">Thanks!<br>aznutrition-and-smoothie</p>
+<p style="font-size: 14px; color: #777; margin-top: 20px;">Thanks!<br>Sugar-Papi</p>
 @endcomponent

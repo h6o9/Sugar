@@ -90,49 +90,84 @@ class OrderController extends Controller
     //     return redirect()->back()->with(['status' => true, 'message' => 'Order Updated Successfully']);
     // }
 
-    public function updateStatus(Request $request, $orderId)
-    {
-        $request->validate([
-            'status' => 'required|in:Pending,Order Ready,Delivered',
+public function updateStatus(Request $request, $orderId)
+{
+    // 1️⃣ Validate status
+    $request->validate([
+        'status' => 'required|in:Pending,Order Ready,Delivered',
+    ]);
+
+    // 2️⃣ Find order
+    $order = Order::find($orderId);
+    if (!$order) {
+        return redirect()->back()->with([
+            'status' => false,
+            'message' => 'Order Updated Unsuccessfully'
         ]);
-        $order = Order::find($orderId);
-        if (!$order) {
-            return redirect()->back()->with(['status' => false, 'message' => 'Order Updated Unsuccessfully']);
-        }
-        $oldStatus = $order->status;
-        $newStatus = $request->status;
-        $order->status = $newStatus;
-        $order->save();
+    }
 
-        // Check if status is updated to 'Delivered' and set seen to 0
-        if ($oldStatus !== $newStatus && $newStatus === 'Delivered') {
-            $order->seen = 0;
-            $order->save();
-        }
+    $oldStatus = $order->status;
+    $newStatus = $request->status;
 
-        if ($oldStatus !== $newStatus && $newStatus === 'Order Ready') {
-            $user = $order->user;
-            if ($user) {
-                $newFcmToken = $user->fcmtoken;
-                $notificationData = [
-                    'title' => 'Your Order Notification',
-                    'body' => 'Your order is ready for delivery!',
-                ];
-                $response = Http::withHeaders([
-                    'Authorization' => 'key=AAAAlI42AYc:APA91bEPodqmrmK6_lrw359Mv4oWmWNCdip8YrSZmgpMWKirR72VumV4svZHRhn3kcgkeAvuwKHc5mdaygTfYc-9KGg1ezwG9YFWa_kNACRvdbNlqBu387DqojPZZOTcPAh1qmlnYrUz',
-                    'Content-Type' => 'application/json',
-                ])->post('https://fcm.googleapis.com/fcm/send', [
-                    'to' => $newFcmToken,
-                    'notification' => $notificationData,
-                ]);
+    // 3️⃣ Update order status
+    $order->status = $newStatus;
 
-                if (!$response->successful()) {
-                    return redirect()->back()->with(['status' => false, 'message' => 'Notification Failed to Send']);
-                }
+    // 4️⃣ If Delivered, reset seen (website logic untouched)
+    if ($newStatus === 'Delivered') {
+        $order->seen = 0;
+    }
+
+    $order->save();
+
+    // 5️⃣ If status changed → APP notification + DB notification
+    if ($oldStatus !== $newStatus) {
+
+        $user = $order->user; // relation se user
+
+        if ($user) {
+
+            $title = 'Order Update';
+            $description = '';
+
+            if ($newStatus === 'Order Ready') {
+                $description = 'Your order is ready for delivery!';
+            } elseif ($newStatus === 'Delivered') {
+                $description = 'Your order has been delivered successfully!';
+            }
+
+            // =========================
+            // 🔔 SAVE NOTIFICATION IN DB
+            // =========================
+            \App\Models\Notification::create([
+                'user_id'     => $user->id,
+                'title'       => $title,
+                'description' => $description,
+                'seenByUser'  => 0,
+            ]);
+
+            // =========================
+            // 🔔 PUSH NOTIFICATION (APP)
+            // =========================
+            if ($user->fcmtoken) {
+                dispatch(new \App\Jobs\JobNotification(
+                    $user->fcmtoken,
+                    $title,
+                    $description,
+                    [
+                        'order_id' => $order->id,
+                        'status'   => $newStatus
+                    ]
+                ));
             }
         }
-        return redirect()->back()->with(['status' => true, 'message' => 'Order Updated Successfully']);
     }
+
+    return redirect()->back()->with([
+        'status' => true,
+        'message' => 'Order Updated Successfully'
+    ]);
+}
+
 
     // public function order(Request $request)
     // {

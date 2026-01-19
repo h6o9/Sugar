@@ -28,10 +28,10 @@
                                         <a class="nav-link" id="yearly-tab2" data-toggle="tab" href="#yearly" role="tab"
                                             aria-selected="true">Yearly Sales</a>
                                     </li>
-                                    <li class="nav-item">
+                                    <!-- <li class="nav-item">
                                         <a class="nav-link" id="branch-tab2" data-toggle="tab" href="#branches"
-                                            role="tab" aria-selected="true">Branches Sales</a>
-                                    </li>
+                                            role="tab" aria-selected="true">Branch Sales</a>
+                                    </li> -->
                                 </ul>
                             </div>
                         </div>
@@ -56,7 +56,7 @@
                                         <thead>
                                             <tr>
                                                 <th>Order Id</th>
-                                                <th>Branch Locationn</th>
+                                                <th>Branch Location</th>
                                                 <th>User</th>
                                                 <th>Product</th>
                                                 <th>Toppings</th>

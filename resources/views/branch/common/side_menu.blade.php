@@ -34,7 +34,7 @@
                     <i data-feather="shopping-bag"></i>
                     <span>Orders</span>
                     @if ($requestCount > 0)
-                        <div class="badge bg-danger rounded-circle text-white mr-3">
+                        <div class="badge bg-danger rounded-circle text-white">
                             {{ $requestCount }}</div>
                     @endif
                 </a>

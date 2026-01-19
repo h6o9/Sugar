@@ -28,7 +28,7 @@
                 <a href="{{ route('orders.index') }}" class="nav-link">
                     <i class="fas fa-shopping-bag"></i><span>Orders</span>
                     @if ($requestCount > 0)
-                        <div class="badge bg-danger rounded-circle text-white mr-3">
+                        <div class="badge bg-danger rounded-circle text-white">
                             {{ $requestCount }}</div>
                     @endif
                 </a>
@@ -87,7 +87,7 @@
 
             <li class="dropdown {{ request()->is('admin/branch*') ? 'active' : '' }}">
                 <a href="{{ route('branches.index') }}" class="nav-link">
-                    <i class="fas fa-code-branch"></i><span>Branches</span></a>
+                    <i class="fas fa-code-branch"></i><span>Sugar-Papi Branch</span></a>
             </li>
             <li class="dropdown {{ request()->is('admin/user*') ? 'active' : '' }}">
                 <a href="{{ route('users.index') }}" class="nav-link">
@@ -113,7 +113,7 @@
 
 
            
-            <!-- {{-- Notification --}}
+             <!-- {-- Notification --}} -->
 
 
              <li class="dropdown {{ request()->is('admin/notification*') ? 'active' : '' }}">
@@ -128,7 +128,7 @@
 
             </a>
 
-            </li>  -->
+            </li>  
 
             <li class="dropdown {{ request()->is('admin/policy*') ? 'active' : '' }}">
                 <a href="{{ route('policy.index') }}" class="nav-link"><i class="fas fa-file-alt"></i><span>Privacy

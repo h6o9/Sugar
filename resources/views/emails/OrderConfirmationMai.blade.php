@@ -1,6 +1,6 @@
 @component('mail::message')
     <div style="text-align:center;">
-        <img src="https://a-znutritionandsmoothies.com/public/img/logo.png" alt="App Icon"
+        <img src="{{ asset('public/img/logo.png') }}" alt="Sugar-Papi Logo"
             style="vertical-align: middle;margin-bottom: -3px;height: 125px;margin-bottom: 30px">
         <h3>Welcome to Sugar-Papi</h3>
     </div>

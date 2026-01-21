@@ -11,7 +11,7 @@
     <div style="text-align: center;padding-left: 0">
         <p style="color: #666; font-size: 16px; margin-bottom: 10px;"><strong>Order Code:</strong> {{ $orderCode }}
         </p>
-        <a href="https://www.a-znutritionandsmoothies.com/user/my-order"
+        <a href="https://sugarpappi.com/user/my-order"
             style="background-color: #dc3838; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 5px; display: inline-block; margin-bottom: 10px;">View
             Order</a>
     </div>

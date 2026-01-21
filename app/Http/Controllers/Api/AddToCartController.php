@@ -211,6 +211,7 @@ class AddToCartController extends Controller
 
 public function addToCart(Request $request)
 {
+	return $request->all();
     DB::beginTransaction();
 
     try {

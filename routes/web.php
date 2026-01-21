@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Notification;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Home\CartController;
@@ -103,6 +104,12 @@ Route::prefix('admin')->middleware('admin')->group(function () {
         Route::get('/get-users-by-type', 'getUsersByType');
     });
 
+	Route::post('/notification/mark-as-read', function (Request $request) {
+    Notification::where('id', $request->id)
+        ->update(['seenByUser' => 1]);
+
+    return response()->json(['success' => true]);
+})->name('notification.read');
     // User Views
     Route::get('user', [UserController::class, 'userView'])->name('users.index');
     Route::get('user/rewards/{id}', [UserController::class, 'rewards'])->name('rewards');

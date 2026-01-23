@@ -78,6 +78,12 @@ Route::prefix('admin')->middleware('admin')->group(function () {
     Route::delete('/branch-delete/{id}', [BranchController::class, 'destroy'])->name('branch-delete');
     // Branch Views End
 
+		// Web Notifications
+Route::get('/notifications', [NotificationController::class, 'Webindex'])->name('notifications.index');
+Route::post('/notifications/mark-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark.read');
+Route::get('/notifications/clear-all-notification', [NotificationController::class, 'clearAllNotifications'])->name('notifications.clear');
+
+
 
 	// Order Completion Rewards
 	Route::get('/completion-order', [OrderCompletionController::class, 'orderCompletion'])->name('order-completion');
@@ -115,6 +121,7 @@ Route::prefix('admin')->middleware('admin')->group(function () {
     Route::get('user/rewards/{id}', [UserController::class, 'rewards'])->name('rewards');
     Route::delete('/user-delete/{id}', [UserController::class, 'destroy'])->name('users-delete');
     // User Views End
+
 
     /** resource controller */
     Route::resource('menu', MenuController::class);

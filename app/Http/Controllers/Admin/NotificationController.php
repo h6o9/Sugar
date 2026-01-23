@@ -171,4 +171,65 @@ class NotificationController extends Controller
         return response()->json($users);
 
     }
+
+	// Web Notifications
+	 public function Webindex()
+    {
+        if (!Auth::guard('user')->check()) {
+            return redirect()->route('login');
+        }
+
+        $userId = Auth::guard('user')->id();
+        
+        // Get all notifications
+        $notifications = Notification::where('user_id', $userId)
+            ->latest()
+            ->paginate(20); // 20 notifications per page
+
+        // Count unread notifications
+        $unreadCount = Notification::where('user_id', $userId)
+            ->count();
+
+        return view('home.index-notificaiton', compact('notifications', 'unreadCount'));
+    }
+
+    public function markAsRead(Request $request)
+    {
+        if (!Auth::guard('user')->check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $notificationId = $request->id;
+        $userId = Auth::guard('user')->id();
+
+        $notification = Notification::where('id', $notificationId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($notification) {
+            $notification->seenByUser = '1';
+            $notification->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Notification marked as read'
+            ]);
+        }
+
+        return response()->json(['error' => 'Notification not found'], 404);
+    }
+
+   public function clearAllNotifications()
+{
+    if (!Auth::guard('user')->check()) {
+        return redirect()->route('login');
+    }
+
+    $userId = Auth::guard('user')->id();
+
+    // Delete all notifications of this user
+    Notification::where('user_id', $userId)->delete();
+
+    return redirect()->back()->with('success', 'All notifications cleared successfully');
+}
 }

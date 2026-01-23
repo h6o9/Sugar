@@ -71,6 +71,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/1.6.14/js/lightgallery-all.min.js"></script>
     <script src="{{ asset('public/admin/assets/toastr/js/toastr.min.js') }}"></script>
     <script src='https://www.google.com/recaptcha/api.js'></script>
+	<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
 
 
     <!-- Template Javascript -->

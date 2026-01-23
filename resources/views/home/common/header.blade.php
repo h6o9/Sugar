@@ -5,14 +5,17 @@ use Illuminate\Support\Facades\Auth;
 
 $notifications = collect();
 $notificationCount = 0;
+$latestNotifications = collect();
 
 if (Auth::guard('user')->check()) {
     $userId = Auth::guard('user')->id();
     $notifications = Notification::where('user_id', $userId)
-        ->where('seenByUser', '0')
         ->latest()
         ->get();
     $notificationCount = $notifications->count();
+    
+    // Get only 3 latest notifications for dropdown
+    $latestNotifications = $notifications->take(3);
 }
 @endphp
 
@@ -20,23 +23,32 @@ if (Auth::guard('user')->check()) {
 /* Notification CSS */
 .notification-wrapper { position: relative; }
 .mobile-notify-block { width:340px; max-width:90%; right:0; left:auto; transform:none; margin-top:12px; }
-.notify-block { max-height:300px; overflow-y:auto; }
+.notify-block { max-height:300px; overflow:auto; }
 .notification-title, .notification-desc, .mobile-notify-block h5, .mobile-notify-block { color:#000 !important; }
 .notification-title { font-weight:600; font-size:14px; margin-bottom:4px; }
-.notification-desc { font-size:13px; line-height:1.4; }
+.notification-desc { font-size:13px; line-height:1.4; color:#555 !important; margin-bottom:8px; }
 .bell-counter { background:red; color:#fff; font-size:11px; padding:2px 6px; border-radius:50%; position:absolute; top:-6px; right:-6px; }
 .mobile-notify-block .card { border:none; border-bottom:1px solid #eee; }
 .mobile-notify-block .card:last-child { border-bottom:none; }
+
+/* Desktop notification styles */
+.carting-card { width: 350px; }
+.carting-card .card { border:none; border-bottom:1px solid #eee; margin:0; }
+.carting-card .card:last-child { border-bottom:none; }
+.carting-card .card-body { padding: 12px 15px; }
 
 /* Notifications Text */
 .mobile-notify-block,
 .mobile-notify-block h5,
 .mobile-notify-block .notification-title,
 .mobile-notify-block .notification-desc,
-.mobile-notify-block .card-body {
-    color: #000 !important;  /* Black color */
+.mobile-notify-block .card-body,
+.carting-card,
+.carting-card h5,
+.carting-card .notification-title,
+.carting-card .notification-desc {
+    color: #000 !important;
 }
-
 
 /* Responsive */
 @media(max-width:992px){.mobile-notify-block{width:80%; left:10%; right:auto;}}
@@ -93,12 +105,11 @@ if (Auth::guard('user')->check()) {
                     <h5 class="m-0 text-black">Notifications ({{ $notificationCount }})</h5>
                 </div>
                 <div class="notify-block">
-                    @forelse($notifications as $notification)
+                    @forelse($latestNotifications as $notification)
                     <div class="card">
                         <div class="card-body">
-                            <div class="notification-title" style="color:#000 !important;">{{ $notification->title }}</div>
-<div class="notification-desc" style="color:#000 !important;">{{ $notification->description }}</div>
-
+                            <div class="notification-title text-dark">{{ $notification->title }}</div>
+                            <div class="notification-desc text-dark">{{ $notification->description }}</div>
                         </div>
                     </div>
                     @empty
@@ -106,6 +117,12 @@ if (Auth::guard('user')->check()) {
                         <div class="card-body text-center text-black">No Notifications Found</div>
                     </div>
                     @endforelse
+                </div>
+                <!-- UPDATED: Disable View All Notifications if no notifications -->
+                <div class="pt-3 border-top mt-1 text-center">
+                    <a href="{{ route('notifications.index') }}" class="btn btn-danger px-5 {{ $notificationCount == 0 ? 'disabled' : '' }}">
+                        View All Notifications
+                    </a>
                 </div>
             </div>
         </div>
@@ -126,28 +143,38 @@ if (Auth::guard('user')->check()) {
         @if(Auth::guard('user')->check())
         <a href="{{ route('my-profile') }}" class="fa fa-user header-icon mx-xl-3 nav-item nav-link {{ request()->is('my-profile') ? 'active' : '' }}"></a>
 
+        <!-- Notifications Dropdown -->
         <div class="nav-item dropdown">
             <a href="#" class="nav-link p-0" data-bs-toggle="dropdown">
-                <span class="fa fa-bell me-3 position-relative header-icon"><span class="badge bell-counter">{{ $notificationCount }}</span></span>
+                <span class="fa fa-bell me-3 position-relative header-icon">
+                    @if($notificationCount > 0)
+                        <span class="badge bell-counter">{{ $notificationCount }}</span>
+                    @endif
+                </span>
             </a>
             <div class="carting-card dropdown-menu py-3 px-0">
                 <div class="border-bottom pb-3 px-3">
-                    <h5 class="m-0">Notifications ({{ $notificationCount }})</h5>
+                    <h5 class="m-0 text-dark">Notifications ({{ $notificationCount }})</h5>
                 </div>
                 <div class="notify-block scrollable">
-                    @forelse($notifications as $notification)
+                    @forelse($latestNotifications as $notification)
                     <div class="card">
                         <div class="card-body">
-                            <a href="#" class="markAsRead" data-notification-id="{{ $notification->id }}">
-                                {{ $notification->title }}
-                            </a>
+                            <div class="notification-title text-dark">{{ $notification->title }}</div>
+                            <div class="notification-desc text-dark">{{ $notification->description }}</div>
                         </div>
                     </div>
                     @empty
                     <div class="card">
-                        <div class="card-body text-center text-danger">No Notifications Found!</div>
+                        <div class="card-body text-center text-dark">No Notifications Found!</div>
                     </div>
                     @endforelse
+                </div>
+                <!-- UPDATED: Disable View All Notifications if no notifications -->
+                <div class="pt-3 border-top mt-1 text-center">
+                    <a href="{{ route('notifications.index') }}" class="btn btn-danger px-5 {{ $notificationCount == 0 ? 'disabled' : '' }}">
+                        View All Notifications
+                    </a>
                 </div>
             </div>
         </div>
@@ -156,11 +183,11 @@ if (Auth::guard('user')->check()) {
         <!-- Cart Dropdown -->
         <div class="ms-2 nav-item dropdown">
             <a href="#" class="nav-link p-0" data-bs-toggle="dropdown">
-                <span class="fa fa-shopping-cart me-3 position-relative header-icon"><span class="badge cart-counter cart-counter-1"></span></span>
+                <span class="fa fa-shopping-cart me-3 position-relative header-icon"><span class="badge cart-counter cart-counter-1">{{ count(session('cart', [])) }}</span></span>
             </a>
             <div class="carting-card dropdown-menu py-3 px-0">
                 <div class="border-bottom mb-1 pb-3 px-3">
-                    <h5 class="m-0">Your Cart (<span class="cart-counter-1"></span>)</h5>
+                    <h5 class="m-0">Your Cart (<span class="cart-counter-1">{{ count(session('cart', [])) }}</span>)</h5>
                 </div>
                 <div class="cards-parent scrollable">
                     @forelse(session('cart', []) as $item)
@@ -183,8 +210,11 @@ if (Auth::guard('user')->check()) {
                     <p class="text-danger text-center">Your cart is empty!</p>
                     @endforelse
                 </div>
+                <!-- UPDATED: Disable Continue To Cart if cart empty -->
                 <div class="pt-3 border-top mt-1 text-center">
-                    <a href="{{ route('my-cart') }}" class="btn btn-danger px-5 {{ count(session('cart', [])) == 0 ? 'disabled' : '' }}">Continue To Cart</a>
+                    <a href="{{ route('my-cart') }}" class="btn btn-danger px-5 {{ count(session('cart', [])) == 0 ? 'disabled' : '' }}">
+                        Continue To Cart
+                    </a>
                 </div>
             </div>
         </div>
@@ -196,7 +226,6 @@ if (Auth::guard('user')->check()) {
         @endif
     </div>
 </nav>
-
 <!-- Overlay Search -->
 <div id="myOverlay" class="overlay">
     <span class="close-btn" title="Close Overlay">×</span>
@@ -207,6 +236,7 @@ if (Auth::guard('user')->check()) {
         </form>
     </div>
 </div>
+
 
 <!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -251,17 +281,6 @@ $(document).ready(function(){
             $(this).closest('.carting-child').find('.total-price').text('£'+(price*qty).toFixed(2));
             helper();
         }
-    });
-
-    $('.markAsRead').click(function(e){
-        e.preventDefault();
-        let id = $(this).data('notification-id');
-        let item = $(this);
-        $.get('{{ route("markAllAsRead") }}', {id:id}, function(){
-            item.remove();
-            let counter = parseInt($('.bell-counter').text())-1;
-            $('.bell-counter').text(counter > 0 ? counter : 0);
-        });
     });
 
     helper();

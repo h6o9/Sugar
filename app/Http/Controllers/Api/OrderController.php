@@ -13,6 +13,7 @@ use App\Models\Notification;
 use Illuminate\Http\Request;
 use App\Jobs\JobNotification;
 use App\Models\RewardHistory;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\OrderComplationReward;
 use App\Models\OrderCompletionRecord;
@@ -29,16 +30,8 @@ public function myOrders(Request $request)
     // 🟢 Orders fetch
     $orders = Order::where('user_id', $user->id)
         ->where('status', $status)
-        ->orderBy('created_at', 'desc')
-  		->latest()
+        ->latest()
         ->get();
-
-		if(!$orders){
-			return response()->json([
-				'status' => 'error',
-				'message' => 'No orders found.'
-			]);
-		}
 
     // 🟢 No orders
     if ($orders->isEmpty()) {
@@ -61,7 +54,7 @@ public function myOrders(Request $request)
                 'orderToppings' => function ($q) {
                     $q->with([
                         'category:id,name',
-                        'toppings:id,name'   // 🔥 toppings SAME
+                        'toppings:id,name'
                     ]);
                 }
             ])
@@ -102,102 +95,91 @@ public function myOrders(Request $request)
         ]);
     }
 
-    // 🟢 DELIVERED → FULL DETAILS
+    // 🟢 DELIVERED → FULL DETAILS + REWARDS
     if ($status === 'Delivered') {
 
-		/* ===================== 🔒 HIDDEN REWARD PROCESS START ===================== */
+        try {
 
-    try {
-        // 🔹 Reward points config
-        $rewardConfig = OrderComplationReward::first();
-        $rewardPoints = $rewardConfig?->points ?? 0;
+            DB::transaction(function () use ($orders) {
 
-        foreach ($orders as $deliveredOrder) {
+                $rewardConfig = OrderComplationReward::first();
+                $rewardPoints = $rewardConfig?->points ?? 0;
 
-            // ❌ Already rewarded check
-            $alreadyExists = OrderCompletionRecord::where('order_id', $deliveredOrder->id)->exists();
+                foreach ($orders as $deliveredOrder) {
 
-            if ($alreadyExists) {
-                continue; // skip duplicate reward
-            }
+                    // ❌ Already rewarded order check
+                    $orderRewardExists = OrderCompletionRecord::where(
+                        'order_id',
+                        $deliveredOrder->id
+                    )->exists();
 
-            // 🟢 Insert into order_completion_records
-            OrderCompletionRecord::create([
-                'order_id'    => $deliveredOrder->id,
-                'order_code'  => $deliveredOrder->code ?? null,
-                'reward_type' => 'order_completion',
-                'points'      => $rewardPoints,
-            ]);
+                    if ($orderRewardExists) {
+                        continue;
+                    }
 
-		$rewardalreadyExists = RewardHistory::where('order_code', $deliveredOrder->code)->orWhere(
-						'referral_code', $deliveredOrder->referral_code
-					)->exists();
+                    // 🟢 Order completion record
+                    OrderCompletionRecord::create([
+                        'order_id'    => $deliveredOrder->id,
+                        'order_code'  => $deliveredOrder->code ?? null,
+                        'reward_type' => 'order_completion',
+                        'points'      => $rewardPoints,
+                    ]);
 
-					 if ($alreadyExists) {
-                continue; // skip duplicate reward
-            }
+                    // ❌ Reward history duplicate check
+                    $rewardHistoryExists = RewardHistory::where('order_code', $deliveredOrder->code)
+                        ->exists();
 
-			RewardHistory::create([
-				'reward_type'   => 'order_completion',
-				'reward_title'  => 'Order Points Added!',
-				'points'        => $rewardPoints,
-				'user_id'       => $deliveredOrder->user_id,
-				'description'   => 'You have earned ' . $rewardPoints . ' points for completing recent order.',
-				'order_code'    => $deliveredOrder->code ?? null,
-				'referral_code' => $deliveredOrder->referral_code ?? null,
-			]);
+                    if (!$rewardHistoryExists) {
 
+                        RewardHistory::create([
+                            'reward_type'   => 'order_completion',
+                            'reward_title'  => 'Order Points Added!',
+                            'points'        => $rewardPoints,
+                            'user_id'       => $deliveredOrder->user_id,
+                            'description'   => 'You have earned ' . $rewardPoints . ' points for completing recent order.',
+                            'order_code'    => $deliveredOrder->code ?? null,
+                            'referral_code' => $deliveredOrder->referral_code ?? null,
+                        ]);
+                    }
 
-            // 🟢 Update rewards table
-            $reward = Reward::where('user_id', $deliveredOrder->user_id)->first();
+                    // 🟢 Update rewards table
+                    $reward = Reward::firstOrCreate(
+                        ['user_id' => $deliveredOrder->user_id],
+                        ['rewards' => 0, 'redeemed' => 0]
+                    );
 
-            if ($reward) {
-                $reward->increment('rewards', $rewardPoints);
-            } else {
-                Reward::create([
-                    'user_id'  => $deliveredOrder->user_id,
-                    'rewards'  => $rewardPoints,
-                    'redeemed' => 0
-                ]);
-            }
+                    $reward->increment('rewards', $rewardPoints);
 
-			// 🔔 PUSH NOTIFICATION
-            $user = User::find($deliveredOrder->user_id);
+                    // 🔔 PUSH NOTIFICATION
+                    $user = User::find($deliveredOrder->user_id);
 
-            $title = '🎉 Order Completed!';
-            $description = "You earned {$rewardPoints} reward points for completing your order.";
+                    if ($user && $user->fcm) {
 
-            $data = [
-                'type'       => 'order_completion',
-                'points'     => $rewardPoints,
-                'order_code' => $deliveredOrder->code,
-            ];
+                        dispatch(new JobNotification(
+                            $user->fcm,
+                            '🎉 Order Completed!',
+                            "You earned {$rewardPoints} reward points for completing your order.",
+                            [
+                                'type'       => 'order_completion',
+                                'points'     => $rewardPoints,
+                                'order_code' => $deliveredOrder->code,
+                            ]
+                        ));
+                    }
 
-            if ($user && $user->fcm) {
-                dispatch(new JobNotification(
-                    $user->fcm,
-                    $title,
-                    $description,
-                    $data
-                ));
-            }
+                    // 🗂 Save notification in DB
+                    Notification::create([
+                        'user_id'     => $deliveredOrder->user_id,
+                        'title'       => '🎉 Order Completed!',
+                        'description' => "You earned {$rewardPoints} reward points for completing your order.",
+                        'seenByUser'  => 0,
+                    ]);
+                }
+            });
 
-            // 🗂 Save notification in DB
-            Notification::create([
-                'user_id'     => $user->id,
-                'title'       => $title,
-                'description' => $description,
-                'seenByUser'  => 0,
-            ]);
+        } catch (\Exception $e) {
+            Log::error('Order reward error: ' . $e->getMessage());
         }
-
-    } catch (Exception $e) {
-        // silently fail (no response change)
-        Log::error('Order reward error: ' . $e->getMessage());
-    }
-
-    /* ===================== 🔒 HIDDEN REWARD PROCESS END ===================== */
-
 
         $branchId = $order?->orderItem?->first()?->branch_id;
         $branch   = $branchId ? Branch::find($branchId) : null;
@@ -224,6 +206,7 @@ public function myOrders(Request $request)
         ]
     ]);
 }
+
 
 
 

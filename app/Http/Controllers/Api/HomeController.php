@@ -23,9 +23,12 @@ class HomeController extends Controller
         // CASE: All products
         if ($menuId === 'all') {
             $products = Product::where('status', '1')->get();
-        } else {
+        } elseif($menuId === "featured"){
+
+		$products = Product::where('is_featured', '1')->get();
+
+		} else {
             $products = Product::where('menu_id', $menuId)
-                               ->where('status', '1')
                                ->get();
         }
 
@@ -48,6 +51,7 @@ class HomeController extends Controller
 
 	public function Menueitems() {
 		$menueitems = Menu::get();
+		
 		return response()->json([
 			'status' => true,
 			'data'   => $menueitems

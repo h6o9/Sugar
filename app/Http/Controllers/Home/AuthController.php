@@ -53,10 +53,16 @@ class AuthController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
             // 'g-recaptcha-response' => 'required',
+			'phone' => 'required|numeric|max:15|unique:users,phone',
+			'address' => 'required|string|max:255',
+			'postcode' => 'required|string|max:10',
         ]);
         $user = new User();
         $user->name = $validatedData['name'];
         $user->email = $validatedData['email'];
+        $user->phone = $validatedData['phone'];
+        $user->address = $validatedData['address'];
+        $user->postcode = $validatedData['postcode'];
         $user->password = Hash::make($validatedData['password']);
         $user->save();
         if ($user) {

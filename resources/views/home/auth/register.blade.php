@@ -32,6 +32,36 @@
                                         <span class="text-danger">{{ $message }}</span>
                                     @enderror
                                 </div>
+								<div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="phone" name="phone"
+                                            placeholder="Your Phone">
+                                        <label for="phone">Your Phone</label>
+                                    </div>
+                                    @error('phone')
+                                        <span class="text-danger">{{ $message }}</span>
+                                    @enderror
+                                </div>
+								<div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="address" name="address"
+                                            placeholder="Your Address">
+                                        <label for="address">Your Address</label>
+                                    </div>
+                                    @error('address')
+                                        <span class="text-danger">{{ $message }}</span>
+                                    @enderror
+                                </div>
+								<div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="postcode" name="postcode"
+                                            placeholder="Your PostCode">
+                                        <label for="postcode">Your PostCode</label>
+                                    </div>
+                                    @error('postcode')
+                                        <span class="text-danger">{{ $message }}</span>
+                                    @enderror
+                                </div>
                                 <div class="col-md-6">
                                     <div class="form-floating position-relative d-flex align-items-center">
                                         <input type="password" class="form-control" id="inputPassword" name="password"

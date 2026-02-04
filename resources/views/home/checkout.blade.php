@@ -147,7 +147,7 @@
                             <p class="small">All transactions are secure and encrypted</p>
 
                             {{-- Square Pyament Gate way --}}
-                            <form class="mt-2 payment" action="{{ route('orders') }}" method="POST">
+                            <form class="mt-2 payment" action="{{ route('orders') }}" method="POST" id="orderForm">
                                 @csrf
                                 @foreach ($branchess as $branch)
                                     @if ($branch->status == 1)
@@ -169,6 +169,11 @@
 
                                             <input type="hidden" name="branch_id" value="{{ $branch->id }}">
                                             <input type="hidden" name="payment_method" value="offline">
+                                            <input type="hidden" name="subtotal" id="subtotalInput" value="{{ $subtotal }}">
+                                            <input type="hidden" name="tip" id="tipInput" value="{{ $tip }}">
+                                            <input type="hidden" name="delivery_charges" id="deliveryChargesInput" value="{{ $deliveryCharges ?? 0 }}">
+                                            <input type="hidden" name="tax" id="taxInput" value="{{ $tax }}">
+                                            <input type="hidden" name="total" id="totalInput" value="{{ $orderTotal }}">
 
                                             <button type="submit"
                                                 class="mt-3 w-100 rounded-3 btn py-2 btn-danger placeOrderBtn">Place
@@ -193,65 +198,65 @@
                             <div class="col-xl-11 mt-0">
                                 <!-- Alert And Location Start -->
                                 <div class="border-bottom pb-3 mt-0">
-                                            <h5 class="mb-3">PICKUP AT</h5>
+                                    <h5 class="mb-3">PICKUP AT</h5>
 
-                                            @php
-                                                $cart = session('cart', []);
-                                                $storePickupBranch = null;
-                                                $homeDeliveryAddress = null;
+                                    @php
+                                        $cart = session('cart', []);
+                                        $storePickupBranch = null;
+                                        $homeDeliveryAddress = null;
 
-                                                foreach ($cart as $item) {
-                                                    if (!empty($item['delivery_status'])) {
-                                                        if ($item['delivery_status'] == '1') {
-                                                            $storePickupBranch = $item['branch_name'] ?? null;
-                                                        } elseif ($item['delivery_status'] == '2') {
-                                                            $homeDeliveryAddress = $item['delivery_address'] ?? null;
-                                                        }
-                                                    }
+                                        foreach ($cart as $item) {
+                                            if (!empty($item['delivery_status'])) {
+                                                if ($item['delivery_status'] == '1') {
+                                                    $storePickupBranch = $item['branch_name'] ?? null;
+                                                } elseif ($item['delivery_status'] == '2') {
+                                                    $homeDeliveryAddress = $item['delivery_address'] ?? null;
                                                 }
+                                            }
+                                        }
 
-                                                $hasPickup = !empty($storePickupBranch);
-                                                $hasHomeDelivery = !empty($homeDeliveryAddress);
-                                            @endphp
+                                        $hasPickup = !empty($storePickupBranch);
+                                        $hasHomeDelivery = !empty($homeDeliveryAddress);
+                                    @endphp
 
-                                            {{-- 🏬 Store Pickup Section --}}
-                                            @if ($hasPickup)
-                                                @php
-                                                    $branch = \App\Models\Branch::where('name', $storePickupBranch)->first();
-                                                @endphp
-                                                <div class="pb-2">
-                                                    <span class="ri-map-pin-line"></span>
-                                                    <strong>Pickup:</strong>
-                                                    @if ($branch && $branch->location)
-                                                        {{ $branch->location }}
-                                                    @endif
-                                                </div>
-
-                                                {{-- 🕒 Pickup Time --}}
-                                                @if ($dateTime = session('time'))
-                                                    <div>
-                                                        <span class="ri-time-line"></span>
-                                                        {{ \Carbon\Carbon::parse($dateTime['date'])->format('d M, Y') }} at {{ $dateTime['time'] }}
-                                                    </div>
-                                                @else
-                                                    @foreach ($timeSlots as $timeSlot)
-                                                        <div>
-                                                            <span class="ri-time-line"></span>
-                                                            Today Pickup: {{ $timeSlot->start_pickup_time }}
-                                                        </div>
-                                                        @break
-                                                    @endforeach
-                                                @endif
-                                            @endif
-
-                                            {{-- 🚚 Home Delivery Section --}}
-                                            @if ($hasHomeDelivery)
-                                                <div class="pb-2 mt-2">
-                                                    <span class="ri-home-line"></span>
-                                                    <strong>Home Delivery:</strong> {{ $homeDeliveryAddress }}
-                                                </div>
+                                    {{-- 🏬 Store Pickup Section --}}
+                                    @if ($hasPickup)
+                                        @php
+                                            $branch = \App\Models\Branch::where('name', $storePickupBranch)->first();
+                                        @endphp
+                                        <div class="pb-2">
+                                            <span class="ri-map-pin-line"></span>
+                                            <strong>Pickup:</strong>
+                                            @if ($branch && $branch->location)
+                                                {{ $branch->location }}
                                             @endif
                                         </div>
+
+                                        {{-- 🕒 Pickup Time --}}
+                                        @if ($dateTime = session('time'))
+                                            <div>
+                                                <span class="ri-time-line"></span>
+                                                {{ \Carbon\Carbon::parse($dateTime['date'])->format('d M, Y') }} at {{ $dateTime['time'] }}
+                                            </div>
+                                        @else
+                                            @foreach ($timeSlots as $timeSlot)
+                                                <div>
+                                                    <span class="ri-time-line"></span>
+                                                    Today Pickup: {{ $timeSlot->start_pickup_time }}
+                                                </div>
+                                                @break
+                                            @endforeach
+                                        @endif
+                                    @endif
+
+                                    {{-- 🚚 Home Delivery Section --}}
+                                    @if ($hasHomeDelivery)
+                                        <div class="pb-2 mt-2">
+                                            <span class="ri-home-line"></span>
+                                            <strong>Home Delivery:</strong> {{ $homeDeliveryAddress }}
+                                        </div>
+                                    @endif
+                                </div>
 
                                 @if (Auth::guard('user')->check() && $hasPickup)
                                     <h6 class="mt-3">Vehicle Info (Optional)</h6>
@@ -283,21 +288,16 @@
                             <!-- Blling Start -->
                             @php
                                 $cartItems = session('cart', []);
-                                // Calculate the total based on the prices of all items
-                                $totalQuantity = count($cartItems);
                                 $subtotal = 0;
+                                $quantity = 0;
 
                                 foreach ($cartItems as $item) {
-                                    // @dd($item['branch_id.tax']);
                                     $subtotal += floatval($item['price'] * $item['quantity']);
-                                    // $subtotal += floatval(trim($item['price'])) * floatval($item['quantity']);
-
-                                    // Check if 'topping_prices' index exists in the $item array
+                                    $quantity += $item['quantity'];
 
                                     if (isset($item['toppings_by_category'])) {
                                         foreach ($item['toppings_by_category'] as $category => $toppingIds) {
                                             foreach ($toppingIds as $toppingId) {
-                                                // Assuming you have a Toppings model with a 'price' column
                                                 $topping = Topping::find($toppingId);
                                                 if ($topping) {
                                                     $subtotal += $topping->price;
@@ -306,22 +306,20 @@
                                         }
                                     }
                                 }
-                                // $tip_amount = session('tip_amount', []);
-                                $tip_amount = session('tip_amount', 0);
-                                $tax = 0; // Initialize tax variable
-                                foreach ($branchess as $index => $branch) {
+                                
+                                // ✅ Session se tip aur delivery charges lein
+                                $tip = session('tip', 0);
+                                $deliveryCharges = session('delivery_charges', 0);
+                                
+                                $tax = 0;
+                                foreach ($branchess as $branch) {
                                     if ($branch->status == 1) {
-                                        $tax = $branch->tax; // Assign branch tax to $tax variable
+                                        $tax = $branch->tax;
+                                        break;
                                     }
                                 }
 
-                                // Assuming a fixed tax amount
-                                $tip = $tip_amount;
-                                // @dd($tip);
-                                // $tip = is_array($tip_amount) ? 0 : $tip_amount;
-                                // $orderTotal = $subtotal + $tax + $tip;
-                                $orderTotal = $subtotal + $tax + $tip;
-                                session(['orderTotal' => $orderTotal]);
+                                $orderTotal = $subtotal + $tip + $deliveryCharges + $tax;
                             @endphp
 
                             <div class="mt-sm-4 pb-sm-4 mt-3 pb-3">
@@ -331,22 +329,32 @@
                                     <p class="text-muted">Sub Total</p>
                                     <p class="sub-total">£{{ number_format($subtotal, 2) }}</p>
                                 </div>
-                                <!-- Estimated taxes -->
-                                <div class="d-flex justify-content-between">
-                                    <p class="text-muted">Estimated taxes (New York)</p>
-                                    <p class="tax-value">£{{ number_format($tax, 2) }}</p>
-                                </div>
+                                
                                 <!-- Tip -->
                                 <div class="d-flex justify-content-between">
                                     <p class="text-muted">Tip</p>
                                     <p class="tip-value">£{{ number_format($tip, 2) }}</p>
                                 </div>
+                                
+                                <!-- ✅ Delivery Charges Display -->
+                                <div class="d-flex justify-content-between">
+                                    <p class="text-muted">Delivery Charges</p>
+                                    <p class="delivery-value">£{{ number_format($deliveryCharges, 2) }}</p>
+                                </div>
+                                
+                                <!-- Estimated taxes -->
+                                <div class="d-flex justify-content-between">
+                                    <p class="text-muted">Estimated taxes (New York)</p>
+                                    <p class="tax-value">£{{ number_format($tax, 2) }}</p>
+                                </div>
+                                
                                 <!-- Estimated order total -->
                                 <div class="d-flex justify-content-between">
                                     <p class="text-muted">Estimated order total</p>
                                     <p class="total-value">£{{ number_format($orderTotal, 2) }}</p>
                                 </div>
                             </div>
+                            
                             <p>Additional taxes and fees will be calculated at checkout</p>
 
                             {{-- End --}}
@@ -395,7 +403,42 @@
     </script>
 @endif
 
-
-
-
+<script>
+$(document).ready(function() {
+    // Form submit hone se pehle hidden inputs mein values update karein
+    $('#orderForm').on('submit', function(e) {
+        // Hidden inputs mein values update karein
+        $('#subtotalInput').val({{ $subtotal }});
+        $('#tipInput').val({{ $tip }});
+        $('#deliveryChargesInput').val({{ $deliveryCharges ?? 0 }});
+        $('#taxInput').val({{ $tax }});
+        $('#totalInput').val({{ $orderTotal }});
+        
+        // Optional: Vehicle info agar user ne fill kiya hai
+        let vehicleColor = $('#vehicleColor').val();
+        let vehicleNumber = $('#vehicleNumber').val();
+        
+        if(vehicleColor || vehicleNumber) {
+            // Agar vehicle info add karna hai toh hidden fields create karein
+            if(!$('#vehicleColorHidden').length) {
+                $(this).append('<input type="hidden" name="vehicle_color" id="vehicleColorHidden" value="' + vehicleColor + '">');
+            }
+            if(!$('#vehicleNumberHidden').length) {
+                $(this).append('<input type="hidden" name="vehicle_no" id="vehicleNumberHidden" value="' + vehicleNumber + '">');
+            }
+        }
+        
+        return true; // Form submit ho jayega
+    });
+    
+    // Debug ke liye console mein values print karein
+    console.log('Checkout Data:', {
+        subtotal: {{ $subtotal }},
+        tip: {{ $tip }},
+        deliveryCharges: {{ $deliveryCharges ?? 0 }},
+        tax: {{ $tax }},
+        total: {{ $orderTotal }}
+    });
+});
+</script>
 @endsection

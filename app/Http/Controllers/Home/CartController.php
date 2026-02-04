@@ -388,4 +388,22 @@ class CartController extends Controller
             session(['redeemed' => trim($redeemed)]);
         }
     }
+
+	
+// CartController.php mein naya method add karein
+public function storeTipAndDelivery(Request $request)
+{
+    // Tip aur delivery dono ko session mein save karein
+    session([
+        'tip' => $request->tipAmount,
+        'delivery_charges' => $request->deliveryAmount,
+    ]);
+    
+    \Log::info('Tip and Delivery saved to session:', [
+        'tip' => $request->tipAmount,
+        'delivery' => $request->deliveryAmount
+    ]);
+    
+    return response()->json(['success' => true, 'message' => 'Tip and delivery saved']);
+}
 }

@@ -225,6 +225,8 @@ Route::prefix('user')->middleware('user')->group(function () {
 Route::get('/mark-all-as-read', [OrderController::class, 'markAllAsRead'])->name('markAllAsRead');
 
 Route::get('checkout', [CheckoutController::class, 'getCheckout'])->name('checkout');
+Route::post('/store-tip-delivery', [CartController::class, 'storeTipAndDelivery'])->name('store.tip.delivery');
+
 Route::get('getcontact', [HomeAuthController::class, 'getcontact'])->name('getcontact');
 Route::get('refresh_captcha', [HomeAuthController::class,'refreshCaptcha'])->name('refresh_captcha');
 Route::post('sendMail', [HomeController::class, 'sendMail'])->name('sendMail');

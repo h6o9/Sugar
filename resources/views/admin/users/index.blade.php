@@ -20,6 +20,7 @@
                                             <th>Sr.</th>
                                             <th>User Name</th>
                                             <th>Email</th>
+											<th>Avg.Spend<th>
                                             {{-- <th>Loyalty Points</th> --}}
                                             {{-- <th>Rewards</th> --}}
                                             <th>Action</th>
@@ -41,6 +42,7 @@
                                                         <span class="text-muted">No Email</span>
                                                     @endif
                                                 </td>
+												<td>£{{ $user->average_spend }}</td>
                                                 {{-- <td>{{ $user->point ?? '0' }}</td> --}}
                                                 {{-- <td><a class="btn btn-info" href="{{ route('rewards', $user->id) }}">Rewards</a></td> --}}
                                                 <td>

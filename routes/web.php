@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\Admin\TimeController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Home\OrderController;
+use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Admin\PolicyController;
@@ -83,7 +84,9 @@ Route::get('/notifications', [NotificationController::class, 'Webindex'])->name(
 Route::post('/notifications/mark-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark.read');
 Route::get('/notifications/clear-all-notification', [NotificationController::class, 'clearAllNotifications'])->name('notifications.clear');
 
-
+// social auth routes
+Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle']);
+Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback']);
 
 	// Order Completion Rewards
 	Route::get('/completion-order', [OrderCompletionController::class, 'orderCompletion'])->name('order-completion');
@@ -226,7 +229,6 @@ Route::get('/mark-all-as-read', [OrderController::class, 'markAllAsRead'])->name
 
 Route::get('checkout', [CheckoutController::class, 'getCheckout'])->name('checkout');
 Route::post('/store-tip-delivery', [CartController::class, 'storeTipAndDelivery'])->name('store.tip.delivery');
-
 Route::get('getcontact', [HomeAuthController::class, 'getcontact'])->name('getcontact');
 Route::get('refresh_captcha', [HomeAuthController::class,'refreshCaptcha'])->name('refresh_captcha');
 Route::post('sendMail', [HomeController::class, 'sendMail'])->name('sendMail');

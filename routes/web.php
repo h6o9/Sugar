@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Branch\RegisterController;
 use App\Http\Controllers\Branch\ScheduleController;
 use App\Http\Controllers\Branch\DashBoardController;
+use App\Http\Controllers\Admin\BulkFeatureController;
 use App\Http\Controllers\Admin\MenuGalleryController;
 use App\Http\Controllers\Branch\BranchAuthController;
 use App\Http\Controllers\Home\BranchUpdateController;
@@ -101,6 +102,9 @@ Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleC
 	Route::get('/reward-settings', [App\Http\Controllers\Admin\RewardSetingsController::class, 'RewardSettings'])->name('reward-settings');
 	Route::get('/reward-settings-edit/{id}', [App\Http\Controllers\Admin\RewardSetingsController::class, 'EditRewardSettings'])->name('edit-reward-settings');
 	Route::post('/update-reward-settings/{id}', [App\Http\Controllers\Admin\RewardSetingsController::class, 'updateRewardSettings'])->name('update-reward-settings');
+
+	    // bulk feature settings
+	Route::get('/bulk-feature-settings', [BulkFeatureController::class, 'index'])->name('bulk-feature.index');
 
 	//Notification Routes
 	    Route::controller(NotificationController::class)->group(function () {

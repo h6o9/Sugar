@@ -20,7 +20,7 @@
                                             <th>Sr.</th>
                                             <th>User Name</th>
                                             <th>Email</th>
-											<th>Avg.Spend<th>
+											<th>Average Spent</th>
                                             {{-- <th>Loyalty Points</th> --}}
                                             {{-- <th>Rewards</th> --}}
                                             <th>Action</th>

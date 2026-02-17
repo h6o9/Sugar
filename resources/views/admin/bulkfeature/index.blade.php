@@ -1,5 +1,5 @@
 @extends('admin.layout.app')
-@section('title', 'Referal Link Reward Settings')
+@section('title', 'Bulk Feature Settings')
 @section('content')
     <div class="main-content" style="min-height: 562px;">
         <section class="section">
@@ -9,8 +9,8 @@
                         <div class="card">
                             <div class="card-header">
                                 <div class="col-12">
-                                    <h4>Referal Link Reward Settings <small class="font-weight-bold text-danger">
-								(Users earn points for every successful action completed through their referral links. For example, if a user shares a link with 10 people and 3 of them register on the app after installing it, the user will earn points only for those 3 registrations. If each registration is worth 10 points, the user will receive 30 points.)
+                                    <h4>Bulk Feature Settings <small class="font-weight-bold text-danger">
+								(Use this feature to adjust the prices of all products at once, either by a fixed amount or a percentage. Products that already have individual price settings will retain their custom prices and will not be affected by this bulk feature update.)
 								</small>
 								</h4>
                                 </div>
@@ -21,20 +21,24 @@
                                     <thead>
                                         <tr>
                                             <th>Sr.</th>
-                                            <th>Points</th>
-                                            <th>Action</th>
+                                            <th>Operation</th>
+											<th>Method</th>
+											<th>Amount</th>
+											<th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach ($data as $data)
+                                        @foreach ($details as $data)
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
-                                                <td>{{ $data->reward_points }}</td>                                                
+                                                <td>{{ $data->action }}</td>                                                
+												<td>{{ $data->method }}</td>
+												<td>{{ $data->amount }}</td>
 												<td
                                                     style="display: flex;align-items: center;justify-content: center;column-gap: 8px">
-                                                    <a class="btn btn-info"
-                                                        href="{{ route('edit-referral-reward-settings', $data->id) }}">Edit</a>
-                                                </td>
+                                                   <a class="btn btn-info"
+                                                        href="{{ route('edit-bulk-feature-settings', $data->id) }}">Edit</a>
+												</td>
                                             </tr>
                                         @endforeach
 

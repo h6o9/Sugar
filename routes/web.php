@@ -105,6 +105,8 @@ Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleC
 
 	    // bulk feature settings
 	Route::get('/bulk-feature-settings', [BulkFeatureController::class, 'index'])->name('bulk-feature.index');
+	Route::get('/bulk-feature-settings-edit/{id}', [BulkFeatureController::class, 'edit'])->name('edit-bulk-feature-settings');
+	Route::post('/update-bulk-feature-settings/{id}', [BulkFeatureController::class, 'update'])->name('update-bulk-feature-settings');
 
 	//Notification Routes
 	    Route::controller(NotificationController::class)->group(function () {

@@ -29,19 +29,40 @@
                                     </thead>
                                     <tbody>
                                         @foreach ($details as $data)
-                                            <tr>
-                                                <td>{{ $loop->iteration }}</td>
-                                                <td>{{ $data->action }}</td>                                                
-												<td>{{ $data->method }}</td>
-												<td>{{ $data->amount }}</td>
-												<td
-                                                    style="display: flex;align-items: center;justify-content: center;column-gap: 8px">
-                                                   <a class="btn btn-info"
-                                                        href="{{ route('edit-bulk-feature-settings', $data->id) }}">Edit</a>
-												</td>
-                                            </tr>
-                                        @endforeach
+<tr>
+    <td>{{ $loop->iteration }}</td>
+    
+    {{-- Action --}}
+    <td>{{ ucfirst($data->action ?? 'Register') }}</td>                                                
 
+    {{-- Method --}}
+    <td>
+        @if(($data->method ?? '') == 'percentage')
+            {{ ucfirst($data->method) }} (%) 
+        @elseif(($data->method ?? '') == 'fixed amount')
+            {{ ucfirst($data->method) }} (£)
+        @else
+            {{ ucfirst($data->method ?? '-') }}
+        @endif
+    </td>
+
+    {{-- Amount --}}
+    <td>
+        @if(($data->method ?? '') == 'percentage')
+            {{ $data->amount ?? 0 }}%
+        @elseif(($data->method ?? '') == 'fixed amount')
+            £{{ $data->amount ?? 0 }}
+        @else
+            {{ $data->amount ?? 0 }}
+        @endif
+    </td>
+
+    {{-- Edit Button --}}
+    <td style="display: flex; align-items: center; justify-content: center; column-gap: 8px">
+        <a class="btn btn-info" href="{{ route('edit-bulk-feature-settings', $data->id) }}">Edit</a>
+    </td>
+</tr>
+@endforeach
                                     </tbody>
                                 </table>
                             </div>

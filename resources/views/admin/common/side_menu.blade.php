@@ -53,11 +53,7 @@
 					<i class="fas fa-gift"></i><span>Reward Settings</span></a>
 	        </li>
 
-						{{-- Bulk Feature Settings  --}}
-			 <li class="dropdown {{ request()->is('admin/bulk-feature-settings*') ? 'active' : '' }}">
-				<a href="{{ route('bulk-feature.index') }}" class="nav-link">
-					<i class="fas fa-gift"></i><span>Bulk Feature Settings</span></a>
-	        </li>
+					
 			
             {{-- Sales  --}}
             <li class="dropdown {{ request()->is('admin/sales*') ? 'active' : '' }}">
@@ -80,6 +76,13 @@
                 <a href="{{ route('product.index') }}" class="nav-link"><i
                         class="fab fa-product-hunt"></i><span>Product</span></a>
             </li>
+
+				{{-- Bulk Feature Settings  --}}
+			 <li class="dropdown {{ request()->is('admin/bulk-feature-settings*') ? 'active' : '' }}">
+				<a href="{{ route('bulk-feature.index') }}" class="nav-link">
+					<i class="fas fa-boxes"></i><span>Bulk Feature Settings</span></a>
+	        </li>
+			
             <li class="dropdown {{ request()->is('admin/gallery*') ? 'active' : '' }}">
                 <a href="{{ route('gallery.index') }}" class="nav-link">
                     <i class="fas fa-images"></i><span>Our Gallery</span></a>

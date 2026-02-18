@@ -92,6 +92,10 @@ public function update(Request $request, $id)
                     $product->rule = 'bulk';
                 }
 
+				$product->featured_amount = $amount;
+				$product->featured_method = $method;
+				$product->featured_action = $action;
+
                 // Save final price (rounded)
                 $product->price = round(max(0, $newPrice), 2);
 

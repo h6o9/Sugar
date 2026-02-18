@@ -8,7 +8,7 @@
 
             <a class="btn btn-primary mb-3" href="{{ route('bulk-feature.index') }}">Back</a>
 
-            <form action="{{ route('update-bulk-feature-settings', $data->id) }}" method="POST">
+            <form action="{{ route('update-bulk-feature-settings', $data->id) }}" method="POST" id="bulkFeatureForm">
                 @csrf
 
                 <div class="card">
@@ -22,7 +22,7 @@
                         <div class="form-group">
                             <label>Operation</label>
                             <select name="action" id="action" class="form-control input-field" required>
-                                <option value="">Select Action</option>
+                                <option value="" disabled>Select Operation</option>
                                 <option value="increase" {{ old('action',$data->action)=='increase'?'selected':'' }}>Increase</option>
                                 <option value="decrease" {{ old('action',$data->action)=='decrease'?'selected':'' }}>Decrease</option>
                             </select>
@@ -36,11 +36,18 @@
                         <div class="form-group">
                             <label>Method</label>
                             <select name="method" id="method" class="form-control input-field" required>
-                                <option value="">Select Method</option>
-                                <option value="percentage" {{ old('method',$data->method)=='percentage'?'selected':'' }}>Percentage</option>
-                                <option value="fixed amount" {{ old('method',$data->method)=='fixed amount'?'selected':'' }}>Fixed Amount</option>
-                            </select>
+                                <option value="" disabled>Select Method</option>
 
+                                <option value="percentage" 
+                                    {{ old('method', $data->method) == 'percentage' ? 'selected' : '' }}>
+                                    Percentage (%)
+                                </option>
+
+                                <option value="fixed amount" 
+                                    {{ old('method', $data->method) == 'fixed amount' ? 'selected' : '' }}>
+                                    Fixed Amount (£)
+                                </option>
+                            </select>
                             @error('method')
                                 <small class="text-danger error-msg">{{ $message }}</small>
                             @enderror
@@ -49,14 +56,12 @@
                         {{-- AMOUNT --}}
                         <div class="form-group">
                             <label>Amount</label>
-                            <input type="number"
-                                   step="0.01"
+                            <input type="text"
                                    name="amount"
                                    id="amount"
-                                   value="{{ old('amount',$data->amount) }}"
+                                   value="{{ old('amount', $data->amount) }}"
                                    class="form-control input-field"
-                                   placeholder="Enter Amount">
-
+                                   placeholder="{{ $data->method == 'percentage' ? 'Enter Percentage %' : 'Enter Fixed Amount (£)' }}">
                             @error('amount')
                                 <small class="text-danger error-msg">{{ $message }}</small>
                             @enderror
@@ -99,6 +104,46 @@ document.querySelectorAll('.input-field').forEach(function(input){
             }
         }
     }
+});
+
+// --------------------
+// Dynamic Amount Input + Numeric Only for DB
+// --------------------
+document.addEventListener('DOMContentLoaded', function() {
+    const methodSelect = document.getElementById('method');
+    const amountInput = document.getElementById('amount');
+    const form = document.getElementById('bulkFeatureForm');
+
+    function formatAmount() {
+        let rawValue = amountInput.value.replace(/[£%]/g,''); // remove symbols
+        if(methodSelect.value === 'percentage' && rawValue) {
+            amountInput.value = rawValue + '%';
+        } else if(methodSelect.value === 'fixed amount' && rawValue) {
+            amountInput.value = '£' + rawValue;
+        }
+    }
+
+    // Initial formatting
+    formatAmount();
+
+    // Update on method change
+    methodSelect.addEventListener('change', function() {
+        let rawValue = amountInput.value.replace(/[£%]/g,'');
+        amountInput.value = rawValue;
+        formatAmount();
+        amountInput.placeholder = methodSelect.value === 'percentage' ? 'Enter Percentage %' : 'Enter Fixed Amount (£)';
+    });
+
+    // Live typing: remove symbols, then append correct symbol
+    amountInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[£%]/g,'');
+        formatAmount();
+    });
+
+    // **Before submit:** remove symbols for DB
+    form.addEventListener('submit', function() {
+        amountInput.value = amountInput.value.replace(/[£%]/g,'');
+    });
 });
 </script>
 

@@ -16,7 +16,7 @@
                                     <div class="form-floating">
                                         <input type="text" class="form-control" id="name" name="name"
                                             placeholder="Your Name">
-                                        <label for="name">Your Name</label>
+                                        <label for="name">Full Name</label>
                                     </div>
                                     @error('name')
                                         <span class="text-danger">{{ $message }}</span>
@@ -26,7 +26,7 @@
                                     <div class="form-floating">
                                         <input type="email" class="form-control" id="email" name="email"
                                             placeholder="Your Email">
-                                        <label for="email">Your Email</label>
+                                        <label for="email">Email Address</label>
                                     </div>
                                     @error('email')
                                         <span class="text-danger">{{ $message }}</span>
@@ -36,7 +36,7 @@
                                     <div class="form-floating">
                                         <input type="text" class="form-control" id="phone" name="phone"
                                             placeholder="Your Phone">
-                                        <label for="phone">Your Phone</label>
+                                        <label for="phone">Phone Number</label>
                                     </div>
                                     @error('phone')
                                         <span class="text-danger">{{ $message }}</span>
@@ -46,7 +46,7 @@
                                     <div class="form-floating">
                                         <input type="text" class="form-control" id="address" name="address"
                                             placeholder="Your Address">
-                                        <label for="address">Your Address</label>
+                                        <label for="address">Address</label>
                                     </div>
                                     @error('address')
                                         <span class="text-danger">{{ $message }}</span>
@@ -56,7 +56,7 @@
                                     <div class="form-floating">
                                         <input type="text" class="form-control" id="postcode" name="postcode"
                                             placeholder="Your PostCode">
-                                        <label for="postcode">Your PostCode</label>
+                                        <label for="postcode">Postcode</label>
                                     </div>
                                     @error('postcode')
                                         <span class="text-danger">{{ $message }}</span>

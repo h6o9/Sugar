@@ -44,57 +44,317 @@ class ProductController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required',
-            'menu_id' => 'required',
-            // 'image' => 'required',
-            // 'description' => 'required',
-        ]);
-        if ($request->hasFile('image')) {
-            $file = $request->file('image');
-            $extension = $file->getClientOriginalExtension();
-            $filename = time() . '.' . $extension;
-            $file->move(public_path('admin/assets/images/users/'), $filename);
-            $image = 'public/admin/assets/images/users/' . $filename;
-        } else {
-            $image = 'public/admin/assets/images/users/1675332882.jpg';
-        }
-        $data = [
-            'menu_id' => $request->menu_id,
-            'name' => $request->name,
-            // 'description' => $request->description,
-            'image' => $image,
-        ];
-        if ($request->has('price')) {
-            $data['price'] = $request->price;
-        }
-        $product = Product::create($data);
-        if (($request->sizes && $request->prices)) {
-            $sizes = $request->sizes;
-            $prices = $request->prices;
-            foreach ($sizes as $key => $size) {
-                $productVariant = ProductVariants::create([
-                    'product_id' => $product->id,
-                    'size' => $size,
-                    'price' => $prices[$key],
-                ]);
-            }
-        }
-        // Attach toppings to product
-        $categoriesIds = $request->category_id;
-        if ($categoriesIds) {
-            foreach ($categoriesIds as $categoriesId) {
-                $topping = ToppingProduct::create([
-                    'category_id' => $categoriesId,
-                    'product_id' => $product->id,
-                ]);
-            }
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'name' => 'required',
+    //         'menu_id' => 'required',
+    //         // 'image' => 'required',
+    //         // 'description' => 'required',
+	// 		'action' => 'nullable|in:increase,decrease',
+    //     'method' => 'nullable|in:percentage,fixed amount',
+    //     'amount' => 'nullable|numeric|min:0',
+    //     ]);
+    //     if ($request->hasFile('image')) {
+    //         $file = $request->file('image');
+    //         $extension = $file->getClientOriginalExtension();
+    //         $filename = time() . '.' . $extension;
+    //         $file->move(public_path('admin/assets/images/users/'), $filename);
+    //         $image = 'public/admin/assets/images/users/' . $filename;
+    //     } else {
+    //         $image = 'public/admin/assets/images/users/1675332882.jpg';
+    //     }
+    //     $data = [
+    //         'menu_id' => $request->menu_id,
+    //         'name' => $request->name,
+    //         // 'description' => $request->description,
+    //         'image' => $image,
+    //     ];
+    //     if ($request->has('price')) {
+    //         $data['price'] = $request->price;
+    //     }
+    //     $product = Product::create($data);
+    //     if (($request->sizes && $request->prices)) {
+    //         $sizes = $request->sizes;
+    //         $prices = $request->prices;
+    //         foreach ($sizes as $key => $size) {
+    //             $productVariant = ProductVariants::create([
+    //                 'product_id' => $product->id,
+    //                 'size' => $size,
+    //                 'price' => $prices[$key],
+    //             ]);
+    //         }
+    //     }
+    //     // Attach toppings to product
+    //     $categoriesIds = $request->category_id;
+    //     if ($categoriesIds) {
+    //         foreach ($categoriesIds as $categoriesId) {
+    //             $topping = ToppingProduct::create([
+    //                 'category_id' => $categoriesId,
+    //                 'product_id' => $product->id,
+    //             ]);
+    //         }
+    //     }
+
+    //     return redirect()->route('product.index')->with(['status' => true, 'message' => 'Product Created Successfully']);
+    // }
+
+// 	public function store(Request $request)
+// {
+//     $request->validate([
+//         'name' => 'required',
+//         'menu_id' => 'required',
+
+//         'action' => 'nullable|in:increase,decrease',
+//         'method' => 'nullable|in:percentage,fixed amount',
+//         'amount' => 'nullable|numeric|min:0',
+//     ]);
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | Image Upload
+//     |--------------------------------------------------------------------------
+//     */
+//     if ($request->hasFile('image')) {
+//         $file = $request->file('image');
+//         $filename = time().'.'.$file->getClientOriginalExtension();
+//         $file->move(public_path('admin/assets/images/users/'), $filename);
+//         $image = 'public/admin/assets/images/users/'.$filename;
+//     } else {
+//         $image = 'public/admin/assets/images/users/1675332882.jpg';
+//     }
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | BASE PRICE
+//     |--------------------------------------------------------------------------
+//     */
+
+//     $currentPrice = (float) $request->price;
+//     $finalPrice   = $currentPrice;
+//     $rule         = null;
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | ✅ PRIORITY APPLY (EVEN IF BULK EXISTED BEFORE)
+//     |--------------------------------------------------------------------------
+//     */
+
+//     if (
+//         $request->filled('action') &&
+//         $request->filled('method') &&
+//         $request->filled('amount')
+//     ) {
+
+//         $action = $request->action;
+//         $method = $request->method;
+//         $amount = (float) $request->amount;
+
+//         // percentage
+//         if ($method === 'percentage') {
+
+//             $change = ($currentPrice * $amount) / 100;
+
+//             $finalPrice = $action === 'increase'
+//                 ? $currentPrice + $change
+//                 : $currentPrice - $change;
+//         }
+
+//         // fixed
+//         if ($method === 'fixed amount') {
+
+//             $finalPrice = $action === 'increase'
+//                 ? $currentPrice + $amount
+//                 : $currentPrice - $amount;
+//         }
+
+//         // 🔥 override bulk
+//         $rule = 'Priority';
+//     }
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | CREATE PRODUCT
+//     |--------------------------------------------------------------------------
+//     */
+
+//     $data = [
+//         'menu_id' => $request->menu_id,
+//         'name' => $request->name,
+//         'image' => $image,
+//         'price' => round(max(0, $finalPrice), 2),
+//         'rule'  => $rule,
+//     ];
+
+//     if ($rule === 'Priority') {
+//         $data['featured_action'] = $request->action;
+//         $data['featured_method'] = $request->method;
+//         $data['featured_amount'] = $request->amount;
+//     }
+
+//     $product = Product::create($data);
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | Variants
+//     |--------------------------------------------------------------------------
+//     */
+//     if ($request->sizes && $request->prices) {
+//         foreach ($request->sizes as $key => $size) {
+//             ProductVariants::create([
+//                 'product_id' => $product->id,
+//                 'size' => $size,
+//                 'price' => $request->prices[$key],
+//             ]);
+//         }
+//     }
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | Categories
+//     |--------------------------------------------------------------------------
+//     */
+//     if ($request->category_id) {
+//         foreach ($request->category_id as $categoryId) {
+//             ToppingProduct::create([
+//                 'category_id' => $categoryId,
+//                 'product_id' => $product->id,
+//             ]);
+//         }
+//     }
+
+//     return redirect()->route('product.index')
+//         ->with('message','Product Created Successfully');
+// }
+
+public function store(Request $request)
+{
+    // -------------------------
+    // Validation
+    // -------------------------
+    $request->validate([
+        'name' => 'required',
+        'menu_id' => 'required',
+        'action' => 'nullable|in:increase,decrease',
+        'method' => 'nullable|in:percentage,fixed amount',
+        'amount' => 'nullable|numeric|min:0',
+    ]);
+
+    // -------------------------
+    // Image Upload
+    // -------------------------
+    if ($request->hasFile('image')) {
+        $file = $request->file('image');
+        $filename = time() . '.' . $file->getClientOriginalExtension();
+        $file->move(public_path('admin/assets/images/users/'), $filename);
+        $image = 'public/admin/assets/images/users/' . $filename;
+    } else {
+        $image = 'public/admin/assets/images/users/1675332882.jpg';
+    }
+
+    // -------------------------
+    // Base Price
+    // -------------------------
+    $currentPrice = (float) $request->price;
+    $finalPrice = $currentPrice;
+    $rule = null;
+
+    $applyPriority = $request->action &&
+                      $request->method &&
+                      $request->amount;
+
+					   dd($applyPriority);
+
+    if ($applyPriority) {
+        $action = $request->action;
+        $method = $request->method;
+        $amount = (float) $request->amount;
+
+        // Calculate main product price
+        if ($method === 'percentage') {
+            $change = ($currentPrice * $amount) / 100;
+            $finalPrice = $action === 'increase'
+                ? $currentPrice + $change
+                : $currentPrice - $change;
         }
 
-        return redirect()->route('product.index')->with(['status' => true, 'message' => 'Product Created Successfully']);
+        if ($method === 'fixed amount') {
+            $finalPrice = $action === 'increase'
+                ? $currentPrice + $amount
+                : $currentPrice - $amount;
+        }
+
+        $rule = 'Priority';
     }
+
+    // -------------------------
+    // Create Product
+    // -------------------------
+    $data = [
+        'menu_id' => $request->menu_id,
+        'name' => $request->name,
+        'image' => $image,
+        'price' => round(max(0, $finalPrice), 2),
+        'original_price' => $currentPrice,
+        'rule' => $rule,
+    ];
+
+    if ($rule === 'Priority') {
+        $data['featured_action'] = $request->action;
+        $data['featured_method'] = $request->method;
+        $data['featured_amount'] = $request->amount;
+    }
+
+    $product = Product::create($data);
+
+    // -------------------------
+    // Variants (apply Priority if exists)
+    // -------------------------
+    if ($request->sizes && $request->prices) {
+        foreach ($request->sizes as $key => $size) {
+            $variantPrice = (float) $request->prices[$key];
+            $variantOriginalPrice = $variantPrice;
+
+            // Apply priority rule on variant price
+            if ($applyPriority) {
+                if ($method === 'percentage') {
+                    $change = ($variantPrice * $amount) / 100;
+                    $variantPrice = $action === 'increase'
+                        ? $variantPrice + $change
+                        : $variantPrice - $change;
+                }
+
+                if ($method === 'fixed amount') {
+                    $variantPrice = $action === 'increase'
+                        ? $variantPrice + $amount
+                        : $variantPrice - $amount;
+                }
+            }
+
+            ProductVariants::create([
+                'product_id' => $product->id,
+                'size' => $size,
+                'price' => round(max(0, $variantPrice), 2),
+                'original_price' => $variantOriginalPrice,
+            ]);
+        }
+    }
+
+    // -------------------------
+    // Categories
+    // -------------------------
+    if ($request->category_id) {
+        foreach ($request->category_id as $categoryId) {
+            ToppingProduct::create([
+                'category_id' => $categoryId,
+                'product_id' => $product->id,
+            ]);
+        }
+    }
+
+    return redirect()->route('product.index')
+        ->with('message', 'Product Created Successfully');
+}
 
 
 

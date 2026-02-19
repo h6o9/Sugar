@@ -52,54 +52,80 @@ public function update(Request $request, $id)
     );
 
     // 🔹 Bulk update products
-    Product::where(function ($q) {
+    Product::with('variants')->where(function ($q) {
             $q->whereNull('rule')
               ->orWhere('rule', 'bulk');
         })
-        ->chunk(200, function ($products) use ($action,$method,$amount) {
+        ->chunk(200, function ($products) use ($action, $method, $amount) {
 
             foreach ($products as $product) {
 
                 // ❌ Skip priority products
                 if ($product->rule === 'Priority') continue;
 
-                $currentPrice = (float) $product->price;
+                // 🔹 Determine base price
+                $basePrice = (float) $product->price;
 
-                // Save original price only first time
-                if (is_null($product->original_price)) {
-                    $product->original_price = $currentPrice;
+                // اگر product.price null یا 0 ہو تو first variant price fallback کے طور پر استعمال کریں
+                if (($basePrice <= 0 || is_null($product->price)) && $product->variants->count() > 0) {
+                    $basePrice = (float) $product->variants->first()->price;
                 }
 
-                $basePrice = $product->price;
+                // 🔹 Save original price only if null
+                if (is_null($product->original_price)) {
+                    $product->original_price = $basePrice;
+                }
 
-                // Percentage calculation
+				 $basePrice = $product->original_price; 
+
+                // 🔹 Apply percentage/fixed logic
                 if ($method === 'percentage') {
                     $change = ($basePrice * $amount) / 100;
                     $newPrice = $action === 'increase'
                         ? $basePrice + $change
                         : $basePrice - $change;
-                }
-
-                // Fixed amount calculation
-                if ($method === 'fixed amount') {
+                } else { // fixed amount
                     $newPrice = $action === 'increase'
                         ? $basePrice + $amount
                         : $basePrice - $amount;
                 }
 
-                // Set rule automatically if null
+                // 🔹 Set rule if null
                 if (is_null($product->rule)) {
                     $product->rule = 'bulk';
                 }
 
-				$product->featured_amount = $amount;
-				$product->featured_method = $method;
-				$product->featured_action = $action;
+                // 🔹 Set featured fields
+                $product->featured_amount = $amount;
+                $product->featured_method = $method;
+                $product->featured_action = $action;
 
-                // Save final price (rounded)
+                // 🔹 Save final price
                 $product->price = round(max(0, $newPrice), 2);
-
                 $product->save();
+
+                // 🔹 Update variants too (same logic)
+                if ($product->variants->count() > 0) {
+                    foreach ($product->variants as $variant) {
+                        $variantBase = (float) $variant->price;
+						$variant->original_price = $variantBase;
+						$variantBase = $variant->original_price;
+
+                        if ($method === 'percentage') {
+                            $change = ($variantBase * $amount) / 100;
+                            $variantPrice = $action === 'increase'
+                                ? $variantBase + $change
+                                : $variantBase - $change;
+                        } else {
+                            $variantPrice = $action === 'increase'
+                                ? $variantBase + $amount
+                                : $variantBase - $amount;
+                        }
+
+                        $variant->price = round(max(0, $variantPrice), 2);
+                        $variant->save();
+                    }
+                }
             }
         });
 

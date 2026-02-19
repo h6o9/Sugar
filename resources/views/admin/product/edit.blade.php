@@ -79,28 +79,28 @@
                                                 {{-- Featured Inputs --}}
                                                 <div class="form-group mb-2">
                                                     <label>Optional Featured Settings</label>
-                                                    <div class="row">
-                                                        <div class="col-4">
-                                                            <select name="featured_action" id="featured_action" class="form-control input-field">
-                                                                <option value="" disabled selected>Select Operation</option>
-                                                                <option value="increase" {{ $product->featured_action=='increase'?'selected':'' }}>Increase</option>
-                                                                <option value="decrease" {{ $product->featured_action=='decrease'?'selected':'' }}>Decrease</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="col-4">
-                                                            <select name="featured_method" id="featured_method" class="form-control input-field">
-                                                                <option value="" disabled selected>Select Method</option>
-                                                                <option value="percentage" {{ $product->featured_method=='percentage'?'selected':'' }}>Percentage (%)</option>
-                                                                <option value="fixed amount" {{ $product->featured_method=='fixed amount'?'selected':'' }}>Fixed Amount (£)</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="col-4">
-                                                            <input type="text" name="featured_amount" id="featured_amount"
-                                                                class="form-control input-field"
-                                                                placeholder="Enter Amount"
-                                                                value="{{ $product->featured_amount ? ($product->featured_method=='percentage'? $product->featured_amount.'%' : '£'.$product->featured_amount) : '' }}">
-                                                        </div>
-                                                    </div>
+                                                   <div class="row">
+														<div class="col-4">
+															<select name="featured_action" id="featured_action" class="form-control input-field">
+																<option value="" disabled {{ !$product->featured_action ? 'selected' : '' }}>Select Operation</option>
+																<option value="increase" {{ $product->featured_action=='increase' ? 'selected' : '' }}>Increase</option>
+																<option value="decrease" {{ $product->featured_action=='decrease' ? 'selected' : '' }}>Decrease</option>
+															</select>
+														</div>
+														<div class="col-4">
+															<select name="featured_method" id="featured_method" class="form-control input-field">
+																<option value="" disabled {{ !$product->featured_method ? 'selected' : '' }}>Select Method</option>
+																<option value="percentage" {{ $product->featured_method=='percentage' ? 'selected' : '' }}>Percentage (%)</option>
+																<option value="fixed amount" {{ $product->featured_method=='fixed amount' ? 'selected' : '' }}>Fixed Amount (£)</option>
+															</select>
+														</div>
+														<div class="col-4">
+															<input type="text" name="featured_amount" id="featured_amount"
+																class="form-control input-field"
+																placeholder="Enter Amount"
+																value="{{ $product->featured_amount ? ($product->featured_method=='percentage' ? $product->featured_amount.'%' : ($product->featured_method=='fixed amount' ? '£'.$product->featured_amount : $product->featured_amount)) : '' }}">
+														</div>
+													</div>
                                                     @error('featured_amount')
                                                     <small class="text-danger">{{ $message }}</small>
                                                     @enderror

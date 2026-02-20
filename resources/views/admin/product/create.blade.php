@@ -185,7 +185,7 @@ $(document).ready(function() {
     function formatFeaturedAmount() {
         let val = featured_amount.val().replace(/[£%]/g,'');
         if(featured_method.val() === 'percentage' && val) {
-            featured_amount.val(val + '%');
+            featured_amount.val('%' + val);
         } else if(featured_method.val() === 'fixed amount' && val) {
             featured_amount.val('£' + val);
         }

@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatAmount() {
         let rawValue = amountInput.value.replace(/[£%]/g,''); // remove symbols
         if(methodSelect.value === 'percentage' && rawValue) {
-            amountInput.value = rawValue + '%';
+            amountInput.value = '%' + rawValue;
         } else if(methodSelect.value === 'fixed amount' && rawValue) {
             amountInput.value = '£' + rawValue;
         }

@@ -12,104 +12,71 @@ class HomeController extends Controller
 {
     //
 
-	// public function homeProducts(Request $request)
-    // {
-    //     $request->validate([
-    //         'menu_id' => 'required|string', // number or 'all'
-    //     ]);
-
-    //     $menuId = $request->menu_id;
-
-    //     // CASE: All products
-    //     if ($menuId === 'all') {
-    //         $products = Product::where('status', '1')->get();
-    //     } elseif($menuId === "featured"){
-
-	// 	$products = Product::where('is_featured', '1')->get();
-
-	// 	} else {
-    //         $products = Product::where('menu_id', $menuId)
-    //                            ->get();
-    //     }
-
-    //     // Prepare response with menu name
-    //     $response = $products->map(function($product) {
-    //         $menu = $product->menu; // relation
-    //         return [
-    //             'menu_name'    => $menu ? $menu->name : null,
-    //             'product_name' => $product->name,
-    //             'price'        => $product->price,
-    //             'image'        => $product->image,
-    //         ];
-    //     });
-
-    //     return response()->json([
-    //         'status' => true,
-    //         'data'   => $response
-    //     ]);
-    // }
-
 public function homeProducts(Request $request)
 {
     $request->validate([
-        'menu_id' => 'required|string',
+        'menu_id' => 'required|string', // number or 'all'
     ]);
 
     $menuId = $request->menu_id;
 
     // CASE: All products
     if ($menuId === 'all') {
-
-        $products = Product::where('status', '1')
-            ->whereIn('rule', ['bulk','Priority'])
-            ->where('featured_action', 'decrease')
-            ->get();
-
-    } elseif ($menuId === "featured") {
-
-        $products = Product::where('is_featured', '1')
-            ->whereIn('rule', ['bulk','Priority'])
-            ->where('featured_action', 'decrease')
-            ->get();
-
+        $products = Product::where('status', '1')->get();
+    } elseif($menuId === "featured"){
+        $products = Product::where('is_featured', '1')->get();
     } else {
-
         $products = Product::where('menu_id', $menuId)
-            ->whereIn('rule', ['bulk','Priority'])
-            ->where('featured_action', 'decrease')
-            ->get();
+                           ->where('status', '1')
+                           ->get();
     }
 
-    // Prepare response (same as before + condition fields)
-    $response = $products->map(function ($product) {
-
-        $menu = $product->menu;
-
-        $data = [
-            'menu_name'    => $menu ? $menu->name : null,
-            'product_name' => $product->name,
-            'price'        => $product->price,
-            'image'        => $product->image,
+    // Prepare response with enhanced product information
+    $response = $products->map(function($product) {
+        $menu = $product->menu; // relation
+        
+        // Calculate discount information
+        $discountInfo = $this->calculateDiscountInfo($product);
+        
+        // Prepare base product data
+        $productData = [
+            'menu_name'        => $menu ? $menu->name : null,
+            'product_name'     => $product->name,
+			'product_id'       => $product->id,
+            'price'            => $product->price,
+            'original_price'   => $product->original_price,
+            'image'            => $product->image,
+            'is_featured'      => (bool)$product->is_featured,
         ];
-
-        // ✅ Only when rule applied
-        if ($product->featured_action === 'decrease') {
-
-            // percentage case
-            if ($product->featured_method === 'percentage') {
-                $data['discount_percentage'] = $product->featured_amount;
-                $data['original_price'] = $product->original_price;
-                $data['current_price']  = $product->price;
-            }
-
-            // fixed amount case
-            if ($product->featured_method === 'fixed amount') {
-                $data['original_price'] = $product->original_price;
-                $data['current_price']  = $product->price;
+        
+        // Add discount information if available
+        if ($discountInfo['has_discount']) {
+            $productData['discount'] = $discountInfo;
+            
+            // Add special highlight flag for products with discounts or featured items
+            $productData['is_special'] = true;
+            $productData['special_type'] = 'discount';
+        }
+        
+        // Add featured method information if available
+        if ($product->is_featured && $product->featured_method) {
+            $productData['featured_info'] = [
+                'method' => $product->featured_method,
+                'action' => $product->featured_action,
+                'amount' => $product->featured_amount,
+                'display_text' => $this->getFeaturedDisplayText($product)
+            ];
+            
+            // Add special highlight flag for featured items
+            if (!isset($productData['is_special'])) {
+                $productData['is_special'] = true;
+                $productData['special_type'] = 'featured';
+            } else {
+                $productData['special_type'] = 'both'; // Both discount and featured
             }
         }
-
-        return $data;
+        
+        return $productData;
     });
 
     return response()->json([
@@ -117,6 +84,139 @@ public function homeProducts(Request $request)
         'data'   => $response
     ]);
 }
+
+/**
+ * Calculate discount information for a product
+ */
+private function calculateDiscountInfo($product)
+{
+    $hasDiscount = false;
+    $discountPercentage = null;
+    $discountAmount = null;
+    $savedAmount = null;
+    
+    // Check if product has original price and current price
+    if ($product->original_price && $product->price && $product->original_price > $product->price) {
+        $hasDiscount = true;
+        
+        // Calculate original price as float
+        $originalPrice = floatval($product->original_price);
+        $currentPrice = floatval($product->price);
+        
+        // Calculate discount amount
+        $discountAmount = $originalPrice - $currentPrice;
+        
+        // Calculate discount percentage
+        if ($originalPrice > 0) {
+            $discountPercentage = round(($discountAmount / $originalPrice) * 100, 2);
+        }
+        
+        $savedAmount = number_format($discountAmount, 2);
+    }
+    
+    return [
+        'has_discount' => $hasDiscount,
+        'discount_percentage' => $discountPercentage,
+        'discount_amount' => $discountAmount ? number_format($discountAmount, 2) : null,
+        'saved_amount' => $savedAmount,
+        'original_price_formatted' => $product->original_price ? number_format(floatval($product->original_price), 2) : null,
+        'current_price_formatted' => $product->price ? number_format(floatval($product->price), 2) : null,
+    ];
+}
+
+/**
+ * Get display text for featured method
+ */
+private function getFeaturedDisplayText($product)
+{
+    if (!$product->featured_method || !$product->featured_amount) {
+        return null;
+    }
+    
+    $amount = $product->featured_amount;
+    
+    switch ($product->featured_method) {
+        case 'percentage':
+            return $amount . '% OFF';
+        case 'fixed':
+            return 'Rs. ' . $amount . ' OFF';
+        case 'buyonegetone':
+            return 'Buy 1 Get 1 Free';
+        case 'combo':
+            return 'Combo Offer: ' . $amount;
+        default:
+            return $product->featured_method . ': ' . $amount;
+    }
+}
+
+// public function homeProducts(Request $request)
+// {
+//     $request->validate([
+//         'menu_id' => 'required|string',
+//     ]);
+
+//     $menuId = $request->menu_id;
+
+//     // CASE: All products
+//     if ($menuId === 'all') {
+
+//         $products = Product::where('status', '1')
+//             ->whereIn('rule', ['bulk','Priority'])
+//             ->where('featured_action', 'decrease')
+//             ->get();
+
+//     } elseif ($menuId === "featured") {
+
+//         $products = Product::where('is_featured', '1')
+//             ->whereIn('rule', ['bulk','Priority'])
+//             ->where('featured_action', 'decrease')
+//             ->get();
+
+//     } else {
+
+//         $products = Product::where('menu_id', $menuId)
+//             ->whereIn('rule', ['bulk','Priority'])
+//             ->where('featured_action', 'decrease')
+//             ->get();
+//     }
+
+//     // Prepare response (same as before + condition fields)
+//     $response = $products->map(function ($product) {
+
+//         $menu = $product->menu;
+
+//         $data = [
+//             'menu_name'    => $menu ? $menu->name : null,
+//             'product_name' => $product->name,
+//             'price'        => $product->price,
+//             'image'        => $product->image,
+//         ];
+
+//         // ✅ Only when rule applied
+//         if ($product->featured_action === 'decrease') {
+
+//             // percentage case
+//             if ($product->featured_method === 'percentage') {
+//                 $data['discount_percentage'] = $product->featured_amount;
+//                 $data['original_price'] = $product->original_price;
+//                 $data['current_price']  = $product->price;
+//             }
+
+//             // fixed amount case
+//             if ($product->featured_method === 'fixed amount') {
+//                 $data['original_price'] = $product->original_price;
+//                 $data['current_price']  = $product->price;
+//             }
+//         }
+
+//         return $data;
+//     });
+
+//     return response()->json([
+//         'status' => true,
+//         'data'   => $response
+//     ]);
+// }
 
 	public function Menueitems() {
 		$menueitems = Menu::get();

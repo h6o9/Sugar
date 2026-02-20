@@ -198,16 +198,14 @@ $(document).ready(function() {
     // Featured Amount Logic
     const featured_method = $('#featured_method');
     const featured_amount = $('#featured_amount');
-
     function formatFeaturedAmount() {
         let val = featured_amount.val().replace(/[£%]/g,'');
         if(featured_method.val() === 'percentage' && val) {
-            featured_amount.val(val + '%');
+            featured_amount.val('%' + val);
         } else if(featured_method.val() === 'fixed amount' && val) {
             featured_amount.val('£' + val);
         }
     }
-
     // Initial formatting
     formatFeaturedAmount();
 

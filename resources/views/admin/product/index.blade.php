@@ -25,7 +25,6 @@
                                             <th>Sizes</th>
                                             {{-- <th>Description</th> --}}
                                             <th>Featured</th>
-											<th>Pricing Rule</th>
                                             <th>Status</th>
                                             <th scope="col">Actions</th>
                                         </tr>
@@ -82,13 +81,6 @@
                                                         </a>
                                                     @endif
                                                 </td>
-												<td>
-													@if ($product->rule)
-														<div class="badge badge-success badge-shadow">{{ ucfirst($product->rule) }}</div>
-													@else
-														<div class="badge badge-secondary badge-shadow">No rule</div>
-													@endif
-
                                                 <td>
                                                     @if ($product->status == 1)
                                                         <div class="badge badge-success badge-shadow">Active</div>

@@ -211,7 +211,6 @@ class AddToCartController extends Controller
 
 public function addToCart(Request $request)
 {
-	return $request->all();
     DB::beginTransaction();
 
     try {
@@ -227,47 +226,109 @@ public function addToCart(Request $request)
         $variantId   = $request->variant_id ? (int) $request->variant_id : null;
 
         // =========================
-        // PRICE (PRODUCT / VARIANT)
+        // GET TIPS
         // =========================
+        $tips = AddToCartItem::where('user_id', $userId)
+            ->where('tips', '>', 0)
+            ->value('tips') ?? 0;
 
-		$tips = AddToCartItem::where('user_id', $userId)
-		->where('tips', '>', 0)
-		->value('tips');
+        // =========================
+        // GET UNIT PRICE AND ORIGINAL PRICE FROM FRONTEND
+        // =========================
+        $unitPrice = (float) $request->unit_price;          // frontend se aayega
+        $unitOriginalPrice = (float) ($request->original_price ?? $unitPrice);
 
+        // =========================
+        // TOPPINGS FROM FRONTEND (NO PRICE CALCULATION)
+        // =========================
+        $toppingDetails = $request->toppings
+            ? json_decode($request->toppings, true)
+            : [];
 
-        $basePrice = 0;
-        $variantDetails = null;
+        // =========================
+        // FINAL UNIT PRICE (frontend se hi aayega)
+        // =========================
+        $finalUnitPrice = $unitPrice;
 
-        if ($variantId) {
-            $variant = DB::table('product_variants')->where('id', $variantId)->first(['id', 'price', 'size']);
-            if (!$variant) throw new \Exception('Variant not found');
+        // =========================
+        // CHECK EXISTING CART ITEM (product + variant + same toppings)
+        // =========================
+        $existingItems = AddToCartItem::where('user_id', $userId)
+            ->where('product_id', $productId)
+            ->where('variant_id', $variantId)
+            ->get();
 
-            $basePrice = (float) $variant->price;
-            $variantDetails = [
-                'variant_id' => $variant->id,
-                'price'      => (float) $variant->price,
-                'size'       => $variant->size,
-            ];
+        $existingCartItem = null;
+
+        foreach ($existingItems as $item) {
+            $existingToppings = AddToCartItemTopping::where('add_to_cart_item_id', $item->id)
+                ->get(['topping_id', 'category_id'])
+                ->toArray();
+
+            $existingToppingIds = collect($existingToppings)->pluck('topping_id')->sort()->values()->all();
+            $currentToppingIds = collect($toppingDetails)->pluck('topping_id')->sort()->values()->all();
+
+            if ($existingToppingIds === $currentToppingIds) {
+                $existingCartItem = $item;
+                break;
+            }
+        }
+
+        if ($existingCartItem) {
+            // =========================
+            // UPDATE EXISTING ITEM
+            // =========================
+            $existingCartItem->quantity += $quantity;
+            $existingCartItem->price = $finalUnitPrice * $existingCartItem->quantity;
+            $existingCartItem->original_price = $unitOriginalPrice * $existingCartItem->quantity;
+            $existingCartItem->subtotal = $existingCartItem->price;
+            $existingCartItem->tips = $tips;
+            $existingCartItem->tax_amount = 0;
+
+            $existingCartItem->save();
+            $cartItemId = $existingCartItem->id;
         } else {
-            $product = DB::table('products')->where('id', $productId)->first(['price']);
-            if (!$product) throw new \Exception('Product not found');
-            $basePrice = (float) $product->price;
+            // =========================
+            // CREATE NEW CART ITEM
+            // =========================
+            $itemPrice = $finalUnitPrice * $quantity;
+
+            $cartItem = AddToCartItem::create([
+                'user_id'          => $userId,
+                'product_id'       => $productId,
+                'product_name'     => $productName,
+                'branch_id'        => $branchId,
+                'quantity'         => $quantity,
+                'price'            => $itemPrice,
+                'subtotal'         => $itemPrice,
+                'tax_amount'       => 0,
+                'estimated_total'  => $itemPrice + $tips,
+                'order_type'       => $request->order_type,
+                'delivery_address' => $request->delivery_address,
+                'pickup_time'      => $request->pickup_time,
+                'tips'             => $tips,
+                'original_price'   => $unitOriginalPrice * $quantity,
+                'variant_id'       => $variantId,
+            ]);
+
+            $cartItemId = $cartItem->id;
         }
 
         // =========================
-        // TOPPINGS + PRICE
+        // SAVE TOPPINGS (NO PRICE CALCULATION)
         // =========================
-        $toppingCategories = $request->toppings ? json_decode($request->toppings, true) : [];
-        $toppingTotal = 0;
-        $toppingDetails = [];
-
-        if (!empty($toppingCategories) && is_array($toppingCategories)) {
-            foreach ($toppingCategories as $categoryName => $toppingsArray) {
+        // =========================
+// TOPPINGS FROM FRONTEND (NO PRICE CALCULATION)
+// =========================
+$toppingDetails = [];
+if ($request->toppings) {
+    $toppingsJson = json_decode($request->toppings, true);
+    
+    if (!empty($toppingsJson) && is_array($toppingsJson)) {
+        foreach ($toppingsJson as $categoryKey => $toppingsArray) {
+            if (is_array($toppingsArray)) {
                 foreach ($toppingsArray as $item) {
-                    if (isset($item['topping_id'], $item['category_id'])) {
-                        $toppingPrice = (float) DB::table('toppings')->where('id', $item['topping_id'])->value('price');
-                        $toppingTotal += $toppingPrice;
-
+                    if (isset($item['topping_id']) && isset($item['category_id'])) {
                         $toppingDetails[] = [
                             'topping_id'  => (int) $item['topping_id'],
                             'category_id' => (int) $item['category_id'],
@@ -276,85 +337,15 @@ public function addToCart(Request $request)
                 }
             }
         }
+    }
+}
 
         // =========================
-        // FINAL UNIT PRICE
-        // =========================
-        $finalUnitPrice = $basePrice + $toppingTotal;
-
-        // =========================
-        // CHECK EXISTING CART ITEM
-        // =========================
-        $existingCartItem = AddToCartItem::where('user_id', $userId)
-            ->where('product_id', $productId)
-            ->where('price', $finalUnitPrice)
-            ->first();
-
-        if ($existingCartItem) {
-            // UPDATE QUANTITY
-            $existingCartItem->quantity += $quantity;
-
-            // price as per quantity
-            $existingCartItem->price = $finalUnitPrice * $existingCartItem->quantity;
-
-            // subtotal = price
-            $existingCartItem->subtotal = $existingCartItem->price;
-
-            $existingCartItem->tips = $tips;
-            $existingCartItem->tax_amount = 0;
-            $existingCartItem->save();
-
-            $cartItemId = $existingCartItem->id;
-        } else {
-            // CREATE NEW CART ITEM
-            $itemPrice = $finalUnitPrice * $quantity;
-
-            $cartItem = AddToCartItem::create([
-                'user_id'         => $userId,
-                'product_id'      => $productId,
-                'product_name'    => $productName,
-                'branch_id'       => $branchId,
-                'quantity'        => $quantity,
-                'price'           => $itemPrice,
-                'subtotal'        => $itemPrice,
-                'tax_amount'      => 0,
-                'estimated_total' => $itemPrice + $tips,
-                'order_type'      => $request->order_type,
-                'delivery_address'=> $request->delivery_address,
-                'pickup_time'     => $request->pickup_time,
-                'tips'            => $tips ?? 0,
-            ]);
-
-            $cartItemId = $cartItem->id;
-
-            // SAVE VARIANT
-            if ($variantDetails) {
-                AddToCartItemTopping::create([
-                    'add_to_cart_item_id' => $cartItemId,
-                    'variant_id'          => $variantDetails['variant_id'],
-                ]);
-            }
-        }
-
-        // =========================
-        // SAVE TOPPINGS
-        // =========================
-        foreach ($toppingDetails as $topping) {
-            AddToCartItemTopping::create([
-                'add_to_cart_item_id' => $cartItemId,
-                'topping_id'          => $topping['topping_id'],
-                'category_id'         => $topping['category_id'],
-            ]);
-        }
-
-        // =========================
-        // UPDATE ALL CART ITEMS SUBTOTAL + ESTIMATED_TOTAL
+        // UPDATE CART TOTALS
         // =========================
         $allCartItems = AddToCartItem::where('user_id', $userId)->get();
-
-        $totalSubtotal = $allCartItems->sum('subtotal'); // sab items ka sum
-        $totalTips = $tips ?? 0;
-        $estimatedTotal = $totalSubtotal + $totalTips;
+        $totalSubtotal = $allCartItems->sum('subtotal');
+        $estimatedTotal = $totalSubtotal + $tips;
 
         AddToCartItem::where('user_id', $userId)->update([
             'subtotal'        => $totalSubtotal,
@@ -384,12 +375,6 @@ public function addToCart(Request $request)
         ], 500);
     }
 }
-
-
-
-
-
-
 // cotinue to  payments method
 
 public function proceedToPayment(Request $request)
@@ -547,7 +532,5 @@ public function deleteCartItem($id)
         'message' => 'Cart item removed successfully.'
     ]);
 }
-
-
 
 }

@@ -24,7 +24,7 @@ public function getProductDetails($id) {
     // Get Product Variants
     $variants = DB::table('product_variants')
         ->where('product_id', $id)
-        ->select('id', 'size', 'price')
+        ->select('id', 'size', 'price', 'original_price')
         ->get();
 
     // Get Toppings assigned to this product
@@ -73,6 +73,7 @@ public function getProductDetails($id) {
 			'branches_name' => $branches->name,
             'name' => $product->name,
             'price' => $product->price,
+			'original_price' => $product->original_price,
             'image' => $product->image,
             'variants' => $variants,     // Product variants
             'toppings' => $toppingsData  // Category wise toppings

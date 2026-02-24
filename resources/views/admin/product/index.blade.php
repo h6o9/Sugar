@@ -23,6 +23,7 @@
                                             <th>image</th>
                                             <th>Price</th>
                                             <th>Sizes</th>
+											<th>Settings Applied</th>
                                             {{-- <th>Description</th> --}}
                                             <th>Featured</th>
                                             <th>Status</th>
@@ -68,7 +69,30 @@
                                                     @endif
                                                 </td>
                                                 {{-- <td>{!! $product->description !!}</td> --}}
-                                                <td>
+												<td>
+														@php
+															$rule = $product->rule == 'Priority'
+																		? 'Individual'
+																		: ucfirst($product->rule);
+														@endphp
+
+														@if(strtolower($product->rule) == 'bulk')
+															<span class="badge badge-success badge-shadow">
+																{{ ucfirst($product->rule) }}
+															</span>
+
+														@elseif($product->rule == 'Priority')
+															<span class="badge badge-danger badge-shadow">
+																{{ $rule }}
+															</span>
+
+														@else
+															<span class="badge badge-secondary badge-shadow">
+																{{ $rule }}
+															</span>
+														@endif
+												</td>
+												<td>
                                                     @if ($product->is_featured)
                                                         <a href="{{ route('admin.featured', ['id' => $product->id]) }}"
                                                         class="btn btn-success" title="Click to Unfeature">

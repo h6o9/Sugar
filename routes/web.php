@@ -1,44 +1,45 @@
 <?php
 
+use App\Http\Controllers\Admin\AboutusController;
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\BranchController;
+use App\Http\Controllers\Admin\BulkFeatureController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\FaqController;
+use App\Http\Controllers\Admin\GalleryController;
+use App\Http\Controllers\Admin\MenuController;
+use App\Http\Controllers\Admin\MenuGalleryController;
+use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\OrderCompletionController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\PolicyController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\SalesController as AdminSalesController;
+use App\Http\Controllers\Admin\SeaMossController;
+use App\Http\Controllers\Admin\TermConditionController;
+use App\Http\Controllers\Admin\TimeController;
+use App\Http\Controllers\Admin\ToppingController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Branch\BranchAuthController;
+use App\Http\Controllers\Branch\DashBoardController;
+use App\Http\Controllers\Branch\OrderController as BranchOrderController;
+use App\Http\Controllers\Branch\RegisterController;
+use App\Http\Controllers\Branch\SalesController;
+use App\Http\Controllers\Branch\ScheduleController;
+use App\Http\Controllers\Home\AuthController as HomeAuthController;
+use App\Http\Controllers\Home\BranchUpdateController;
+use App\Http\Controllers\Home\CartController;
+use App\Http\Controllers\Home\CheckoutController;
+use App\Http\Controllers\Home\HomeController;
+use App\Http\Controllers\Home\LoyalityPointsController;
+use App\Http\Controllers\Home\LoyaltyPointController;
+use App\Http\Controllers\Home\OrderController;
+use App\Http\Controllers\Home\SecurityController;
+use App\Http\Controllers\SocialAuthController;
+use App\Http\Controllers\WebController;
 use App\Models\Notification;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\FaqController;
-use App\Http\Controllers\Home\CartController;
-use App\Http\Controllers\Home\HomeController;
-use App\Http\Controllers\Admin\AuthController;
-use App\Http\Controllers\Admin\MenuController;
-use App\Http\Controllers\Admin\TimeController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Home\OrderController;
-use App\Http\Controllers\SocialAuthController;
-use App\Http\Controllers\Admin\AdminController;
-use App\Http\Controllers\Admin\BranchController;
-use App\Http\Controllers\Admin\PolicyController;
-use App\Http\Controllers\Branch\SalesController;
-use App\Http\Controllers\Admin\AboutusController;
-use App\Http\Controllers\Admin\GalleryController;
-use App\Http\Controllers\Admin\ProductController;
-use App\Http\Controllers\Admin\SeaMossController;
-use App\Http\Controllers\Admin\ToppingController;
-use App\Http\Controllers\Home\CheckoutController;
-use App\Http\Controllers\Home\SecurityController;
-use App\Http\Controllers\Admin\CategoryController;
-use App\Http\Controllers\Branch\RegisterController;
-use App\Http\Controllers\Branch\ScheduleController;
-use App\Http\Controllers\Branch\DashBoardController;
-use App\Http\Controllers\Admin\BulkFeatureController;
-use App\Http\Controllers\Admin\MenuGalleryController;
-use App\Http\Controllers\Branch\BranchAuthController;
-use App\Http\Controllers\Home\BranchUpdateController;
-use App\Http\Controllers\Home\LoyaltyPointController;
-use App\Http\Controllers\Admin\NotificationController;
-use App\Http\Controllers\Admin\TermConditionController;
-use App\Http\Controllers\Home\LoyalityPointsController;
-use App\Http\Controllers\Admin\OrderCompletionController;
-use App\Http\Controllers\Home\AuthController as HomeAuthController;
-use App\Http\Controllers\Admin\OrderController as AdminOrderController;
-use App\Http\Controllers\Admin\SalesController as AdminSalesController;
-use App\Http\Controllers\Branch\OrderController as BranchOrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -64,6 +65,10 @@ Route::get('/admin-forgot-password', [AdminController::class, 'forgetPassword'])
 Route::post('/admin-reset-password-link', [AdminController::class, 'adminResetPasswordLink'])->name('admin-reset-password-link');
 Route::get('admin/change_password/{id}', [AdminController::class, 'change_password'])->name('admin-change-password');
 Route::post('/admin-reset-password', [AdminController::class, 'ResetPassword'])->name('admin-reset-password');
+//Web Views
+   Route::get('/terms/conditions', [WebController::class, 'termsConditionspage'])->name('terms.conditions');
+   Route::get('/privacy/policy', [WebController::class, 'privacyPolicy'])->name('privacy.policy');
+   Route::get('/contact-us', [WebController::class, 'contactuspage'])->name('contact.us');
 
 Route::prefix('admin')->middleware('admin')->group(function () {
     Route::get('dashboard', [AdminController::class, 'getdashboard']);

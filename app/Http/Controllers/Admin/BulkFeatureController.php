@@ -19,7 +19,7 @@ class BulkFeatureController extends Controller
 
 	public function edit($id) 
 	{
-		$data = BulkFeatureDetail::first();
+		$data = BulkFeatureDetail::findOrFail($id);
 		return view('admin.bulkfeature.edit', compact('data'));
 	}
 
@@ -51,56 +51,54 @@ public function update(Request $request, $id)
         ]
     );
 
-    // 🔹 Bulk update products - صرف ان پروڈکٹس کو اپڈیٹ کریں جن کی rule null ہے
+    // 🔹 Bulk update products
     Product::with('variants')
-        ->whereNull('rule')  // صرف وہ پروڈکٹس جن کی rule null ہے
-        ->orWhere('rule', 'bulk')  // یا جن کی rule 'bulk' ہے
         ->chunk(200, function ($products) use ($action, $method, $amount) {
 
             foreach ($products as $product) {
-                
-                // 🔹 Save original price if null (product کی current price کو original_price میں محفوظ کریں)
-                if (is_null($product->original_price)) {
-                    $product->original_price = $product->price;
+
+                // 🔹 Determine base price
+                $basePrice = (float) $product->price;
+
+                // agar product price null ya 0 ho → first variant price use karo
+                if (($basePrice <= 0 || is_null($product->price)) && $product->variants->count() > 0) {
+                    $basePrice = (float) $product->variants->first()->price;
                 }
 
-                // 🔹 Calculate new price based on original_price
-                $basePrice = (float) $product->original_price;
+                // 🔹 Save original price only first time
+                if (is_null($product->original_price)) {
+                    $product->original_price = $basePrice;
+                }
 
-                // 🔹 Apply percentage/fixed logic
+                // 🔹 Apply percentage / fixed logic
                 if ($method === 'percentage') {
                     $change = ($basePrice * $amount) / 100;
                     $newPrice = $action === 'increase'
                         ? $basePrice + $change
                         : $basePrice - $change;
-                } else { // fixed amount
+                } else {
                     $newPrice = $action === 'increase'
                         ? $basePrice + $amount
                         : $basePrice - $amount;
                 }
 
-                // 🔹 Set rule
+                // ✅ FORCE rule = bulk for ALL products
                 $product->rule = 'bulk';
 
-                // 🔹 Set featured fields
+                // 🔹 Featured fields
                 $product->featured_amount = $amount;
                 $product->featured_method = $method;
                 $product->featured_action = $action;
 
-                // 🔹 Save final price
+                // 🔹 Save product price
                 $product->price = round(max(0, $newPrice), 2);
                 $product->save();
 
                 // 🔹 Update variants
                 if ($product->variants->count() > 0) {
                     foreach ($product->variants as $variant) {
-                        // Save original price for variant if null
-                        if (is_null($variant->original_price)) {
-                            $variant->original_price = $variant->price;
-                        }
-                        
-                        // Use variant's original price for calculation
-                        $variantBase = (float) $variant->original_price;
+
+                        $variantBase = (float) $variant->price;
 
                         if ($method === 'percentage') {
                             $change = ($variantBase * $amount) / 100;
@@ -120,7 +118,8 @@ public function update(Request $request, $id)
             }
         });
 
-    return redirect()->back()->with('success', 'Prices updated successfully');
+    return redirect()->route('bulk-feature.index')
+        ->with('message', 'Prices updated successfully');
 }
 
 }

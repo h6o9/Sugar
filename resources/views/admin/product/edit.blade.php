@@ -113,12 +113,6 @@
             </div>
         </div>
 
-        {{-- Rule --}}
-<div class="col-12 mt-2">
-    <input type="text" name="rule" id="rule" class="form-control form-control-lg" readonly
-        value="{{ ucfirst($product->rule == 'Priority' ? 'Individual' : $product->rule) }}">
-</div>
-
     </div>
     @error('featured_amount')
         <small class="text-danger">{{ $message }}</small>

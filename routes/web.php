@@ -69,6 +69,13 @@ Route::post('/admin-reset-password', [AdminController::class, 'ResetPassword'])-
    Route::get('/terms/conditions', [WebController::class, 'termsConditionspage'])->name('terms.conditions');
    Route::get('/privacy/policy', [WebController::class, 'privacyPolicy'])->name('privacy.policy');
    Route::get('/contact-us', [WebController::class, 'contactuspage'])->name('contact.us');
+   // social auth routes
+Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])->name('google.login');
+Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback']);
+
+// Notifications Web
+Route::get('/notifications', [NotificationController::class, 'Webindex'])->name('notifications.index');
+
 
 Route::prefix('admin')->middleware('admin')->group(function () {
     Route::get('dashboard', [AdminController::class, 'getdashboard']);
@@ -86,13 +93,8 @@ Route::prefix('admin')->middleware('admin')->group(function () {
     // Branch Views End
 
 		// Web Notifications
-Route::get('/notifications', [NotificationController::class, 'Webindex'])->name('notifications.index');
 Route::post('/notifications/mark-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark.read');
 Route::get('/notifications/clear-all-notification', [NotificationController::class, 'clearAllNotifications'])->name('notifications.clear');
-
-// social auth routes
-Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle']);
-Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback']);
 
 	// Order Completion Rewards
 	Route::get('/completion-order', [OrderCompletionController::class, 'orderCompletion'])->name('order-completion');
@@ -214,6 +216,8 @@ Route::prefix('branch')->middleware('auth:branch')->group(function () {
 });
 
 //  Branch Auth Routes End
+
+
 
 Route::get('/login', [HomeAuthController::class, 'getlogin'])->name('login');
 Route::post('users/login', [HomeAuthController::class, 'userLogin']);

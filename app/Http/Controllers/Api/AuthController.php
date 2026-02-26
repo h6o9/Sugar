@@ -41,6 +41,8 @@ public function register(Request $request)
                 'password'  => Hash::make($request->password),
 				'latitude'  => $request->latitude,
 				'longitude' => $request->longitude,
+				'address'  => $request->address,
+				'postcode' => $request->postcode,
             ]
         );
 

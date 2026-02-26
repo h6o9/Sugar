@@ -172,7 +172,7 @@ if (Auth::guard('user')->check()) {
                 </div>
                 <!-- UPDATED: Disable View All Notifications if no notifications -->
                 <div class="pt-3 border-top mt-1 text-center">
-                    <a href="{{ route('notifications.index') }}" class="btn btn-danger px-5 {{ $notificationCount == 0 ? 'disabled' : '' }}">
+                    <a href="{{ route('web.notifications.index') }}" class="btn btn-danger px-5 {{ $notificationCount == 0 ? 'disabled' : '' }}">
                         View All Notifications
                     </a>
                 </div>

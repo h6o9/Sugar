@@ -175,9 +175,10 @@ class NotificationController extends Controller
 	// Web Notifications
 	 public function Webindex()
     {
-        if (!Auth::guard('user')->check()) {
-            return redirect()->route('login');
-        }
+		
+        // if (!Auth::guard('user')->check()) {
+        //     return redirect()->route('login');
+        // }
 
         $userId = Auth::guard('user')->id();
         

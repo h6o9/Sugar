@@ -9,6 +9,22 @@
                         <div class="p-xl-5 p-4 wow fadeInUp light-box-shadow" data-wow-delay="0.2s">
                             <h5 class="section-title ff-secondary text-start text-dark fw-normal">Login</h5>
                             <h1 class="text-dark mb-4">Welcome back! Your Sugar Pappi cravings await.</h1>
+                            
+                            <!-- Add this div for error messages -->
+                            @if(session('error'))
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    {{ session('error') }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            @endif
+                            
+                            @if(session('status'))
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    {{ session('message') }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            @endif
+                            
                             <form method="POST" action="{{ url('users/login') }}" id="loginForm">
                                 @csrf
                                 <div class="row g-3">
@@ -49,6 +65,18 @@
                                         </div>  --}}
                                         <button class="btn btn-primary w-100 py-3" type="submit"
                                             id="loginButton">Login</button>
+                                        
+                                        <!-- Divider with "OR" -->
+                                        <div class="position-relative my-4">
+                                            <hr class="text-dark">
+                                            <div class="position-absolute top-50 start-50 translate-middle bg-primary px-3 text-dark">OR</div>
+                                        </div>
+                                        
+                                        <!-- Google Login Button -->
+                                        <a href="{{ route('google.login') }}" class="btn btn-outline-danger w-100 py-3 mb-3 d-flex align-items-center justify-content-center gap-2">
+                                            <i class="fab fa-google"></i> Login with Google
+                                        </a>
+                                        
                                         <h5 class="text-dark text-center mt-4 mb-0">New User? <a
                                                 href="{{ route('getRegistor') }}" class="text-dark">Sign Up</a></h5>
                                     </div>
@@ -88,6 +116,18 @@
 
                 this.submit();
             });
+
+            // Password toggle functionality
+            const togglePassword = document.querySelector('.toggle-password');
+            if (togglePassword) {
+                togglePassword.addEventListener('click', function() {
+                    const passwordInput = document.querySelector(this.getAttribute('toggle'));
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.classList.toggle('fa-eye');
+                    this.classList.toggle('fa-eye-slash');
+                });
+            }
         });
     </script>
 @endsection

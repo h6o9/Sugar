@@ -87,28 +87,40 @@ class AuthController extends Controller
         return view('home.my-profile', compact('user'));
     }
 
-    public function updateProfile(Request $request, $id)
-    {
-        $request->validate([
-            'name' => 'required',
-            'email' => 'required',
-            'password' => 'nullable|confirmed',
-        ]);
-        $user = User::find($id);
-        if ($request->password == $request->password_confirmation && $request->password !== null) {
-            $data = [
-                'name' => $request->name,
-                'password' => bcrypt($request->password),
-            ];
-        } else {
-            $data = [
-                'name' => $request->name,
-            ];
-        }
-        $user->update($data);
+ public function updateProfile(Request $request, $id)
+{
+    // ✅ Validation
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|max:255',
+        'phone' => 'nullable|string|max:20',
+        'address' => 'nullable|string|max:255',
+        'postcode' => 'nullable|string|max:20',
+        'password' => 'nullable|confirmed|min:6',
+    ]);
 
-        return redirect()->back()->with('message', 'Profile updated successfully!');
+    // ✅ Find User
+    $user = User::findOrFail($id);
+
+    // ✅ Base Data
+    $data = [
+        'name'     => $request->name,
+        'email'    => $request->email,
+        'phone'    => $request->phone,
+        'address'  => $request->address,
+        'postcode' => $request->postcode,
+    ];
+
+    // ✅ Password update only if entered
+    if (!empty($request->password)) {
+        $data['password'] = bcrypt($request->password);
     }
+
+    // ✅ Update
+    $user->update($data);
+
+    return redirect()->back()->with('message', 'Profile updated successfully!');
+}
     public function forgotPassword()
     {
         return view('home.auth.forgot-password');

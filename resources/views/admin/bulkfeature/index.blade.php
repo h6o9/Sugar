@@ -10,7 +10,7 @@
                             <div class="card-header">
                                 <div class="col-12">
                                     <h4>Bulk Feature Settings <small class="font-weight-bold text-danger">
-								(Use this feature to adjust the prices of all products at once, either by a fixed amount or a percentage. Products that already have individual price settings will retain their custom prices and will not be affected by this bulk feature update.)
+								(Use this feature to adjust the prices of all products at once, either by a fixed amount or a percentage. Products that already have individual price settings will retain their adjustment prices and will not be affected by this bulk feature update.)
 								</small>
 								</h4>
                                 </div>

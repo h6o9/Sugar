@@ -21,7 +21,8 @@
                                             <th>Menu Name</th>
                                             <th>Product Name</th>
                                             <th>image</th>
-                                            <th>Price</th>
+                                            <th>Base Price</th>
+											<th>Adjustment Price</th>
                                             <th>Sizes</th>
 											<th>Settings Applied</th>
                                             {{-- <th>Description</th> --}}
@@ -41,18 +42,26 @@
                                                     <img src="{{ asset($product->image) }}" alt="" height="50"
                                                         width="50" class="image">
                                                 </td>
-                                                <td>
-                                                    @if ($product->variants->isNotEmpty())
-                                                        @php $prices = $product->variants->pluck('price')->filter()->implode(', $'); @endphp
-                                                        @if ($prices)
-                                                            £{{ $prices }}
-                                                        @else
-                                                            £{{ $product->price }}
-                                                        @endif
-                                                    @else
-                                                        £{{ $product->price }}
-                                                    @endif
-                                                </td>
+                                               <td>
+													@if ($product->variants->isNotEmpty())
+
+														@php
+															$prices = $product->variants
+																->pluck('original_price')
+																->filter()
+																->map(function ($price) {
+																	return rtrim(rtrim(number_format($price, 2, '.', ''), '0'), '.');
+																})
+																->implode(', £');
+														@endphp
+
+														£{{ $prices ?: rtrim(rtrim(number_format($product->original_price, 2, '.', ''), '0'), '.') }}
+
+													@else
+														£{{ rtrim(rtrim(number_format($product->original_price, 2, '.', ''), '0'), '.') }}
+													@endif
+												</td>
+												<td> @if ($product->variants->isNotEmpty()) @php $prices = $product->variants->pluck('price')->filter()->implode(', $'); @endphp @if ($prices) £{{ $prices }} @else £{{ $product->price }} @endif @else £{{ $product->price }} @endif </td>
                                                 <td>
                                                     @if ($product->variants->isNotEmpty())
                                                         @php
@@ -70,28 +79,34 @@
                                                 </td>
                                                 {{-- <td>{!! $product->description !!}</td> --}}
 												<td>
-														@php
-															$rule = $product->rule == 'Priority'
-																		? 'Individual'
-																		: ucfirst($product->rule);
-														@endphp
+    @php
+        $ruleValue = $product->rule ?? null;
+        $rule = $ruleValue == 'Priority'
+                    ? 'Individual'
+                    : ucfirst($ruleValue);
+    @endphp
 
-														@if(strtolower($product->rule) == 'bulk')
-															<span class="badge badge-success badge-shadow">
-																{{ ucfirst($product->rule) }}
-															</span>
+    @if(empty($ruleValue))
+        <span class="badge badge-primary badge-shadow">
+            No Settings Applied
+        </span>
 
-														@elseif($product->rule == 'Priority')
-															<span class="badge badge-danger badge-shadow">
-																{{ $rule }}
-															</span>
+    @elseif(strtolower($ruleValue) == 'bulk')
+        <span class="badge badge-success badge-shadow">
+            {{ ucfirst($ruleValue) }}
+        </span>
 
-														@else
-															<span class="badge badge-secondary badge-shadow">
-																{{ $rule }}
-															</span>
-														@endif
-												</td>
+    @elseif($ruleValue == 'Priority')
+        <span class="badge badge-danger badge-shadow">
+            {{ $rule }}
+        </span>
+
+    @else
+        <span class="badge badge-secondary badge-shadow">
+            {{ $rule }}
+        </span>
+    @endif
+</td>
 												<td>
                                                     @if ($product->is_featured)
                                                         <a href="{{ route('admin.featured', ['id' => $product->id]) }}"

@@ -70,6 +70,8 @@ public function update(Request $request, $id)
                     $product->original_price = $basePrice;
                 }
 
+				$basePrice = $product->original_price;
+
                 // 🔹 Apply percentage / fixed logic
                 if ($method === 'percentage') {
                     $change = ($basePrice * $amount) / 100;
@@ -98,7 +100,11 @@ public function update(Request $request, $id)
                 if ($product->variants->count() > 0) {
                     foreach ($product->variants as $variant) {
 
-                        $variantBase = (float) $variant->price;
+                         if (is_null($variant->original_price)) {
+								$variant->original_price = $variant->price;
+							}
+
+							$variantBase = (float) $variant->original_price;
 
                         if ($method === 'percentage') {
                             $change = ($variantBase * $amount) / 100;

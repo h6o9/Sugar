@@ -52,75 +52,103 @@
 </div>
 </div>
 
-{{-- Price & Variants --}}
+{{-- Variants / Price Adjustment --}}
 <div class="container">
 <div class="row">
 
-<div class="col-sm-6">
+<div class="col-sm-12">
 
-{{-- Price --}}
-<div class="form-group mb-2">
-<label>Price</label>
-<input type="text" name="price" id="price" class="form-control" placeholder="Enter Product Price" value="{{ $product->price }}">
-@error('price')
-<div class="text-danger">{{ $message }}</div>
-@enderror
-</div>
+@if($product->variants->isNotEmpty())
+{{-- VARIANTS TABLE --}}
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Size</th>
+            <th>Base Price (£)</th>
+            <th>Price Adjustment (£)</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="variantRows">
+        @foreach($product->variants as $variant)
+        <tr>
+            <td>
+                <input type="hidden" name="variant_ids[]" value="{{ $variant->id }}">
+                <input type="text" class="form-control sizeInput" name="sizes[]" value="{{ $variant->size }}">
+            </td>
+            <td>
+                <input type="text" class="form-control basePriceInput" name="base_prices[]" value="{{ $variant->original_price }}">
+            </td>
+            <td>
+                <input type="text" class="form-control priceAdjustmentInput" name="prices[]" value="{{ $variant->price }}" disabled>
+            </td>
+            <td>
+                <button type="button" class="btn btn-danger btn-sm removeVariantBtn">Delete</button>
+            </td>
+        </tr>
+        @endforeach
+    </tbody>
+</table>
 
-{{-- Variants --}}
-<div class="form-group">
-<button type="button" class="btn btn-primary mb-3" id="addSizeBtn">Add Variants</button>
-<div id="sizeInputs">
-@foreach ($product->variants as $variant)
-<div class="row justify-content-center mb-2">
-<input type="text" class="form-control col-5" name="sizes[]" placeholder="Enter Size" value="{{ $variant->size }}">
-<input type="text" class="form-control col-5 ml-2" name="prices[]" placeholder="Enter Price" value="{{ $variant->price }}">
-<button type="button" class="btn btn-danger ml-2 removeBtn"><i class="fas fa-trash-alt"></i></button>
+<button type="button" class="btn btn-primary mb-3" id="addSizeBtn">Add Variant</button>
+
+@else
+{{-- SINGLE PRODUCT --}}
+<div class="row mb-2">
+<div class="col-md-6">
+<label>Base Price (£)</label>
+<input type="text" class="form-control basePriceInput" name="original_price" value="{{ $product->original_price }}">
 </div>
-@endforeach
+<div class="col-md-6">
+<label>Price Adjustment (£)</label>
+<input type="text" class="form-control priceAdjustmentInput" name="price" value="{{ $product->price }}" disabled>
 </div>
+</div>
+@endif
+
 </div>
 
 {{-- Featured Section --}}
-<div class="form-group mb-3">
-    <label>Featured Settings (Optional)</label>
-    <div class="row g-3 align-items-center">
+<div class="form-group mb-3" style="margin-left: 19px;">
+<label>Featured Settings (Optional)</label>
+<div class="row g-3 align-items-center">
 
-        {{-- Action --}}
-        <div class="col-md-4 col-sm-6">
-            <select name="featured_action" id="featured_action" class="form-control form-control-lg">
-                <option value="" disabled {{ !$product->featured_action ? 'selected' : '' }}>Operation</option>
-                <option value="increase" {{ $product->featured_action=='increase' ? 'selected' : '' }}>Increase</option>
-                <option value="decrease" {{ $product->featured_action=='decrease' ? 'selected' : '' }}>Decrease</option>
-            </select>
-        </div>
-
-        {{-- Method --}}
-        <div class="col-md-4 col-sm-6">
-            <select name="featured_method" id="featured_method" class="form-control form-control-lg">
-                <option value="" disabled>Select Method</option>
-                <option value="percentage" {{ $product->featured_method=='percentage' ? 'selected' : '' }}>Percentage (%)</option>
-                <option value="fixed amount" {{ $product->featured_method=='fixed amount' ? 'selected' : '' }}>Fixed Amount (£)</option>
-            </select>
-        </div>
-
-        {{-- Amount --}}
-        <div class="col-md-4 col-sm-12">
-            <div class="input-group input-group-lg">
-                <input type="text" name="featured_amount" id="featured_amount" class="form-control"
-                    placeholder="Enter Amount" value="{{ $product->featured_amount }}">
-                <span class="input-group-text" id="featured_symbol"></span>
-            </div>
-        </div>
-
-    </div>
-    @error('featured_amount')
-        <small class="text-danger">{{ $message }}</small>
-    @enderror
+<div class="col-md-4 col-sm-6">
+<select name="featured_action" id="featured_action" class="form-control form-control-lg">
+<option value="" disabled {{ !$product->featured_action ? 'selected' : '' }}>Operation</option>
+<option value="increase" {{ $product->featured_action=='increase' ? 'selected' : '' }}>Increase</option>
+<option value="decrease" {{ $product->featured_action=='decrease' ? 'selected' : '' }}>Decrease</option>
+</select>
 </div>
-</div> {{-- col-sm-6 end --}}
+
+<div class="col-md-4 col-sm-6">
+<select name="featured_method" id="featured_method" class="form-control form-control-lg">
+<option value="" disabled>Select Method</option>
+<option value="percentage" {{ $product->featured_method=='percentage' ? 'selected' : '' }}>Percentage (%)</option>
+<option value="fixed amount" {{ $product->featured_method=='fixed amount' ? 'selected' : '' }}>Fixed Amount (£)</option>
+</select>
+</div>
+
+<div class="col-md-4 col-sm-12">
+<div class="input-group input-group-lg">
+<input type="text" name="featured_amount" id="featured_amount" class="form-control"
+       placeholder="Enter Amount" value="{{ $product->featured_amount }}">
+<span class="input-group-text" id="featured_symbol"></span>
+</div>
+</div>
+
+</div>
+@error('featured_amount')
+<small class="text-danger">{{ $message }}</small>
+@enderror
+</div>
+
+</div>
+</div>
 
 {{-- Right column --}}
+<div class="container mb-3">
+<div class="row">
 <div class="col-sm-6">
 <div class="form-group mb-2">
 <label>Image</label>
@@ -129,8 +157,9 @@
 <div class="text-danger">{{ $message }}</div>
 @enderror
 </div>
+</div>
 
-{{-- Toppings --}}
+<div class="col-sm-6">
 <div class="form-group mb-2">
 <label>Toppings Category (Optional)</label>
 <select class="form-control selectric" name="category_id[]" multiple>
@@ -139,13 +168,10 @@
 @endforeach
 </select>
 </div>
+</div>
+</div>
+</div>
 
-</div> {{-- col-sm-6 end --}}
-
-</div> {{-- row end --}}
-</div> {{-- container end --}}
-
-{{-- Submit --}}
 <div class="card-footer text-center">
 <button type="submit" class="btn btn-success">Update Product</button>
 </div>
@@ -160,7 +186,6 @@
 </body>
 @endsection
 
-{{-- ================= JS ================= --}}
 @section('js')
 @if (\Illuminate\Support\Facades\Session::has('message'))
 <script>
@@ -171,66 +196,53 @@ toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
 <script>
 $(document).ready(function() {
 
-    // VARIANTS
-    function checkPriceInput() {
-        $('#addSizeBtn').prop('disabled', $('#price').val().trim() !== '' && $('#sizeInputs').children().length === 0);
-        $('#price').prop('disabled', $('#sizeInputs').children().length > 0);
-    }
-
-    $('#price').keyup(checkPriceInput);
-
+    // Add new variant row
     $('#addSizeBtn').click(function() {
-        $('#sizeInputs').append('<div class="row justify-content-center mb-2"><input type="text" class="form-control col-5" name="sizes[]" placeholder="Enter Size"><input type="text" class="form-control col-5 ml-2" name="prices[]" placeholder="Enter Price"><button type="button" class="btn btn-danger ml-2 removeBtn"><i class="fas fa-trash-alt"></i></button></div>');
-        checkPriceInput();
+        $('#variantRows').append(`
+            <tr>
+                <td><input type="hidden" name="variant_ids[]" value=""><input type="text" class="form-control sizeInput" name="sizes[]" placeholder="Enter Size"></td>
+                <td><input type="text" class="form-control basePriceInput" name="base_prices[]" value="0"></td>
+                <td><input type="text" class="form-control priceAdjustmentInput" name="prices[]" value="0" disabled></td>
+                <td><button type="button" class="btn btn-danger btn-sm removeVariantBtn">Delete</button></td>
+            </tr>
+        `);
     });
 
-    $(document).on('click', '.removeBtn', function() {
-        $(this).parent().remove();
-        checkPriceInput();
+    // Delete variant row
+    $(document).on('click', '.removeVariantBtn', function() {
+        $(this).closest('tr').remove();
     });
 
-    // FEATURED INPUT GROUP
-  // FEATURED INPUT GROUP
-const method  = $('#featured_method');
-const amount  = $('#featured_amount');
-const symbol  = $('#featured_symbol');
+    // Featured input
+    const method  = $('#featured_method');
+    const amount  = $('#featured_amount');
+    const symbol  = $('#featured_symbol');
 
-function setSymbol() {
-    if(method.val() === 'percentage'){
-        symbol.text('%');
-    } else if(method.val() === 'fixed amount'){
-        symbol.text('£');
-    } else {
-        symbol.text('');
+    function setSymbol() {
+        if(method.val() === 'percentage'){ symbol.text('%'); } 
+        else if(method.val() === 'fixed amount'){ symbol.text('£'); } 
+        else { symbol.text(''); }
     }
-}
 
-setSymbol();
-
-method.on('change', function() {
     setSymbol();
-    if(method.val() === 'percentage'){
-        amount.attr('placeholder','Enter Percentage');
-    } else if(method.val() === 'fixed amount'){
-        amount.attr('placeholder','Enter Fixed Amount');
-    } else {
-        amount.attr('placeholder','Enter Amount');
-    }
-});
 
-// Numbers + decimal only
-amount.on('input', function() {
-    let val = $(this).val().replace(/[^0-9.]/g,'');
-    if((val.match(/\./g)||[]).length > 1){
-        val = val.slice(0,-1);
-    }
-    $(this).val(val);
-});
+    method.on('change', function() {
+        setSymbol();
+        if(method.val() === 'percentage'){ amount.attr('placeholder','Enter Percentage'); } 
+        else if(method.val() === 'fixed amount'){ amount.attr('placeholder','Enter Fixed Amount'); } 
+        else { amount.attr('placeholder','Enter Amount'); }
+    });
 
-// Before submit: remove symbols
-$('#update_product_form').on('submit', function() {
-    amount.val(amount.val().replace(/[£%]/g,''));
-});
+    // Only numbers + decimal
+    amount.on('input', function() {
+        let val = $(this).val().replace(/[^0-9.]/g,'');
+        if((val.match(/\./g)||[]).length > 1){ val = val.slice(0,-1); }
+        $(this).val(val);
+    });
+
+    $('#update_product_form').on('submit', function() {
+        amount.val(amount.val().replace(/[£%]/g,''));
+    });
 
 });
 </script>

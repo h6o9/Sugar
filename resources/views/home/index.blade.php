@@ -1324,6 +1324,7 @@
                 },
                 success: function(data) {
                     toastr.success('Product Added To Cart Successfully!');
+					location.reload();
                     // Update all cart counters in the header immediately
                     $('.cart-counter-1').text(Object.keys(data.cart).length);
                     // Update the cart UI

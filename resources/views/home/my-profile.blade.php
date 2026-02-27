@@ -26,6 +26,27 @@
                                         <label for="email">Your Email</label>
                                     </div>
                                 </div>
+								 <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="phone" name="phone"
+                                            placeholder="Your Phone Number" value="{{ $user->phone }}">
+                                        <label for="phone">Phone Number</label>
+                                    </div>
+                                </div>
+								 <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="postcode" name="postcode"
+                                            placeholder="Your Postcode" value="{{ $user->postcode }}">
+                                        <label for="postcode">Postcode</label>
+                                    </div>
+                                </div>
+								 <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="address" name="address"
+                                            placeholder="Your Address" value="{{ $user->address }}" >
+                                        <label for="address">Address</label>
+                                    </div>
+                                </div>
                                 <div class="col-md-6">
                                     <div class="form-floating">
                                         <input type="password" class="form-control" id="userPassword" name="password"

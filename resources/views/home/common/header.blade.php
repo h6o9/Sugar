@@ -210,9 +210,9 @@ if (Auth::guard('user')->check()) {
                     <p class="text-danger text-center">Your cart is empty!</p>
                     @endforelse
                 </div>
-                <!-- UPDATED: Disable Continue To Cart if cart empty -->
+                <!-- FIXED: Added class for JavaScript and dynamic disabled state -->
                 <div class="pt-3 border-top mt-1 text-center">
-                    <a href="{{ route('my-cart') }}" class="btn btn-danger px-5 {{ count(session('cart', [])) == 0 ? 'disabled' : '' }}">
+                    <a href="{{ route('my-cart') }}" class="btn btn-danger px-5 continue-cart-btn {{ count(session('cart', [])) == 0 ? 'disabled' : '' }}" id="continueCartBtn">
                         Continue To Cart
                     </a>
                 </div>
@@ -243,46 +243,105 @@ if (Auth::guard('user')->check()) {
 <script>
 $(document).ready(function(){
 
+    /* ==============================
+       UPDATE CART ON SERVER
+    ============================== */
     function updateServerCart(productId, variantId, quantity){
         $.post('{{ route("update.cart") }}', {
-            '_token':'{{ csrf_token() }}',
+            _token:'{{ csrf_token() }}',
             product_id: productId,
             variant_id: variantId,
             quantity: quantity
-        }, function(data){ console.log('Cart updated', data); });
+        });
     }
 
+    /* ==============================
+       CART UI SYNC FUNCTION (MAIN FIX)
+    ============================== */
     function helper(){
-        let total = 0;
-        $('.cart-input').each(function(){ total += parseInt($(this).val()); });
-        $('.cart-counter-1').text(total);
+
+        let totalQty = 0;
+
+        $('.cart-input').each(function(){
+            totalQty += parseInt($(this).val()) || 0;
+        });
+
+        // Update badge counter everywhere
+        $('.cart-counter-1').text(totalQty);
+
+        // Continue button enable / disable
+        let btn = $('#continueCartBtn');
+
+        if(totalQty > 0){
+            btn.removeClass('disabled');
+            btn.css('pointer-events','auto');
+            btn.css('opacity','1');
+        }else{
+            btn.addClass('disabled');
+            btn.css('pointer-events','none');
+            btn.css('opacity','0.6');
+        }
     }
 
-    $(document).on('click', '.increment-btn', function(){
+    /* ==============================
+       INCREMENT
+    ============================== */
+    $(document).on('click','.increment-btn',function(){
+
         let input = $(this).siblings('.increment-input');
-        let qty = parseInt(input.val())+1;
+        let qty = (parseInt(input.val()) || 0) + 1;
         input.val(qty);
 
         let data = $(this).data('product-id').split(',');
+
         updateServerCart(data[0].trim(), data[1]?.trim(), qty);
-        let price = parseFloat($(this).closest('.carting-child').find('.product-price').text());
-        $(this).closest('.carting-child').find('.total-price').text('£'+(price*qty).toFixed(2));
+
+        let parent = $(this).closest('.carting-child');
+        let price = parseFloat(parent.find('.product-price').text());
+
+        parent.find('.total-price')
+              .text('£' + (price * qty).toFixed(2));
+
         helper();
     });
 
-    $(document).on('click', '.decrement-btn', function(){
+    /* ==============================
+       DECREMENT
+    ============================== */
+    $(document).on('click','.decrement-btn',function(){
+
         let input = $(this).siblings('.increment-input');
-        let qty = parseInt(input.val());
-        if(qty>1){ 
-            qty--; input.val(qty);
-            let data = $(this).data('product-id').split(',');
+        let qty = parseInt(input.val()) || 0;
+
+        let data = $(this).data('product-id').split(',');
+        let parent = $(this).closest('.carting-child');
+        let price = parseFloat(parent.find('.product-price').text());
+
+        if(qty > 1){
+
+            qty--;
+            input.val(qty);
+
             updateServerCart(data[0].trim(), data[1]?.trim(), qty);
-            let price = parseFloat($(this).closest('.carting-child').find('.product-price').text());
-            $(this).closest('.carting-child').find('.total-price').text('£'+(price*qty).toFixed(2));
-            helper();
+
+            parent.find('.total-price')
+                  .text('£' + (price * qty).toFixed(2));
+
+        }else{
+            // REMOVE ITEM WHEN QTY = 0
+            parent.remove();
+
+            updateServerCart(data[0].trim(), data[1]?.trim(), 0);
         }
+
+        helper();
     });
 
+    /* ==============================
+       INITIAL LOAD SYNC
+    ============================== */
     helper();
+
 });
 </script>
+<!-- Navbar End -->

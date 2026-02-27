@@ -38,7 +38,6 @@ use App\Http\Controllers\Home\OrderController;
 use App\Http\Controllers\Home\SecurityController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\WebController;
-use App\Models\Notification;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -59,22 +58,24 @@ Route::get('/', function () {
 /*
 Admin routes
  * */
+// Notification 
+Route::get('/user/notifications', [NotificationController::class, 'Webindex'])->name('web.notifications.index');
+Route::get('/import-products', [ProductController::class, 'importProducts']);
 Route::get('/admin-login', [AuthController::class, 'getLoginPage'])->name('admin-login');
 Route::post('admin/login', [AuthController::class, 'Login']);
 Route::get('/admin-forgot-password', [AdminController::class, 'forgetPassword']);
 Route::post('/admin-reset-password-link', [AdminController::class, 'adminResetPasswordLink'])->name('admin-reset-password-link');
 Route::get('admin/change_password/{id}', [AdminController::class, 'change_password'])->name('admin-change-password');
 Route::post('/admin-reset-password', [AdminController::class, 'ResetPassword'])->name('admin-reset-password');
+	//Social Login
+	Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])->name('google.login');
+	Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback']);
+
 //Web Views
    Route::get('/terms/conditions', [WebController::class, 'termsConditionspage'])->name('terms.conditions');
    Route::get('/privacy/policy', [WebController::class, 'privacyPolicy'])->name('privacy.policy');
    Route::get('/contact-us', [WebController::class, 'contactuspage'])->name('contact.us');
-   // social auth routes
-Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])->name('google.login');
-Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback']);
-
-// Notifications Web
-Route::get('/notifications', [NotificationController::class, 'Webindex'])->name('notifications.index');
+      Route::get('/faq-page', [WebController::class, 'faqpage'])->name('faq.page');
 
 
 Route::prefix('admin')->middleware('admin')->group(function () {
@@ -92,11 +93,48 @@ Route::prefix('admin')->middleware('admin')->group(function () {
     Route::delete('/branch-delete/{id}', [BranchController::class, 'destroy'])->name('branch-delete');
     // Branch Views End
 
-		// Web Notifications
+    // User Views
+    Route::get('user', [UserController::class, 'userView'])->name('users.index');
+    Route::get('user/rewards/{id}', [UserController::class, 'rewards'])->name('rewards');
+    Route::delete('/user-delete/{id}', [UserController::class, 'destroy'])->name('users-delete');
+    // User Views End
+
+    /** resource controller */
+    Route::resource('menu', MenuController::class);
+    Route::resource('topping', ToppingController::class);
+    Route::resource('category', CategoryController::class);
+    Route::get('category/toppings/{id}', [CategoryController::class , 'toppings'])->name('category-toppings');
+    Route::post('category/toppingAssign', [CategoryController::class , 'toppingStore'])->name('toppingAssign');
+    Route::delete('toppingDestroy/{id}', [CategoryController::class , 'toppingDestroy'])->name('toppingDestroy');
+    Route::resource('product', ProductController::class);
+    Route::get('product/status/{id}', [ProductController::class, 'status'])->name('admin.status');
+    Route::resource('gallery', GalleryController::class);
+    Route::resource('policy', PolicyController::class);
+    Route::resource('terms', TermConditionController::class);
+    Route::resource('faq', FaqController::class);
+    Route::get('/featured/{id}', [ProductController::class, 'toggleFeatured'])->name('admin.featured');
+
+    //Time Slots
+    Route::get('time-slots', [TimeController::class, 'index'])->name('time-slot.index');
+    Route::post('add-slots', [TimeController::class, 'store'])->name('time-slot.store');
+    // Orders
+    Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
+    // Sales
+    Route::get('sales', [AdminSalesController::class, 'salesIndex'])->name('sales.index');
+    Route::get('dailySales/{id}', [AdminSalesController::class, 'showSales'])->name('admindailySalesDetails');
+    Route::get('weeklySales/{id}', [AdminSalesController::class, 'showWeeklySales'])->name('adminweeklySalesDetails');
+    Route::get('monthlySales/{id}', [AdminSalesController::class, 'showMonthlySales'])->name('adminmonthlySalesDetails');
+    Route::get('yearlySales/{id}', [AdminSalesController::class, 'showYearlySales'])->name('adminyearlySalesDetails');
+
+
+			// Web Notifications
+Route::get('/notifications', [NotificationController::class, 'Webindex'])->name('notifications.index');
 Route::post('/notifications/mark-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark.read');
 Route::get('/notifications/clear-all-notification', [NotificationController::class, 'clearAllNotifications'])->name('notifications.clear');
 
-	// Order Completion Rewards
+
+
+// Order Completion Rewards
 	Route::get('/completion-order', [OrderCompletionController::class, 'orderCompletion'])->name('order-completion');
 	Route::get('/completion-order-edit/{id}', [App\Http\Controllers\Admin\OrderCompletionController::class, 'EditorderCompletion'])->name('edit-order-completion');
 	Route::post('/update-completion-order/{id}', [App\Http\Controllers\Admin\OrderCompletionController::class, 'UpdateorderCompletion'])->name('update-order-completion');
@@ -114,58 +152,6 @@ Route::get('/notifications/clear-all-notification', [NotificationController::cla
 	Route::get('/bulk-feature-settings', [BulkFeatureController::class, 'index'])->name('bulk-feature.index');
 	Route::get('/bulk-feature-settings-edit/{id}', [BulkFeatureController::class, 'edit'])->name('edit-bulk-feature-settings');
 	Route::post('/update-bulk-feature-settings/{id}', [BulkFeatureController::class, 'update'])->name('update-bulk-feature-settings');
-
-	//Notification Routes
-	    Route::controller(NotificationController::class)->group(function () {
-	  Route::get('/notification',  'index')->name('notification.index');
-
-        Route::post('/notification-store',  'store')->name('notification.store');
-
-        Route::delete('/notification-destroy/{id}',  'destroy')->name('notification.destroy');
-        Route::delete('/notifications/delete-all', 'deleteAll')->name('notifications.deleteAll');
-        Route::get('/get-users-by-type', 'getUsersByType');
-    });
-
-	Route::post('/notification/mark-as-read', function (Request $request) {
-    Notification::where('id', $request->id)
-        ->update(['seenByUser' => 1]);
-
-    return response()->json(['success' => true]);
-})->name('notification.read');
-    // User Views
-    Route::get('user', [UserController::class, 'userView'])->name('users.index');
-    Route::get('user/rewards/{id}', [UserController::class, 'rewards'])->name('rewards');
-    Route::delete('/user-delete/{id}', [UserController::class, 'destroy'])->name('users-delete');
-    // User Views End
-
-
-    /** resource controller */
-    Route::resource('menu', MenuController::class);
-    Route::resource('topping', ToppingController::class);
-    Route::resource('category', CategoryController::class);
-    Route::get('category/toppings/{id}', [CategoryController::class , 'toppings'])->name('category-toppings');
-    Route::post('category/toppingAssign', [CategoryController::class , 'toppingStore'])->name('toppingAssign');
-    Route::delete('toppingDestroy/{id}', [CategoryController::class , 'toppingDestroy'])->name('toppingDestroy');
-    Route::resource('product', ProductController::class);
-    Route::get('product/status/{id}', [ProductController::class, 'status'])->name('admin.status');
-    Route::resource('gallery', GalleryController::class);
-    Route::resource('policy', PolicyController::class);
-    Route::resource('terms', TermConditionController::class);
-    Route::resource('faq', FaqController::class);
-    Route::get('/featured/{id}', [ProductController::class, 'toggleFeatured'])->name('admin.featured');
-Route::post('/update-branch-status', [CartController::class, 'updateBranchStatus'])->name('update.branch.status');
-
-    //Time Slots
-    Route::get('time-slots', [TimeController::class, 'index'])->name('time-slot.index');
-    Route::post('add-slots', [TimeController::class, 'store'])->name('time-slot.store');
-    // Orders
-    Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
-    // Sales
-    Route::get('sales', [AdminSalesController::class, 'salesIndex'])->name('sales.index');
-    Route::get('dailySales/{id}', [AdminSalesController::class, 'showSales'])->name('admindailySalesDetails');
-    Route::get('weeklySales/{id}', [AdminSalesController::class, 'showWeeklySales'])->name('adminweeklySalesDetails');
-    Route::get('monthlySales/{id}', [AdminSalesController::class, 'showMonthlySales'])->name('adminmonthlySalesDetails');
-    Route::get('yearlySales/{id}', [AdminSalesController::class, 'showYearlySales'])->name('adminyearlySalesDetails');
 
 
     // Menu Gallery
@@ -217,8 +203,6 @@ Route::prefix('branch')->middleware('auth:branch')->group(function () {
 
 //  Branch Auth Routes End
 
-
-
 Route::get('/login', [HomeAuthController::class, 'getlogin'])->name('login');
 Route::post('users/login', [HomeAuthController::class, 'userLogin']);
 Route::get('getRegistor', [HomeAuthController::class, 'getRegistor'])->name('getRegistor');
@@ -239,11 +223,23 @@ Route::prefix('user')->middleware('user')->group(function () {
     Route::get('user-logout', [HomeAuthController::class, 'userLogout'])->name('user-logout');
 });
 
+//Notification Routes
+	    Route::controller(NotificationController::class)->group(function () {
+	  Route::get('/admin/notification',  'index')->name('notification.index');
+
+        Route::post('/notification-store',  'store')->name('notification.store');
+
+        Route::delete('/notification-destroy/{id}',  'destroy')->name('notification.destroy');
+        Route::delete('/notifications/delete-all', 'deleteAll')->name('notifications.deleteAll');
+        Route::get('/get-users-by-type', 'getUsersByType');
+    });
+
+
+
 // notification seen route
 Route::get('/mark-all-as-read', [OrderController::class, 'markAllAsRead'])->name('markAllAsRead');
 
 Route::get('checkout', [CheckoutController::class, 'getCheckout'])->name('checkout');
-Route::post('/store-tip-delivery', [CartController::class, 'storeTipAndDelivery'])->name('store.tip.delivery');
 Route::get('getcontact', [HomeAuthController::class, 'getcontact'])->name('getcontact');
 Route::get('refresh_captcha', [HomeAuthController::class,'refreshCaptcha'])->name('refresh_captcha');
 Route::post('sendMail', [HomeController::class, 'sendMail'])->name('sendMail');

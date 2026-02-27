@@ -74,4 +74,9 @@ return view('web.contactpage', [
     return view('web.contact');
 }
 
+public function faqpage() {
+	$data = faq::all();
+	return view('web.faq', compact('data'));
+}
+
 }

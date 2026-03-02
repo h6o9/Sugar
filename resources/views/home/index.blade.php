@@ -337,174 +337,195 @@
 
         <!--Food Modal Start -->
         @foreach ($products as $product)
-            <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
-                <div class="modal fade menu-modal" id="menuModal-{{ $product->id }}" tabindex="-1"
-                    aria-labelledby="exampleModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                        <div class="modal-content">
-                            <div class="modal-body p-0 scrollable">
-                                <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                <img class="w-100" src="{{ asset($product->image) }}" alt="product-img">
-                                <div class="p-3 description">
-                                    <h3>{{ $product->name }}</h3>
+    @php
+        $originalPrice = $product->original_price ?? $product->price;
+        $finalPrice = $product->price;
+        $discountPercent = 0;
+        $hasDiscount = false;
 
-                                    @if (count($product->variants) > 0)
-                                        <p>£ <span class="prodPrice">{{ $product->variants->first()->price }}</span></p>
+        if ($product->featured_action == 'decrease' && $product->original_price && $product->original_price > $product->price) {
+            $hasDiscount = true;
+            if ($product->featured_method == 'percentage') {
+                $discountPercent = (int) $product->featured_amount;
+            }
+        }
+    @endphp
+    <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
+        <div class="modal fade menu-modal" id="menuModal-{{ $product->id }}" tabindex="-1"
+            aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-body p-0 scrollable">
+                        <input type="hidden" name="product_id" value="{{ $product->id }}">
+                        <div class="position-relative">
+                            <img class="w-100" src="{{ asset($product->image) }}" alt="product-img">
+                            @if($hasDiscount)
+                                <span class="badge bg-danger position-absolute top-0 end-0 m-3 fs-6">{{ $discountPercent }}% OFF</span>
+                            @endif
+                        </div>
+                        <div class="p-3 description">
+                            <h3>{{ $product->name }}</h3>
 
-                                        <select class="form-control bg-white ps-1 select-size" name="variant_id"
-                                            id="sizeSelect" style="appearance: auto">
-                                            @foreach ($product->variants as $variant)
-                                                <option value="{{ $variant->id }} {{ $variant->price }}">
-                                                    {{ $variant->size }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        <h6 class="small mt-1 mb-3">Note: Prices vary depending on the selected size</h6>
-                                    @else
-                                        <p>£ <span class="prodPrice">{{ $product->price }}</span></p>
-                                    @endif
-
-                                    {{-- <p class="small">{!! $product->description !!}</p> --}}
-                                    <div class="d-flex cart-btn">
-                                        <button class="btn p-0 decrement" type="button">-</button>
-                                        <input type="text" class="cart_input increment-input text-center"
-                                            value="1" name="quantity" id="quantity_{{ $product->id }}">
-                                        <button class="btn p-0 increment" type="button">+</button>
-                                    </div>
-                                </div>
-
-                                <!-- Location Start -->
-                                <div class="description p-3">
-                                    <div class="d-flex justify-content-between">
-                                        <h6 class="">How to get it</h6>
-                                        <h6 class="text-danger">Required</h6>
-                                    </div>
-                                    
-                                        <div class="form-check">
-                                            {{-- <input class="mt-0 loc-input form-check-input" type="radio" checked
-                                                id="location-1" name="location"> --}}
-                                        </div>
-                                        {{-- <label for="location-1" class="ms-1" style="cursor: pointer">
-                                         <p class="small h6">Store Pickup</p> --}}
-
-                                                @foreach ($branches as $index => $branch)
-                                                    @if ($branch->status == 1)
-                                                        <div class="branch-option mb-3">
-                                                            <input type="hidden" name="branch_id" value="{{ $branch->id }}">
-
-                                                            {{-- Store Pickup Option --}}
-                                                            <div class="form-check">
-                                                                <input class="form-check-input" 
-                                                                    type="radio" 
-                                                                    name="status_{{ $product->id }}" {{-- unique per product --}}
-                                                                    id="pickupStatus{{ $product->id }}_{{ $branch->id }}" 
-                                                                    value="1" 
-                                                                    checked 
-                                                                    onchange="toggleDelivery('{{ $product->id }}', '{{ $branch->id }}')">
-                                                                <label class="form-check-label fw-bold small" for="pickupStatus{{ $product->id }}_{{ $branch->id }}">
-                                                                    Store Pickup
-                                                                </label>
-                                                            </div>
-
-                                                            {{-- Store Pickup Address --}}
-                                                            <p class="small fw-bold m-0 sel-location mt-1" id="storePickupSection{{ $product->id }}_{{ $branch->id }}">
-                                                                <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($branch->location) }}" 
-                                                                target="_blank" 
-                                                                style="text-decoration: none; color: inherit;">
-                                                                    {{ $branch->location }}
-                                                                </a>
-                                                            </p>
-
-                                                            {{-- Home Delivery Option --}}
-                                                            <div class="form-check mt-3">
-                                                                <input class="form-check-input" 
-                                                                    type="radio" 
-                                                                    name="status_{{ $product->id }}" 
-                                                                    id="homeStatus{{ $product->id }}_{{ $branch->id }}" 
-                                                                    value="2" 
-                                                                    onchange="toggleDelivery('{{ $product->id }}', '{{ $branch->id }}')">
-                                                                <label class="form-check-label fw-bold small" for="homeStatus{{ $product->id }}_{{ $branch->id }}">
-                                                                    Home Delivery
-                                                                </label>
-                                                            </div>
-
-                                                            {{-- Delivery Address Input --}}
-                                                            <div id="deliveryAddressField{{ $product->id }}_{{ $branch->id }}" class="mt-2" style="display: none;">
-                                                                <input type="text" name="delivery_address_{{ $product->id }}" class="form-control" placeholder="Enter your delivery address">
-                                                            </div>
-                                                        </div>
-                                                    @endif
-                                                @endforeach
-                                            <input type="hidden" id="orderLocation" name="address"
-                                                value="2562 Central Park Av yonkers, NY">
-                                            {{-- <h6 class="mt-2 mb-0 chose-location"><a href="#" data-bs-toggle="modal"
-                                        data-bs-target="#locationModal">Choose different
-                                        location</a></h6> --}}
-                                        {{-- </label> --}}
-                                    
-                                </div>
-                                <!-- Location End -->
-
-                                <!-- Toppings Start-->
-                                @if ($product->category->isNotEmpty())
-                                    @foreach ($product->category as $index => $category)
-                                        <div class="description p-3">
-                                            <div class="arrow" style="cursor: pointer" data-bs-toggle="collapse"
-                                                data-bs-target="#topping{{ $index }}{{ $category->id }}">
-                                                <div class="d-flex justify-content-between">
-                                                    <h6 class="m-0">{{ $category->getCategory->name }}</h6>
-                                                    <h6 class="fw-normal m-0 d-flex align-items-center">Optional
-                                                        <span class="h5 m-0 p-0 ri-arrow-up-s-line"></span>
-                                                    </h6>
-                                                </div>
-                                            </div>
-                                            <div class="collapse show"
-                                                id="topping{{ $index }}{{ $category->id }}">
-                                                @php
-                                                    $categoryToppings = App\Models\CategoryTopping::where(
-                                                        'category_id',
-                                                        $category->getCategory->id,
-                                                    )->get();
-                                                @endphp
-                                                @foreach ($categoryToppings as $categoryTopping)
-                                                    <div class="d-flex justify-content-between">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox"
-                                                                name="toppings[]"
-                                                                id="toppingchek{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}"
-                                                                value="{{ $categoryTopping->topping->id }}"
-                                                                data-category-id="{{ $category->getCategory->id }}">
-                                                            <label class="form-check-label m-0"
-                                                                for="toppingchek{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}">
-                                                                {{ $categoryTopping->topping->name }}
-                                                            </label>
-                                                        </div>
-                                                        <p class="m-0">
-                                                            {{ isset($categoryTopping->topping->price) ? '£' . $categoryTopping->topping->price : '' }}
-                                                        </p>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    @endforeach
+                            @if (count($product->variants) > 0)
+                                @if($hasDiscount)
+                                    <p>
+                                        <span class="text-muted text-decoration-line-through">£{{ number_format($originalPrice, 2) }}</span>
+                                        <br>
+                                        <span class="text-danger fw-bold prodPrice">£{{ number_format($finalPrice, 2) }}</span>
+                                    </p>
+                                @else
+                                    <p>£ <span class="prodPrice">{{ $product->variants->first()->price }}</span></p>
                                 @endif
-                                <!-- Toppings End -->
+
+                                <select class="form-control bg-white ps-1 select-size" name="variant_id"
+                                    id="sizeSelect" style="appearance: auto">
+                                    @foreach ($product->variants as $variant)
+                                        <option value="{{ $variant->id }} {{ $variant->price }}">
+                                            {{ $variant->size }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <h6 class="small mt-1 mb-3">Note: Prices vary depending on the selected size</h6>
+                            @else
+                                @if($hasDiscount)
+                                    <p>
+                                        <span class="text-muted text-decoration-line-through">£{{ number_format($originalPrice, 2) }}</span>
+                                        <br>
+                                        <span class="text-danger fw-bold prodPrice">£{{ number_format($finalPrice, 2) }}</span>
+                                    </p>
+                                @else
+                                    <p>£ <span class="prodPrice">{{ $product->price }}</span></p>
+                                @endif
+                            @endif
+
+                            {{-- <p class="small">{!! $product->description !!}</p> --}}
+                            <div class="d-flex cart-btn">
+                                <button class="btn p-0 decrement" type="button">-</button>
+                                <input type="text" class="cart_input increment-input text-center"
+                                    value="1" name="quantity" id="quantity_{{ $product->id }}">
+                                <button class="btn p-0 increment" type="button">+</button>
                             </div>
-                            <div class="modal-footer position-relative px-2">
-                                <button type="button"
-                                    style="font-size: 24px;position: absolute;left: 0;width: 30px;height: 30px;display: flex;justify-content: center;align-items: center"
-                                    class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
-                                    data-bs-dismiss="modal"></button>
-                                <div class="text-center mx-auto">
-                                    <button class="btn btn-danger addto-cart px-sm-5 px-4" data-bs-dismiss="modal">Add To
-                                        Order</button>
+                        </div>
+
+                        <!-- Location Start -->
+                        <div class="description p-3">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="">How to get it</h6>
+                                <h6 class="text-danger">Required</h6>
+                            </div>
+                            
+                            @foreach ($branches as $index => $branch)
+                                @if ($branch->status == 1)
+                                    <div class="branch-option mb-3">
+                                        <input type="hidden" name="branch_id" value="{{ $branch->id }}">
+
+                                        {{-- Store Pickup Option --}}
+                                        <div class="form-check">
+                                            <input class="form-check-input" 
+                                                type="radio" 
+                                                name="status_{{ $product->id }}"
+                                                id="pickupStatus{{ $product->id }}_{{ $branch->id }}" 
+                                                value="1" 
+                                                checked 
+                                                onchange="toggleDelivery('{{ $product->id }}', '{{ $branch->id }}')">
+                                            <label class="form-check-label fw-bold small" for="pickupStatus{{ $product->id }}_{{ $branch->id }}">
+                                                Store Pickup
+                                            </label>
+                                        </div>
+
+                                        {{-- Store Pickup Address --}}
+                                        <p class="small fw-bold m-0 sel-location mt-1" id="storePickupSection{{ $product->id }}_{{ $branch->id }}">
+                                            <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($branch->location) }}" 
+                                            target="_blank" 
+                                            style="text-decoration: none; color: inherit;">
+                                                {{ $branch->location }}
+                                            </a>
+                                        </p>
+
+                                        {{-- Home Delivery Option --}}
+                                        <div class="form-check mt-3">
+                                            <input class="form-check-input" 
+                                                type="radio" 
+                                                name="status_{{ $product->id }}" 
+                                                id="homeStatus{{ $product->id }}_{{ $branch->id }}" 
+                                                value="2" 
+                                                onchange="toggleDelivery('{{ $product->id }}', '{{ $branch->id }}')">
+                                            <label class="form-check-label fw-bold small" for="homeStatus{{ $product->id }}_{{ $branch->id }}">
+                                                Home Delivery
+                                            </label>
+                                        </div>
+
+                                        {{-- Delivery Address Input --}}
+                                        <div id="deliveryAddressField{{ $product->id }}_{{ $branch->id }}" class="mt-2" style="display: none;">
+                                            <input type="text" name="delivery_address_{{ $product->id }}" class="form-control" placeholder="Enter your delivery address">
+                                        </div>
+                                    </div>
+                                @endif
+                            @endforeach
+                            <input type="hidden" id="orderLocation" name="address" value="2562 Central Park Av yonkers, NY">
+                        </div>
+                        <!-- Location End -->
+
+                        <!-- Toppings Start-->
+                        @if ($product->category->isNotEmpty())
+                            @foreach ($product->category as $index => $category)
+                                <div class="description p-3">
+                                    <div class="arrow" style="cursor: pointer" data-bs-toggle="collapse"
+                                        data-bs-target="#topping{{ $index }}{{ $category->id }}">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="m-0">{{ $category->getCategory->name }}</h6>
+                                            <h6 class="fw-normal m-0 d-flex align-items-center">Optional
+                                                <span class="h5 m-0 p-0 ri-arrow-up-s-line"></span>
+                                            </h6>
+                                        </div>
+                                    </div>
+                                    <div class="collapse show"
+                                        id="topping{{ $index }}{{ $category->id }}">
+                                        @php
+                                            $categoryToppings = App\Models\CategoryTopping::where(
+                                                'category_id',
+                                                $category->getCategory->id,
+                                            )->get();
+                                        @endphp
+                                        @foreach ($categoryToppings as $categoryTopping)
+                                            <div class="d-flex justify-content-between">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox"
+                                                        name="toppings[]"
+                                                        id="toppingchek{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}"
+                                                        value="{{ $categoryTopping->topping->id }}"
+                                                        data-category-id="{{ $category->getCategory->id }}">
+                                                    <label class="form-check-label m-0"
+                                                        for="toppingchek{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}">
+                                                        {{ $categoryTopping->topping->name }}
+                                                    </label>
+                                                </div>
+                                                <p class="m-0">
+                                                    {{ isset($categoryTopping->topping->price) ? '£' . $categoryTopping->topping->price : '' }}
+                                                </p>
+                                            </div>
+                                        @endforeach
+                                    </div>
                                 </div>
-                            </div>
+                            @endforeach
+                        @endif
+                        <!-- Toppings End -->
+                    </div>
+                    <div class="modal-footer position-relative px-2">
+                        <button type="button"
+                            style="font-size: 24px;position: absolute;left: 0;width: 30px;height: 30px;display: flex;justify-content: center;align-items: center"
+                            class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
+                            data-bs-dismiss="modal"></button>
+                        <div class="text-center mx-auto">
+                            <button class="btn btn-danger addto-cart px-sm-5 px-4" data-bs-dismiss="modal">Add To
+                                Order</button>
                         </div>
                     </div>
                 </div>
             </div>
-        @endforeach
+        </div>
+    </div>
+@endforeach
         <!-- Food Modal End -->
 
         <!-- Location Modal Start -->
@@ -701,9 +722,25 @@
             </div>
             <div class="owl-carousel popular-carousel gallery-carousel">
                 @foreach ($products as $product)
+                    @php
+                        $originalPrice = $product->original_price ?? $product->price;
+                        $finalPrice = $product->price;
+                        $discountPercent = 0;
+
+                        if ($product->featured_action == 'decrease' && $product->original_price) {
+                            if ($product->featured_method == 'percentage') {
+                                $discountPercent = (int) $product->featured_amount;
+                            } elseif ($product->featured_method == 'amount') {
+                                $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
+                            }
+                        }
+                    @endphp
                     <div class="item">
-                        <a class="popular-item bg-transparent border rounded p-4 d-block text-center h-100"
+                        <a class="popular-item bg-transparent border rounded p-4 d-block text-center h-100 position-relative"
                             href="#" data-bs-toggle="modal" data-bs-target="#menuModal-{{ $product->id }}">
+							@if($product->featured_action == 'decrease' && $discountPercent > 0)
+								<span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ $discountPercent }}% OFF</span>
+							@endif
                             <div class="mb-3 d-flex justify-content-center">
                                 <img class="img-fluid" src="{{ asset($product->image) }}"
                                     style="width: 150px; height: 150px; object-fit: cover; border-radius: 10px;">
@@ -712,10 +749,19 @@
                                 <h5 class="mb-2 main-heading">{{ $product->name }}</h5>
                                 <p class="mb-2">
                                     @if ($product->variants && $product->variants->isNotEmpty())
-                                        <span class="badge bg-primary fs-6 py-2 px-3">From
-                                            £{{ $product->variants->first()->price }}</span>
+                                        @if($product->featured_action == 'decrease' && $product->original_price)
+                                            <span class="text-muted text-decoration-line-through small d-block">£{{ number_format($originalPrice, 2) }}</span>
+                                            <span class="badge bg-primary fs-6 py-2 px-3">From £{{ number_format($finalPrice, 2) }}</span>
+                                        @else
+                                            <span class="badge bg-primary fs-6 py-2 px-3">From £{{ $product->variants->first()->price }}</span>
+                                        @endif
                                     @else
-                                        <span class="badge bg-primary fs-6 py-2 px-3">£{{ $product->price }}</span>
+                                        @if($product->featured_action == 'decrease' && $product->original_price)
+                                            <span class="text-muted text-decoration-line-through small d-block">£{{ number_format($originalPrice, 2) }}</span>
+                                            <span class="badge bg-primary fs-6 py-2 px-3">£{{ number_format($finalPrice, 2) }}</span>
+                                        @else
+                                            <span class="badge bg-primary fs-6 py-2 px-3">£{{ $product->price }}</span>
+                                        @endif
                                     @endif
                                 </p>
                             </div>
@@ -795,10 +841,26 @@
 								@if ($menuCat->product && $menuCat->product->isNotEmpty())
 									<div class="row g-4">
 										@foreach ($menuCat->product as $prod)
+											@php
+                                                $originalPrice = $prod->original_price ?? $prod->price;
+                                                $finalPrice = $prod->price;
+                                                $discountPercent = 0;
+
+                                                if ($prod->featured_action == 'decrease' && $prod->original_price) {
+                                                    if ($prod->featured_method == 'percentage') {
+                                                        $discountPercent = (int) $prod->featured_amount;
+                                                    } elseif ($prod->featured_method == 'amount') {
+                                                        $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
+                                                    }
+                                                }
+                                            @endphp
 											<div class="col-xl-3 col-lg-4 col-md-6">
-												<a class="popular-item bg-transparent border rounded p-4 d-block text-start h-100"
+												<a class="popular-item bg-transparent border rounded p-4 d-block text-start h-100 position-relative"
 													href="#" data-bs-toggle="modal"
 													data-bs-target="#menuModalFull-{{ $prod->id }}">
+														@if($prod->featured_action == 'decrease' && $discountPercent > 0)
+                                                            <span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ $discountPercent }}% OFF</span>
+                                                        @endif
 													<div class="text-center mb-3">
 														<img class="img-fluid" src="{{ asset($prod->image) }}"
 															style="width: 150px; height: 150px; object-fit: cover; border-radius: 10px;">
@@ -807,11 +869,21 @@
 														<h5 class="mb-1 main-heading text-center">{{ $prod->name }}</h5>
 														<p class="text-center mb-2">
 															@if ($prod->variants && $prod->variants->isNotEmpty())
-																<span class="badge bg-primary">From
-																	£{{ $prod->variants->first()->price }}</span>
+																@if($prod->featured_action == 'decrease' && $prod->original_price)
+                                                                    <span class="text-muted text-decoration-line-through small d-block">£{{ number_format($originalPrice, 2) }}</span>
+                                                                    <span class="badge bg-primary">From £{{ number_format($finalPrice, 2) }}</span>
+                                                                @else
+                                                                    <span class="badge bg-primary">From £{{ $prod->variants->first()->price }}</span>
+                                                                @endif
 															@else
-																<span class="badge bg-primary">£{{ $prod->price }}</span>
+																@if($prod->featured_action == 'decrease' && $prod->original_price)
+                                                                    <span class="text-muted text-decoration-line-through small d-block">£{{ number_format($originalPrice, 2) }}</span>
+                                                                    <span class="badge bg-primary">£{{ number_format($finalPrice, 2) }}</span>
+                                                                @else
+                                                                    <span class="badge bg-primary">£{{ $prod->price }}</span>
+                                                                @endif
 															@endif
+														
 														</p>
 													</div>
 													{{-- <p class="mb-0 text-muted small text-center">{!! $prod->description !!}</p> --}}
@@ -879,175 +951,226 @@
         @foreach ($menuCategories as $menuCat)
             @if ($menuCat->product && $menuCat->product->isNotEmpty())
                 @foreach ($menuCat->product as $prod)
-                    <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
-                        <div class="modal fade menu-modal" id="menuModalFull-{{ $prod->id }}" tabindex="-1"
-                            aria-labelledby="exampleModalLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                                <div class="modal-content">
-                                    <div class="modal-body p-0 scrollable">
-                                        <input type="hidden" name="product_id" value="{{ $prod->id }}">
+                
+                @php
+                    $originalPrice = $prod->original_price ?? $prod->price;
+                    $finalPrice = $prod->price;
+                    $discountPercent = 0;
+
+                    if ($prod->featured_action == 'decrease' && $prod->original_price) {
+
+                        if ($prod->featured_method == 'percentage') {
+                            $discountPercent = (int) $prod->featured_amount;
+                        } elseif ($prod->featured_method == 'amount') {
+                            $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
+                        }
+                    }
+                @endphp
+
+                <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
+                    <div class="modal fade menu-modal" id="menuModalFull-{{ $prod->id }}" tabindex="-1"
+                        aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-body p-0 scrollable">
+                                    <input type="hidden" name="product_id" value="{{ $prod->id }}">
+                                    
+                                    <!-- IMAGE with Discount Badge -->
+                                    <div class="position-relative">
                                         <img class="w-100" src="{{ asset($prod->image) }}" alt="product-img">
-                                        <div class="p-3 description">
-                                            <h3>{{ $prod->name }}</h3>
+                                        
+                                        @if($prod->featured_action == 'decrease' && $discountPercent > 0)
+                                            <span class="badge bg-danger position-absolute top-0 end-0 m-2">
+                                                {{ $discountPercent }}% OFF
+                                            </span>
+                                        @endif
+                                    </div>
 
-                                            @if (count($prod->variants) > 0)
-                                                <p>£ <span
-                                                        class="prodPrice">{{ $prod->variants->first()->price }}</span>
+                                    <div class="p-3 description">
+                                        <h3>{{ $prod->name }}</h3>
+
+                                        <!-- PRICE SECTION with Discount Logic -->
+                                        @if (count($prod->variants) > 0)
+                                            @if($prod->featured_action == 'decrease' && $prod->original_price)
+                                                <p>
+                                                    <span class="text-muted text-decoration-line-through">
+                                                        £{{ number_format($originalPrice,2) }}
+                                                    </span>
+                                                    <br>
+                                                    <span class="text-danger fw-bold prodPrice">
+                                                        {{ number_format($finalPrice,2) }}
+                                                    </span>
                                                 </p>
+                                            @else
+                                                <p>£ <span class="prodPrice">{{ $prod->variants->first()->price }}</span></p>
+                                            @endif
 
-                                                <select class="form-control bg-white ps-1 select-size"
-                                                    name="variant_id" id="sizeSelect" style="appearance: auto">
-                                                    @foreach ($prod->variants as $variant)
-                                                        <option value="{{ $variant->id }} {{ $variant->price }}">
-                                                            {{ $variant->size }}</option>
-                                                    @endforeach
-                                                </select>
-                                                <h6 class="small mt-1 mb-3">Note: Prices vary depending on the selected
-                                                    size</h6>
+                                            <select class="form-control bg-white ps-1 select-size"
+                                                name="variant_id" id="sizeSelect" style="appearance: auto">
+                                                @foreach ($prod->variants as $variant)
+                                                    <option value="{{ $variant->id }} {{ $variant->price }}">
+                                                        {{ $variant->size }}</option>
+                                                @endforeach
+                                            </select>
+                                            <h6 class="small mt-1 mb-3">Note: Prices vary depending on the selected
+                                                size</h6>
+                                                
+                                        @else
+                                            @if($prod->featured_action == 'decrease' && $prod->original_price)
+                                                <p>
+                                                    <span class="text-muted text-decoration-line-through">
+                                                        £{{ number_format($originalPrice,2) }}
+                                                    </span>
+                                                    <br>
+                                                    <span class="text-danger fw-bold prodPrice">
+                                                        {{ number_format($finalPrice,2) }}
+                                                    </span>
+                                                </p>
                                             @else
                                                 <p>£ <span class="prodPrice">{{ $prod->price }}</span></p>
                                             @endif
+                                        @endif
 
-                                            {{-- <p class="small">{!! $prod->description !!}</p> --}}
-                                            <div class="d-flex cart-btn">
-                                                <button class="btn p-0 decrement" type="button">-</button>
-                                                <input type="text" class="cart_input increment-input text-center"
-                                                    value="1" name="quantity"
-                                                    id="quantity_{{ $prod->id }}">
-                                                <button class="btn p-0 increment" type="button">+</button>
-                                            </div>
+                                        {{-- <p class="small">{!! $prod->description !!}</p> --}}
+                                        <div class="d-flex cart-btn">
+                                            <button class="btn p-0 decrement" type="button">-</button>
+                                            <input type="text" class="cart_input increment-input text-center"
+                                                value="1" name="quantity"
+                                                id="quantity_{{ $prod->id }}">
+                                            <button class="btn p-0 increment" type="button">+</button>
                                         </div>
+                                    </div>
 
-                                        <!-- Location Start -->
-                                        <div class="description p-3">
-                                            <div class="d-flex justify-content-between">
-                                                <h6 class="">How to get it</h6>
-                                                <h6 class="text-danger">Required</h6>
-                                            </div>
-                                            
-                                               @foreach ($branches as $index => $branch)
-                                                @if ($branch->status == 1)
-                                                    <div class="branch-option mb-3">
-                                                        <input type="hidden" name="branch_id" value="{{ $branch->id }}">
-
-                                                        {{-- Store Pickup --}}
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" 
-                                                                type="radio" 
-                                                                name="status_{{ $prod->id }}" 
-                                                                id="pickupStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}" 
-                                                                value="1"
-                                                                checked
-                                                                onchange="toggleDelivery('{{ $prod->id }}', '{{ $branch->id }}_{{ $index }}')">
-
-                                                            <label class="form-check-label fw-bold small" 
-                                                                for="pickupStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}">
-                                                                Store Pickup
-                                                            </label>
-                                                        </div>
-
-                                                        {{-- Pickup Address --}}
-                                                        <p class="small fw-bold m-0 sel-location mt-1" 
-                                                        id="storePickupSection{{ $prod->id }}_{{ $branch->id }}_{{ $index }}">
-                                                            <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($branch->location) }}" 
-                                                            target="_blank" 
-                                                            style="text-decoration: none; color: inherit;">
-                                                                {{ $branch->location }}
-                                                            </a>
-                                                        </p>
-
-                                                        {{-- Home Delivery --}}
-                                                        <div class="form-check mt-3">
-                                                            <input class="form-check-input" 
-                                                                type="radio" 
-                                                                name="status_{{ $prod->id }}" 
-                                                                id="homeStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}" 
-                                                                value="2" 
-                                                                onchange="toggleDelivery('{{ $prod->id }}', '{{ $branch->id }}_{{ $index }}')">
-
-                                                            <label class="form-check-label fw-bold small" 
-                                                                for="homeStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}">
-                                                                Home Delivery
-                                                            </label>
-                                                        </div>
-
-                                                        {{-- Delivery Address Input --}}
-                                                        <div id="deliveryAddressField{{ $prod->id }}_{{ $branch->id }}_{{ $index }}" 
-                                                            class="mt-2" style="display: none;">
-                                                            <input type="text" 
-                                                                name="delivery_address_{{ $prod->id }}" 
-                                                                class="form-control" 
-                                                                placeholder="Enter your delivery address">
-                                                        </div>
-                                                    </div>
-                                                @endif
-                                            @endforeach
-
-                                            
+                                    <!-- Location Start -->
+                                    <div class="description p-3">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="">How to get it</h6>
+                                            <h6 class="text-danger">Required</h6>
                                         </div>
-                                        <!-- Location End -->
+                                        
+                                        @foreach ($branches as $index => $branch)
+                                            @if ($branch->status == 1)
+                                                <div class="branch-option mb-3">
+                                                    <input type="hidden" name="branch_id" value="{{ $branch->id }}">
 
-                                        <!-- Toppings Start-->
-                                        @if ($prod->category && $prod->category->isNotEmpty())
-                                            @foreach ($prod->category as $index => $category)
-                                                <div class="description p-3">
-                                                    <div class="arrow" style="cursor: pointer"
-                                                        data-bs-toggle="collapse"
-                                                        data-bs-target="#toppingFull{{ $index }}{{ $category->id }}">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h6 class="m-0">{{ $category->getCategory->name }}</h6>
-                                                            <h6 class="fw-normal m-0 d-flex align-items-center">
-                                                                Optional
-                                                                <span class="h5 m-0 p-0 ri-arrow-up-s-line"></span>
-                                                            </h6>
-                                                        </div>
+                                                    {{-- Store Pickup --}}
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" 
+                                                            type="radio" 
+                                                            name="status_{{ $prod->id }}" 
+                                                            id="pickupStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}" 
+                                                            value="1"
+                                                            checked
+                                                            onchange="toggleDelivery('{{ $prod->id }}', '{{ $branch->id }}_{{ $index }}')">
+
+                                                        <label class="form-check-label fw-bold small" 
+                                                            for="pickupStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}">
+                                                            Store Pickup
+                                                        </label>
                                                     </div>
-                                                    <div class="collapse show"
-                                                        id="toppingFull{{ $index }}{{ $category->id }}">
-                                                        @php
-                                                            $categoryToppings = App\Models\CategoryTopping::where(
-                                                                'category_id',
-                                                                $category->getCategory->id,
-                                                            )->get();
-                                                        @endphp
-                                                        @foreach ($categoryToppings as $categoryTopping)
-                                                            <div class="d-flex justify-content-between">
-                                                                <div class="form-check">
-                                                                    <input class="form-check-input" type="checkbox"
-                                                                        name="toppings[]"
-                                                                        id="toppingchekFull{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}"
-                                                                        value="{{ $categoryTopping->topping->id }}"
-                                                                        data-category-id="{{ $category->getCategory->id }}">
-                                                                    <label class="form-check-label m-0"
-                                                                        for="toppingchekFull{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}">
-                                                                        {{ $categoryTopping->topping->name }}
-                                                                    </label>
-                                                                </div>
-                                                                <p class="m-0">
-                                                                    {{ isset($categoryTopping->topping->price) ? '£' . $categoryTopping->topping->price : '' }}
-                                                                </p>
-                                                            </div>
-                                                        @endforeach
+
+                                                    {{-- Pickup Address --}}
+                                                    <p class="small fw-bold m-0 sel-location mt-1" 
+                                                    id="storePickupSection{{ $prod->id }}_{{ $branch->id }}_{{ $index }}">
+                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($branch->location) }}" 
+                                                        target="_blank" 
+                                                        style="text-decoration: none; color: inherit;">
+                                                            {{ $branch->location }}
+                                                        </a>
+                                                    </p>
+
+                                                    {{-- Home Delivery --}}
+                                                    <div class="form-check mt-3">
+                                                        <input class="form-check-input" 
+                                                            type="radio" 
+                                                            name="status_{{ $prod->id }}" 
+                                                            id="homeStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}" 
+                                                            value="2" 
+                                                            onchange="toggleDelivery('{{ $prod->id }}', '{{ $branch->id }}_{{ $index }}')">
+
+                                                        <label class="form-check-label fw-bold small" 
+                                                            for="homeStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}">
+                                                            Home Delivery
+                                                        </label>
+                                                    </div>
+
+                                                    {{-- Delivery Address Input --}}
+                                                    <div id="deliveryAddressField{{ $prod->id }}_{{ $branch->id }}_{{ $index }}" 
+                                                        class="mt-2" style="display: none;">
+                                                        <input type="text" 
+                                                            name="delivery_address_{{ $prod->id }}" 
+                                                            class="form-control" 
+                                                            placeholder="Enter your delivery address">
                                                     </div>
                                                 </div>
-                                            @endforeach
-                                        @endif
-                                        <!-- Toppings End -->
+                                            @endif
+                                        @endforeach
+
+                                        
                                     </div>
-                                    <div class="modal-footer position-relative px-2">
-                                        <button type="button"
-                                            style="font-size: 24px;position: absolute;left: 0;width: 30px;height: 30px;display: flex;justify-content: center;align-items: center"
-                                            class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
-                                            data-bs-dismiss="modal"></button>
-                                        <div class="text-center mx-auto">
-                                            <button class="btn btn-danger addto-cart px-sm-5 px-4"
-                                                data-bs-dismiss="modal">Add To Order</button>
-                                        </div>
+                                    <!-- Location End -->
+
+                                    <!-- Toppings Start-->
+                                    @if ($prod->category && $prod->category->isNotEmpty())
+                                        @foreach ($prod->category as $index => $category)
+                                            <div class="description p-3">
+                                                <div class="arrow" style="cursor: pointer"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#toppingFull{{ $index }}{{ $category->id }}">
+                                                    <div class="d-flex justify-content-between">
+                                                        <h6 class="m-0">{{ $category->getCategory->name }}</h6>
+                                                        <h6 class="fw-normal m-0 d-flex align-items-center">
+                                                            Optional
+                                                            <span class="h5 m-0 p-0 ri-arrow-up-s-line"></span>
+                                                        </h6>
+                                                    </div>
+                                                </div>
+                                                <div class="collapse show"
+                                                    id="toppingFull{{ $index }}{{ $category->id }}">
+                                                    @php
+                                                        $categoryToppings = App\Models\CategoryTopping::where(
+                                                            'category_id',
+                                                            $category->getCategory->id,
+                                                        )->get();
+                                                    @endphp
+                                                    @foreach ($categoryToppings as $categoryTopping)
+                                                        <div class="d-flex justify-content-between">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox"
+                                                                    name="toppings[]"
+                                                                    id="toppingchekFull{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}"
+                                                                    value="{{ $categoryTopping->topping->id }}"
+                                                                    data-category-id="{{ $category->getCategory->id }}">
+                                                                <label class="form-check-label m-0"
+                                                                    for="toppingchekFull{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}">
+                                                                    {{ $categoryTopping->topping->name }}
+                                                                </label>
+                                                            </div>
+                                                            <p class="m-0">
+                                                                {{ isset($categoryTopping->topping->price) ? '£' . $categoryTopping->topping->price : '' }}
+                                                            </p>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    @endif
+                                    <!-- Toppings End -->
+                                </div>
+                                <div class="modal-footer position-relative px-2">
+                                    <button type="button"
+                                        style="font-size: 24px;position: absolute;left: 0;width: 30px;height: 30px;display: flex;justify-content: center;align-items: center"
+                                        class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
+                                        data-bs-dismiss="modal"></button>
+                                    <div class="text-center mx-auto">
+                                        <button class="btn btn-danger addto-cart px-sm-5 px-4"
+                                            data-bs-dismiss="modal">Add To Order</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
                 @endforeach
             @endif
         @endforeach

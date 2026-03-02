@@ -781,6 +781,19 @@ public function getLoggedInUser()
     ], 200);
 }
 
+public function getProfile()
+{
+    $user = auth()->user();
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'name'  => $user->name,
+            'email' => $user->email,
+        ]
+    ]);
+}
+
 
     public function notification()
     {

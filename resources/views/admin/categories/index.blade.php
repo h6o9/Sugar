@@ -10,7 +10,7 @@
                         <div class="col-12 col-md-4 col-lg-4">
                             <div class="card">
                                 <div class="card-header">
-                                    <h4>Add Topping</h4>
+                                    <h4>Add Topping Category</h4>
                                 </div>
                                 <form action="{{ route('category.store') }}" method="POST" enctype="multipart/form-data">
                                     @csrf

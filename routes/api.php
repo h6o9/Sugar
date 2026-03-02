@@ -43,6 +43,7 @@ Route::post('/user-forget-password', [AuthController::class, 'forgetPassword']);
 Route::post('/user-verify-forget-password', [AuthController::class, 'verifyForgetOtp']);
 Route::post('/user-reset-password', [AuthController::class, 'resetPassword']);
 Route::middleware('auth:sanctum')->group(function () {
+	Route::get('/user-get-profile', [AuthController::class, 'getProfile']);
 	Route::post('/user-update-profile', [AuthController::class, 'updateProfile']);
 	Route::post('/user-change-password', [AuthController::class, 'ChangePassword']);
 	Route::post('/verify-update-profile-otp', [AuthController::class, 'verifyUpdateprofileOtp']);
@@ -56,7 +57,7 @@ Route::get('/product-details/{id}', [ProductDetailsController::class, 'getProduc
 Route::post('/product-add-to-cart', [AddToCartController::class, 'addToCart']);
 Route::get('/get-user-cart-items', [AddToCartController::class, 'getUserCartItems']);
 Route::post('/delete-cart-item/{id}', [AddToCartController::class, 'deleteCartItem']);
-Route::post('/continue-to-payments', [AddToCartController::class, 'proceedToPayment']);
+Route::post('/continue-tRewardHistoryControllero-payments', [AddToCartController::class, 'proceedToPayment']);
 Route::post('/place-order', [PlaceOrderController::class, 'placeOrder']);
 // filter data 
 

@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Seo;
-use Illuminate\Http\Request;
+use App\Models\Faq;
 use App\Models\PrivacyPolicy;
+use App\Models\Seo;
 use App\Models\TermCondition;
+use Illuminate\Http\Request;
 
 class WebController extends Controller
 {
@@ -75,7 +76,7 @@ return view('web.contactpage', [
 }
 
 public function faqpage() {
-	$data = faq::all();
+	$data = Faq::all();
 	return view('web.faq', compact('data'));
 }
 

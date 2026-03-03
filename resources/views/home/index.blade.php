@@ -360,7 +360,7 @@
                         <div class="position-relative">
                             <img class="w-100" src="{{ asset($product->image) }}" alt="product-img">
                             @if($hasDiscount)
-                                <span class="badge bg-danger position-absolute top-0 end-0 m-3 fs-6">{{ $discountPercent }}% OFF</span>
+                                <span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ $discountPercent }}% OFF</span>
                             @endif
                         </div>
                         <div class="p-3 description">

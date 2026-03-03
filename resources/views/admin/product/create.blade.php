@@ -42,8 +42,24 @@
 </div>
 </div>
 
+{{-- COMPLEMENTARY PRODUCT --}}
+<div class="col-sm-6">
+<div class="form-group mb-2">
+<label>Complementary Product (Optional)</label>
+<select class="form-control" name="complementary_product_id">
+<option value="" disabled selected>Select Complementary Product</option>
+@foreach ($products as $product)
+<option value="{{ $product->id }}">
+    {{ $product->name }}
+</option>
+@endforeach
+</select>
 </div>
 </div>
+
+</div>
+</div>
+
 
 {{-- PRICE + FEATURE --}}
 <div class="container">

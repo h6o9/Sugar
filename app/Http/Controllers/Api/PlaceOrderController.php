@@ -138,6 +138,12 @@ public function placeOrder(Request $request)
             ));
         }
 
+		if (!empty($user->email)) {
+        \Mail::to($user->email)->send(
+            new \App\Mail\OrderPlacedMail($order->code)
+        );
+    }
+
         return response()->json([
             'status'   => true,
             'message' => 'Order placed successfully!',

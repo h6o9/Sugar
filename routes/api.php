@@ -43,7 +43,7 @@ Route::post('/user-forget-password', [AuthController::class, 'forgetPassword']);
 Route::post('/user-verify-forget-password', [AuthController::class, 'verifyForgetOtp']);
 Route::post('/user-reset-password', [AuthController::class, 'resetPassword']);
 Route::middleware('auth:sanctum')->group(function () {
-	Route::get('/user-get-profile', [AuthController::class, 'getProfile']);
+Route::get('/user-get-profile', [AuthController::class, 'getProfile']);
 	Route::post('/user-update-profile', [AuthController::class, 'updateProfile']);
 	Route::post('/user-change-password', [AuthController::class, 'ChangePassword']);
 	Route::post('/verify-update-profile-otp', [AuthController::class, 'verifyUpdateprofileOtp']);

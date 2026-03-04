@@ -224,9 +224,7 @@ public function store(Request $request)
     $request->validate([
         'name' => 'required',
         'menu_id' => 'required',
-
         'price' => 'nullable|numeric|min:0',
-
         'featured_action' => 'nullable|in:increase,decrease',
         'featured_method' => 'nullable|in:percentage,fixed amount',
         'featured_amount' => 'nullable|numeric|min:0',
@@ -258,90 +256,87 @@ public function store(Request $request)
     }
 
     // -------------------------
-    // ORIGINAL PRICE (ALWAYS SET)
+    // CHECK IF VARIANTS EXIST
     // -------------------------
-    if ($request->filled('price')) {
+    $hasVariants = !empty($request->sizes) && !empty($request->prices);
 
-        // product price entered
-        $originalPrice = (float) $request->price;
-
-    } elseif (!empty($request->prices) && isset($request->prices[0])) {
-
-        // fallback → first variant price
-        $originalPrice = (float) $request->prices[0];
-
-    } else {
-
-        // final safety
-        $originalPrice = 0;
-    }
-
-    $finalPrice = $originalPrice;
+    $originalPrice = 0;
+    $finalPrice = 0;
     $rule = null;
 
-    // -------------------------
-    // Apply Priority (ON ORIGINAL PRICE)
-    // -------------------------
-    if ($applyPriority) {
+    /*
+    |--------------------------------------------------------------------------
+    | SINGLE PRODUCT CASE
+    |--------------------------------------------------------------------------
+    | Only here products table price should be set
+    |--------------------------------------------------------------------------
+    */
+    if (!$hasVariants) {
 
-        if ($method === 'percentage') {
-            $change = ($originalPrice * $amount) / 100;
-
-            $finalPrice = $action === 'increase'
-                ? $originalPrice + $change
-                : $originalPrice - $change;
+        if ($request->filled('price')) {
+            $originalPrice = (float) $request->price;
         }
 
-        if ($method === 'fixed amount') {
-            $finalPrice = $action === 'increase'
-                ? $originalPrice + $amount
-                : $originalPrice - $amount;
-        }
+        $finalPrice = $originalPrice;
 
-        $rule = 'Priority';
+        if ($applyPriority) {
+
+            if ($method === 'percentage') {
+                $change = ($originalPrice * $amount) / 100;
+                $finalPrice = $action === 'increase'
+                    ? $originalPrice + $change
+                    : $originalPrice - $change;
+            }
+
+            if ($method === 'fixed amount') {
+                $finalPrice = $action === 'increase'
+                    ? $originalPrice + $amount
+                    : $originalPrice - $amount;
+            }
+
+            $rule = 'Priority';
+        }
     }
 
-    // -------------------------
-    // Create Product
-    // -------------------------
-    $data = [
+    /*
+    |--------------------------------------------------------------------------
+    | CREATE PRODUCT
+    |--------------------------------------------------------------------------
+    | If variant product → price will remain 0
+    |--------------------------------------------------------------------------
+    */
+    $product = Product::create([
         'menu_id' => $request->menu_id,
         'name' => $request->name,
         'image' => $image,
-
-        // calculated price
         'price' => round(max(0, $finalPrice), 2),
-
-        // MASTER PRICE (never changes)
-        'original_price' => max(0, $originalPrice),
-
+        'original_price' => round(max(0, $originalPrice), 2),
         'rule' => $rule,
-    ];
-
-    if ($rule === 'Priority') {
-        $data['featured_action'] = $action;
-        $data['featured_method'] = $method;
-        $data['featured_amount'] = $amount;
-    }
-
-    $product = Product::create($data);
+        'featured_action' => $rule ? $action : null,
+        'featured_method' => $rule ? $method : null,
+        'featured_amount' => $rule ? $amount : null,
+    ]);
 
     // -------------------------
-    // Complementary Product (Pivot Table Save)
+    // Complementary Product
     // -------------------------
     if ($request->filled('complementary_product_id')) {
-        \DB::table('complementary_products')->insert([
-            'product_id' => $product->id, // new product id
+        DB::table('complementary_products')->insert([
+            'product_id' => $product->id,
             'complementary_product_id' => $request->complementary_product_id,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
     }
 
-    // -------------------------
-    // Variants (Original Price Based)
-    // -------------------------
-    if ($request->sizes && $request->prices) {
+    /*
+    |--------------------------------------------------------------------------
+    | VARIANTS SAVE (IF EXIST)
+    |--------------------------------------------------------------------------
+    | Only product_variants table handles price
+    |--------------------------------------------------------------------------
+    */
+    if ($hasVariants) {
 
         foreach ($request->sizes as $key => $size) {
 
@@ -350,21 +345,19 @@ public function store(Request $request)
             }
 
             $variantOriginalPrice = (float) $request->prices[$key];
-            $variantPrice = $variantOriginalPrice;
+            $variantFinalPrice = $variantOriginalPrice;
 
-            // Apply priority on ORIGINAL price
             if ($applyPriority) {
 
                 if ($method === 'percentage') {
                     $change = ($variantOriginalPrice * $amount) / 100;
-
-                    $variantPrice = $action === 'increase'
+                    $variantFinalPrice = $action === 'increase'
                         ? $variantOriginalPrice + $change
                         : $variantOriginalPrice - $change;
                 }
 
                 if ($method === 'fixed amount') {
-                    $variantPrice = $action === 'increase'
+                    $variantFinalPrice = $action === 'increase'
                         ? $variantOriginalPrice + $amount
                         : $variantOriginalPrice - $amount;
                 }
@@ -373,8 +366,8 @@ public function store(Request $request)
             ProductVariants::create([
                 'product_id' => $product->id,
                 'size' => $size,
-                'price' => round(max(0, $variantPrice), 2),
-                'original_price' => max(0, $variantOriginalPrice),
+                'price' => round(max(0, $variantFinalPrice), 2),
+                'original_price' => round(max(0, $variantOriginalPrice), 2),
             ]);
         }
     }
@@ -544,170 +537,142 @@ public function store(Request $request)
 
 public function update(Request $request, $id)
 {
-    // -------------------------
-    // Validation
-    // -------------------------
     $request->validate([
         'name' => 'required',
         'menu_id' => 'required',
-
-        'price' => 'nullable|numeric|min:0',
-
         'featured_action' => 'nullable|in:increase,decrease',
         'featured_method' => 'nullable|in:percentage,fixed amount',
         'featured_amount' => 'nullable|numeric|min:0',
-
-        'complementary_product_id' => 'nullable|exists:products,id',
     ]);
 
-    // -------------------------
-    // Priority Check
-    // -------------------------
-    $applyPriority =
-        $request->filled('featured_action') &&
-        $request->filled('featured_method') &&
-        $request->filled('featured_amount');
+    $product = Product::with('variants','category')->findOrFail($id);
+
+    $applyPriority = $request->filled('featured_action') 
+                     && $request->filled('featured_method') 
+                     && $request->filled('featured_amount');
 
     $action = $request->featured_action;
     $method = $request->featured_method;
     $amount = (float) $request->featured_amount;
 
     // -------------------------
-    // Find Product
-    // -------------------------
-    $product = Product::findOrFail($id);
-
-    // -------------------------
-    // Image Upload
+    // IMAGE UPDATE
     // -------------------------
     if ($request->hasFile('image')) {
+        $destination = public_path($product->image);
+        if (File::exists($destination)) File::delete($destination);
         $file = $request->file('image');
-        $filename = time() . '.' . $file->getClientOriginalExtension();
+        $filename = time().'.'.$file->getClientOriginalExtension();
         $file->move(public_path('admin/assets/images/users/'), $filename);
-        $image = 'public/admin/assets/images/users/' . $filename;
-    } else {
-        $image = $product->image; // existing image
+        $product->image = 'public/admin/assets/images/users/'.$filename;
     }
 
     // -------------------------
-    // ORIGINAL PRICE (ALWAYS SET)
+    // CHECK IF PRODUCT HAS VARIANTS
     // -------------------------
-    if ($request->filled('price')) {
-        $originalPrice = (float) $request->price;
-    } elseif (!empty($request->prices) && isset($request->prices[0])) {
-        $originalPrice = (float) $request->prices[0];
-    } else {
-        $originalPrice = 0;
-    }
-
-    $finalPrice = $originalPrice;
-    $rule = null;
+    $sizes = $request->sizes ?? [];
+    $base_prices = $request->base_prices ?? [];
+    $hasVariants = !empty($sizes);
 
     // -------------------------
-    // Apply Priority (ON ORIGINAL PRICE)
+    // CASE 1: SINGLE PRODUCT (NO VARIANTS)
     // -------------------------
-    if ($applyPriority) {
-        if ($method === 'percentage') {
-            $change = ($originalPrice * $amount) / 100;
-            $finalPrice = $action === 'increase'
-                ? $originalPrice + $change
-                : $originalPrice - $change;
+    if (!$hasVariants) {
+        // ✅ FIX: Use correct form input name
+        $basePrice = $request->filled('original_price') ? (float) $request->original_price : 0;
+        $finalPrice = $basePrice;
+
+        // Apply priority rule
+        if ($applyPriority && $basePrice > 0) {
+            if ($method === 'percentage') {
+                $change = ($basePrice * $amount) / 100;
+                $finalPrice = $action==='increase' ? $basePrice + $change : $basePrice - $change;
+            } elseif ($method === 'fixed amount') {
+                $finalPrice = $action==='increase' ? $basePrice + $amount : $basePrice - $amount;
+            }
         }
 
-        if ($method === 'fixed amount') {
-            $finalPrice = $action === 'increase'
-                ? $originalPrice + $amount
-                : $originalPrice - $amount;
-        }
-        $rule = 'Priority';
+        $product->original_price = round(max(0, $basePrice), 2);
+        $product->price = round(max(0, $finalPrice), 2);
+
+        // Delete all old variants if any
+        $product->variants()->delete();
     }
 
     // -------------------------
-    // Update Product
+    // CASE 2: VARIANT PRODUCT
     // -------------------------
-    $data = [
-        'menu_id' => $request->menu_id,
-        'name' => $request->name,
-        'image' => $image,
-        'price' => round(max(0, $finalPrice), 2),
-        'original_price' => max(0, $originalPrice),
-        'rule' => $rule,
-    ];
+    if ($hasVariants) {
+        // Keep products.price untouched
+        $submittedVariantIds = $request->variant_ids ?? [];
+        $variantsToDelete = $product->variants->pluck('id')->diff($submittedVariantIds);
+        ProductVariants::destroy($variantsToDelete);
 
-    if ($rule === 'Priority') {
-        $data['featured_action'] = $action;
-        $data['featured_method'] = $method;
-        $data['featured_amount'] = $amount;
-    } else {
-        $data['featured_action'] = null;
-        $data['featured_method'] = null;
-        $data['featured_amount'] = null;
-    }
+        // Add / update variants
+        foreach ($sizes as $key => $size) {
+            $variantId = $submittedVariantIds[$key] ?? null;
+            $variantBase = round(max(0,(float)$base_prices[$key]), 2);
 
-    $product->update($data);
-
-    // -------------------------
-    // Variants
-    // -------------------------
-    if ($request->sizes && $request->prices) {
-        foreach ($request->sizes as $key => $size) {
-            if (!isset($request->prices[$key])) continue;
-
-            $variantOriginalPrice = (float) $request->prices[$key];
-            $variantPrice = $variantOriginalPrice;
-
+            $variantPrice = $variantBase;
             if ($applyPriority) {
-                if ($method === 'percentage') {
-                    $change = ($variantOriginalPrice * $amount) / 100;
-                    $variantPrice = $action === 'increase'
-                        ? $variantOriginalPrice + $change
-                        : $variantOriginalPrice - $change;
-                }
-                if ($method === 'fixed amount') {
-                    $variantPrice = $action === 'increase'
-                        ? $variantOriginalPrice + $amount
-                        : $variantOriginalPrice - $amount;
+                if ($method==='percentage') {
+                    $variantPrice = $action==='increase' ? $variantBase + ($variantBase*$amount/100) : $variantBase - ($variantBase*$amount/100);
+                } elseif ($method==='fixed amount') {
+                    $variantPrice = $action==='increase' ? $variantBase+$amount : $variantBase-$amount;
                 }
             }
 
-            // Update existing variant or create new
-            if (isset($request->variant_ids[$key]) && $request->variant_ids[$key]) {
-                $variant = ProductVariants::find($request->variant_ids[$key]);
+            if ($variantId) {
+                $variant = ProductVariants::find($variantId);
                 if ($variant) {
                     $variant->update([
-                        'size' => $size,
-                        'price' => round(max(0, $variantPrice), 2),
-                        'original_price' => max(0, $variantOriginalPrice),
+                        'size'=>$size,
+                        'original_price'=>$variantBase,
+                        'price'=>round(max(0,$variantPrice),2),
                     ]);
                 }
             } else {
                 ProductVariants::create([
-                    'product_id' => $product->id,
-                    'size' => $size,
-                    'price' => round(max(0, $variantPrice), 2),
-                    'original_price' => max(0, $variantOriginalPrice),
+                    'product_id'=>$product->id,
+                    'size'=>$size,
+                    'original_price'=>$variantBase,
+                    'price'=>round(max(0,$variantPrice),2),
                 ]);
             }
         }
     }
 
     // -------------------------
-    // Categories
+    // UPDATE BASIC PRODUCT INFO
     // -------------------------
-    if ($request->category_id) {
-        // delete old
-        ToppingProduct::where('product_id', $product->id)->delete();
+    $product->name = $request->name;
+    $product->menu_id = $request->menu_id;
+    $product->rule = $applyPriority ? 'Priority' : null;
 
+    if ($applyPriority) {
+        $product->featured_action = $action;
+        $product->featured_method = $method;
+        $product->featured_amount = $amount;
+    } else {
+        $product->featured_action = null;
+        $product->featured_method = null;
+        $product->featured_amount = null;
+    }
+
+    $product->save();
+
+    // -------------------------
+    // CATEGORIES
+    // -------------------------
+    ToppingProduct::where('product_id',$product->id)->delete();
+    if ($request->category_id) {
         foreach ($request->category_id as $categoryId) {
-            ToppingProduct::create([
-                'category_id' => $categoryId,
-                'product_id' => $product->id,
-            ]);
+            ToppingProduct::create(['category_id'=>$categoryId,'product_id'=>$product->id]);
         }
     }
 
     // -------------------------
-    // Complementary Product
+    // COMPLEMENTARY PRODUCT
     // -------------------------
     if ($request->filled('complementary_product_id')) {
         \DB::table('complementary_products')->updateOrInsert(
@@ -718,14 +683,15 @@ public function update(Request $request, $id)
             ]
         );
     } else {
-        // remove if null
         \DB::table('complementary_products')->where('product_id', $product->id)->delete();
     }
 
-    return redirect()
-        ->route('product.index')
-        ->with('message', 'Product Updated Successfully');
+    return redirect()->route('product.index')->with([
+        'status'=>true,
+        'message'=>'Product Updated Successfully'
+    ]);
 }
+
 
     /**
      * Remove the specified resource from storage.
@@ -760,5 +726,7 @@ public function update(Request $request, $id)
 
         return redirect()->back()->with('message', $message);
     }
+
+
 
 }

@@ -2,7 +2,6 @@
 @section('title', 'Dashboard')
 
 @section('content')
-<body>
 <div class="main-content">
 <section class="section">
 <div class="section-body">
@@ -16,6 +15,7 @@
 <h4 class="text-center my-4">Add Product</h4>
 
 <div class="container">
+
 <div class="row">
 
 {{-- NAME --}}
@@ -42,12 +42,36 @@
 </div>
 </div>
 
+{{-- BASE PRICE --}}
+<div class="col-md-6">
+<div class="form-group mb-2">
+<label>Base Price (£)</label>
+<input type="text" name="price" id="price" class="form-control" placeholder="Enter Product Price">
+</div>
+</div>
+
+{{-- ADJUSTMENT PRICE --}}
+<div class="col-md-6">
+<div class="form-group mb-2">
+<label>Price Adjustment (£)</label>
+<input type="text" name="adjustment_price" id="adjustment_price" class="form-control" placeholder="Adjustment Price" readonly>
+</div>
+</div>
+
+{{-- VARIANTS --}}
+<div class="col-12">
+<div class="form-group">
+<button type="button" class="btn btn-primary mb-3" id="addSizeBtn">Add Variants</button>
+<div id="sizeInputs"></div>
+</div>
+</div>
+
 {{-- COMPLEMENTARY PRODUCT --}}
 <div class="col-sm-6">
 <div class="form-group mb-2">
-<label>Complementary Product (Optional)</label>
+<label>Complement Product (Optional)</label>
 <select class="form-control" name="complementary_product_id">
-<option value="" disabled selected>Select Complementary Product</option>
+<option value="" disabled selected>Select Complement Product</option>
 @foreach ($products as $product)
 <option value="{{ $product->id }}">
     {{ $product->name }}
@@ -57,68 +81,44 @@
 </div>
 </div>
 
-</div>
-</div>
-
-
-{{-- PRICE + FEATURE --}}
-<div class="container">
-<div class="row">
-
-<div class="col-sm-6">
-
-{{-- PRICE --}}
-<div class="form-group mb-2">
-<label>Price</label>
-<input type="text" name="price" id="price" class="form-control" placeholder="Enter Product Price">
-</div>
-
-{{-- VARIANTS --}}
-<div class="form-group">
-<button type="button" class="btn btn-primary mb-3" id="addSizeBtn">Add Variants</button>
-<div id="sizeInputs"></div>
-</div>
-
 {{-- FEATURED SETTINGS --}}
+<div class="col-sm-6">
 <div class="form-group mb-3">
-    <label>Featured Settings (Optional)</label>
-    <div class="row g-3 align-items-center">
+<label>Featured Settings (Optional)</label>
+<div class="row g-3 align-items-center">
 
-        {{-- Action --}}
-        <div class="col-md-4 col-sm-6">
-            <select name="featured_action" id="featured_action" class="form-control form-control-lg">
-                <option disabled selected>Select Operation</option>
-                <option value="increase">Increase</option>
-                <option value="decrease">Decrease</option>
-            </select>
-        </div>
+<div class="col-md-4 col-sm-6">
+<select name="featured_action" id="featured_action" class="form-control form-control-lg">
+<option disabled selected>Select Operation</option>
+<option value="increase">Increase</option>
+<option value="decrease">Decrease</option>
+</select>
+</div>
 
-        {{-- Method --}}
-        <div class="col-md-4 col-sm-6">
-            <select name="featured_method" id="featured_method" class="form-control form-control-lg">
-                <option disabled selected>Select Method</option>
-                <option value="percentage">Percentage (%)</option>
-                <option value="fixed amount">Fixed Amount (£)</option>
-            </select>
-        </div>
+<div class="col-md-4 col-sm-6">
+<select name="featured_method" id="featured_method" class="form-control form-control-lg">
+<option disabled selected>Select Method</option>
+<option value="percentage">Percentage (%)</option>
+<option value="fixed amount">Fixed Amount (£)</option>
+</select>
+</div>
 
-        {{-- Amount --}}
-        <div class="col-md-4 col-sm-12">
-            <div class="input-group input-group-lg">
-                <input type="text"
-                    name="featured_amount"
-                    id="featured_amount"
-                    class="form-control"
-                    placeholder="Enter Amount">
-                <span class="input-group-text d-none" id="featured_symbol">%</span>
-            </div>
-        </div>
+<div class="col-md-4 col-sm-12">
+<div class="input-group input-group-lg">
+<input type="text"
+name="featured_amount"
+id="featured_amount"
+class="form-control"
+placeholder="Enter Amount">
+<span class="input-group-text d-none" id="featured_symbol">%</span>
+</div>
+</div>
 
-    </div>
+</div>
 
-    @error('featured_amount')
-        <small class="text-danger">{{ $message }}</small>
-    @enderror
+@error('featured_amount')
+<small class="text-danger">{{ $message }}</small>
+@enderror
 </div>
 </div>
 
@@ -142,23 +142,21 @@
 </div>
 </div>
 
-</div>
-</div>
+</div> {{-- row --}}
+</div> {{-- container --}}
 
 <div class="card-footer text-center">
 <button type="submit" class="btn btn-success">Add Product</button>
 </div>
 
-</div>
+</div> {{-- card --}}
+
 </form>
 
 </div>
 </section>
 </div>
-</body>
 @endsection
-
-
 {{-- ================= JS ================= --}}
 @section('js')
 

@@ -50,13 +50,17 @@ public function homeProducts(Request $request)
         ];
         
         // Add discount information if available
-        if ($discountInfo['has_discount']) {
-            $productData['discount'] = $discountInfo;
-            
-            // Add special highlight flag for products with discounts or featured items
-            $productData['is_special'] = true;
-            $productData['special_type'] = 'discount';
-        }
+		if ($discountInfo['has_discount']) {
+
+			// Add featured_method inside discount array
+			$discountInfo['featured_method'] = $product->featured_method;
+
+			$productData['discount'] = $discountInfo;
+			
+			// Add special highlight flag for products with discounts or featured items
+			$productData['is_special'] = true;
+			$productData['special_type'] = 'discount';
+		}
         
         // Add featured method information if available
         if ($product->is_featured && $product->featured_method) {

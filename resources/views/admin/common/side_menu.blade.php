@@ -83,6 +83,12 @@
 					<i class="fas fa-boxes"></i><span>Bulk Feature Settings</span></a>
 	        </li>
 			
+				{{-- Bundle Offers  --}}
+			 <li class="dropdown {{ request()->is('admin/bundle-offers*') ? 'active' : '' }}">
+				<a href="{{ route('complementary.index') }}" class="nav-link">
+					<i class="fas fa-boxes"></i><span>Bundle Offers</span></a>
+	        </li>
+			
             <li class="dropdown {{ request()->is('admin/gallery*') ? 'active' : '' }}">
                 <a href="{{ route('gallery.index') }}" class="nav-link">
                     <i class="fas fa-images"></i><span>Our Gallery</span></a>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Admin\BulkFeatureController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\ComplementaryProductController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\GalleryController;
 use App\Http\Controllers\Admin\MenuController;
@@ -83,6 +84,13 @@ Route::prefix('admin')->middleware('admin')->group(function () {
     Route::get('profile', [AdminController::class, 'getProfile']);
     Route::post('update-profile', [AdminController::class, 'update_profile']);
     Route::get('logout', [AdminController::class, 'logout']);
+
+// Complementary Product Routes
+	Route::get('/complementary-products', [ComplementaryProductController::class, 'index'])
+    ->name('complementary.index');
+
+Route::delete('/complementary-products/{id}', [ComplementaryProductController::class, 'destroy'])
+    ->name('complementary.destroy');
 
     // Branch Views
     Route::get('branch', [BranchController::class, 'view'])->name('branches.index');

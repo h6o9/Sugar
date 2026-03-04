@@ -76,9 +76,6 @@
     </tbody>
 </table>
 
-{{-- Add Variant Buttons --}}
-<button type="button" class="btn btn-primary mb-3" id="addVariantTop" {{ $product->variants->isEmpty() ? 'style=display:none;' : '' }}>Add Variant</button>
-<button type="button" class="btn btn-primary mb-3" id="addVariantBottom" style="{{ $product->variants->isEmpty() ? '' : 'display:none;' }}">Add Variant</button>
 
 {{-- Single Product Price --}}
 <div class="row mb-2 singlePriceRow" style="{{ $product->variants->isEmpty() ? '' : 'display:none;' }}">
@@ -91,8 +88,29 @@
         <input type="text" class="form-control adjustmentPriceSingle" name="price" value="{{ $product->price }}" disabled>
     </div>
 </div>
+{{-- Add Variant Buttons --}}
+<button type="button" class="btn btn-primary mb-3" id="addVariantTop" {{ $product->variants->isEmpty() ? 'style=display:none;' : '' }}>Add Variant</button>
+<button type="button" class="btn btn-primary mb-3" id="addVariantBottom" style="{{ $product->variants->isEmpty() ? '' : 'display:none;' }}">Add Variant</button>
 
 </div>
+</div>
+{{-- Complementary Product --}}
+<div class="col-sm-6">
+    <div class="form-group mb-2">
+        <label>Complement Product (Optional)</label>
+        <select class="form-control" name="complementary_product_id">
+            <option value="">Select Complement Product</option>
+            @foreach ($products as $prod)
+                <option value="{{ $prod->id }}"
+                    @if(isset($complementaryProductId) && $complementaryProductId == $prod->id)
+                        selected
+                    @endif
+                >
+                    {{ $prod->name }}
+                </option>
+            @endforeach
+        </select>
+    </div>
 </div>
 
 {{-- Featured Section --}}

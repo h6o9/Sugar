@@ -25,4 +25,9 @@ class Product extends Model
 
         return $this->hasMany(ProductVariants::class, 'product_id', 'id');
     }
+    public function complementaryProduct()
+    {
+
+        return $this->hasMany(ComplementaryProduct::class, 'product_id', 'id');
+    }
 }

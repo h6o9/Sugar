@@ -12,6 +12,82 @@ class HomeController extends Controller
 {
     //
 
+// public function homeProducts(Request $request)
+// {
+//     $request->validate([
+//         'menu_id' => 'required|string', // number or 'all'
+//     ]);
+
+//     $menuId = $request->menu_id;
+
+//     // CASE: All products
+//     if ($menuId === 'all') {
+//         $products = Product::where('status', '1')->get();
+//     } elseif($menuId === "featured"){
+//         $products = Product::where('is_featured', '1')->get();
+//     } else {
+//         $products = Product::where('menu_id', $menuId)
+//                            ->where('status', '1')
+//                            ->get();
+//     }
+
+//     // Prepare response with enhanced product information
+//     $response = $products->map(function($product) {
+//         $menu = $product->menu; // relation
+        
+//         // Calculate discount information
+//         $discountInfo = $this->calculateDiscountInfo($product);
+        
+//         // Prepare base product data
+//         $productData = [
+//             'menu_name'        => $menu ? $menu->name : null,
+//             'product_name'     => $product->name,
+// 			'product_id'       => $product->id,
+//             'price'            => $product->price,
+//             'original_price'   => $product->original_price,
+//             'image'            => $product->image,
+//             'is_featured'      => (bool)$product->is_featured,
+//         ];
+        
+//         // Add discount information if available
+// 		if ($discountInfo['has_discount']) {
+
+// 			// Add featured_method inside discount array
+// 			$discountInfo['featured_method'] = $product->featured_method;
+
+// 			$productData['discount'] = $discountInfo;
+			
+// 			// Add special highlight flag for products with discounts or featured items
+// 			$productData['is_special'] = true;
+// 			$productData['special_type'] = 'discount';
+// 		}
+        
+//         // Add featured method information if available
+//         if ($product->is_featured && $product->featured_method) {
+//             $productData['featured_info'] = [
+//                 'method' => $product->featured_method,
+//                 'action' => $product->featured_action,
+//                 'amount' => $product->featured_amount,
+//                 'display_text' => $this->getFeaturedDisplayText($product)
+//             ];
+            
+//             // Add special highlight flag for featured items
+//             if (!isset($productData['is_special'])) {
+//                 $productData['is_special'] = true;
+//                 $productData['special_type'] = 'featured';
+//             } else {
+//                 $productData['special_type'] = 'both'; // Both discount and featured
+//             }
+//         }
+        
+//         return $productData;
+//     });
+
+//     return response()->json([
+//         'status' => true,
+//         'data'   => $response
+//     ]);
+// }
 public function homeProducts(Request $request)
 {
     $request->validate([
@@ -22,64 +98,86 @@ public function homeProducts(Request $request)
 
     // CASE: All products
     if ($menuId === 'all') {
-        $products = Product::where('status', '1')->get();
-    } elseif($menuId === "featured"){
-        $products = Product::where('is_featured', '1')->get();
+        $products = Product::with(['menu','complementaryProduct.complementary'])
+            ->where('status', '1')->get();
+
+    } elseif($menuId === "featured") {
+
+        $products = Product::with(['menu','complementaryProduct.complementary'])
+            ->where('is_featured', '1')->get();
+
     } else {
-        $products = Product::where('menu_id', $menuId)
-                           ->where('status', '1')
-                           ->get();
+
+        $products = Product::with(['menu','complementaryProduct.complementary'])
+            ->where('menu_id', $menuId)
+            ->where('status', '1')
+            ->get();
     }
 
     // Prepare response with enhanced product information
     $response = $products->map(function($product) {
-        $menu = $product->menu; // relation
-        
+
+        $menu = $product->menu;
+
         // Calculate discount information
         $discountInfo = $this->calculateDiscountInfo($product);
-        
-        // Prepare base product data
+
         $productData = [
             'menu_name'        => $menu ? $menu->name : null,
             'product_name'     => $product->name,
-			'product_id'       => $product->id,
+            'product_id'       => $product->id,
             'price'            => $product->price,
             'original_price'   => $product->original_price,
             'image'            => $product->image,
             'is_featured'      => (bool)$product->is_featured,
         ];
-        
-        // Add discount information if available
-		if ($discountInfo['has_discount']) {
 
-			// Add featured_method inside discount array
-			$discountInfo['featured_method'] = $product->featured_method;
+        /*
+        |--------------------------------------------------------------------------
+        | COMPLEMENTARY PRODUCT (NEW - WITHOUT CHANGING OTHER LOGIC)
+        |--------------------------------------------------------------------------
+        */
 
-			$productData['discount'] = $discountInfo;
-			
-			// Add special highlight flag for products with discounts or featured items
-			$productData['is_special'] = true;
-			$productData['special_type'] = 'discount';
-		}
-        
-        // Add featured method information if available
+        $comp = $product->complementaryProduct->first();
+
+        if ($comp && $comp->complementary) {
+
+            $productData['complementary_product'] = [
+                'id'    => $comp->complementary->id,
+                'name'  => $comp->complementary->name,
+                'image' => $comp->complementary->image,
+            ];
+        }
+
+        // Discount logic (UNCHANGED)
+        if ($discountInfo['has_discount']) {
+
+            $discountInfo['featured_method'] = $product->featured_method;
+
+            $productData['discount'] = $discountInfo;
+
+            $productData['is_special'] = true;
+            $productData['special_type'] = 'discount';
+        }
+
+        // Featured logic (UNCHANGED)
         if ($product->is_featured && $product->featured_method) {
+
             $productData['featured_info'] = [
                 'method' => $product->featured_method,
                 'action' => $product->featured_action,
                 'amount' => $product->featured_amount,
                 'display_text' => $this->getFeaturedDisplayText($product)
             ];
-            
-            // Add special highlight flag for featured items
+
             if (!isset($productData['is_special'])) {
                 $productData['is_special'] = true;
                 $productData['special_type'] = 'featured';
             } else {
-                $productData['special_type'] = 'both'; // Both discount and featured
+                $productData['special_type'] = 'both';
             }
         }
-        
+
         return $productData;
     });
 
@@ -88,7 +186,6 @@ public function homeProducts(Request $request)
         'data'   => $response
     ]);
 }
-
 /**
  * Calculate discount information for a product
  */

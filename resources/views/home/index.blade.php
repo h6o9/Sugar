@@ -360,7 +360,7 @@
                         <div class="position-relative">
                             <img class="w-100" src="{{ asset($product->image) }}" alt="product-img">
                             @if($hasDiscount)
-                                <span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ $discountPercent }}% OFF</span>
+                                <span class="badge bg-danger position-absolute top-0 end-0 m-3 fs-6">{{ $discountPercent }}% OFF</span>
                             @endif
                         </div>
                         <div class="p-3 description">
@@ -861,10 +861,28 @@
 														@if($prod->featured_action == 'decrease' && $discountPercent > 0)
                                                             <span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ $discountPercent }}% OFF</span>
                                                         @endif
-													<div class="text-center mb-3">
-														<img class="img-fluid" src="{{ asset($prod->image) }}"
-															style="width: 150px; height: 150px; object-fit: cover; border-radius: 10px;">
-													</div>
+													<div class="text-center mb-3 d-flex justify-content-center align-items-center gap-2">
+
+    {{-- Main Product --}}
+    <img class="img-fluid"
+        src="{{ asset($prod->image) }}"
+        style="width:120px;height:120px;object-fit:cover;border-radius:10px;">
+@php
+$comp = optional($prod->complementaryProduct)->first();
+@endphp
+
+@if(optional($comp)->complementary)
+
+<span style="font-size:22px;font-weight:bold;">+</span>
+
+<img class="img-fluid"
+     src="{{ asset($comp->complementary->image) }}"
+     style="width:90px;height:90px;object-fit:cover;border-radius:10px;">
+	 
+    <p class="mb-0 small mt-1" style= "color:#000;">{{ $comp->complementary->name }}</p>
+
+@endif
+</div>
 													<div class="mb-2">
 														<h5 class="mb-1 main-heading text-center">{{ $prod->name }}</h5>
 														<p class="text-center mb-2">

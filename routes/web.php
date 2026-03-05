@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Admin\BulkFeatureController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\CiboExpressController;
 use App\Http\Controllers\Admin\ComplementaryProductController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\GalleryController;
@@ -84,6 +85,11 @@ Route::prefix('admin')->middleware('admin')->group(function () {
     Route::get('profile', [AdminController::class, 'getProfile']);
     Route::post('update-profile', [AdminController::class, 'update_profile']);
     Route::get('logout', [AdminController::class, 'logout']);
+
+	// Cibo Express
+	Route::get('/cibo-express', [CiboExpressController::class, 'index'])->name('cibo-express.index');
+	Route::get('/cibo-express/edit/{id}', [CiboExpressController::class, 'edit'])->name('cibo-express.edit');
+	Route::post('/cibo-express/update/{id}', [CiboExpressController::class, 'update'])->name('cibo-express.update');
 
 // Complementary Product Routes
 	Route::get('/complementary-products', [ComplementaryProductController::class, 'index'])

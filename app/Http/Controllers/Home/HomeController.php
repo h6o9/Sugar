@@ -23,42 +23,51 @@ use Illuminate\Support\Facades\Session;
 
 class HomeController extends Controller
 {
-    public function index()
-    {
-        // Session::forget('cart');
-        // $popularMenu = Menu::where('name', 'MOST POPULAR')->first();
-        $user = Auth::user();
+      public function index()
+{
+    $user = Auth::user();
 
-        $products = Product::with('variants')
+    $products = Product::with(['variants','complementaryProduct.complementary'])
+        ->where('status', 1)
+        ->where('is_featured', 1)
+        ->orderBy('id', 'DESC')
+        ->get();
+
+    $menuCategories = Menu::with(['products' => function ($query) {
+        $query->where('status', 1);
+    }])->orderBy('id', 'asc')->get();
+
+    foreach ($menuCategories as $menu) {
+
+        $menuproduct = Product::where('menu_id', $menu->id)
             ->where('status', 1)
-            ->where('is_featured', 1) 
-            ->orderBy('id', 'DESC')
-            // ->take(4)
+            ->with(['variants','complementaryProduct.complementary'])
             ->get();
-        
-        // Get all menu categories with products for full menu display
-        $menuCategories = Menu::with(['products' => function ($query) {
-            $query->where('status', 1);
-        }])->orderBy('id', 'asc')->get();
 
-        
-        foreach ($menuCategories as $menu) {
-            $menuproduct = Product::where('menu_id', $menu->id)->where('status', 1)->with('variants')->get();
-            $menu->product = $menuproduct;
-        }
-        
-        // Get FAQs
-        $faqs = Faq::orderBy('id', 'DESC')->get();
-        
-        $branches = Branch::all();
-        $userId = Auth::guard('user')->id();
-        $userTimeSlots = UserTimeSlotes::where('user_id', $userId)
-            ->first();
-        $timeSlots = TimeSlot::all();
-        $timeSlots = TimeSlot::all();
-        $menuGalleries = MenuGallery::orderBy('id', 'DESC')->take(4)->get();
-        return view('home.index', compact('products', 'branches', 'timeSlots', 'menuGalleries', 'userTimeSlots', 'menuCategories', 'faqs'));
+        $menu->product = $menuproduct;
     }
+
+    $faqs = Faq::orderBy('id', 'DESC')->get();
+    $branches = Branch::all();
+
+    $userId = Auth::guard('user')->id();
+
+    $userTimeSlots = UserTimeSlotes::where('user_id', $userId)->first();
+
+    $timeSlots = TimeSlot::all();
+
+    $menuGalleries = MenuGallery::orderBy('id', 'DESC')->take(4)->get();
+
+    return view('home.index', compact(
+        'products',
+        'branches',
+        'timeSlots',
+        'menuGalleries',
+        'userTimeSlots',
+        'menuCategories',
+        'faqs'
+    ));
+}
 
     public function getmenuPicture()
     {

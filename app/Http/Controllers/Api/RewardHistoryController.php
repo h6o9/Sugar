@@ -23,6 +23,7 @@ public function index(Request $request)
             'reward_title' => $reward->reward_title,
             'reward_description' => $reward->description,
             'reward_type' => $reward->reward_type,
+			'points' => $reward->points,
             'created_at' => $reward->created_at->toDateTimeString(),
         ];
     });

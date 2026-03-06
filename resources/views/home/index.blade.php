@@ -330,6 +330,30 @@
                                 </div>
                             </div>
                         </div>
+						<!-- Cibo Express Modal Start -->
+						 <section class="cibo-express-section py-5">
+    <div class="container">
+        @foreach ($ciboExpressItems as $item)
+        <div class="row align-items-center mb-5">
+
+            <!-- Left Side Content -->
+            <div class="col-lg-6 col-md-6">
+                <h2 class="mb-3">{{ $item->title ?? 'Cibo Express' }}</h2>
+                <p class="text-muted">
+                    {{ $item->description }}
+                </p>
+            </div>
+
+            <!-- Right Side Image -->
+            <div class="col-lg-6 col-md-6 text-center">
+                <img src="{{ asset($item->image) }}" 
+                     class="img-fluid rounded shadow">
+            </div>
+
+        </div>
+        @endforeach
+    </div>
+</section>
                     </div>
                 </div>
             </div>
@@ -721,54 +745,117 @@
                 <h3 class="mb-5 col-sm-8 mx-auto">Featured Items</h3>
             </div>
             <div class="owl-carousel popular-carousel gallery-carousel">
-                @foreach ($products as $product)
-                    @php
-                        $originalPrice = $product->original_price ?? $product->price;
-                        $finalPrice = $product->price;
-                        $discountPercent = 0;
+              @foreach ($products as $product)
+@php
+    $originalPrice = $product->original_price ?? $product->price;
+    $finalPrice = $product->price;
+    $discountPercent = 0;
 
-                        if ($product->featured_action == 'decrease' && $product->original_price) {
-                            if ($product->featured_method == 'percentage') {
-                                $discountPercent = (int) $product->featured_amount;
-                            } elseif ($product->featured_method == 'amount') {
-                                $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
-                            }
-                        }
-                    @endphp
-                    <div class="item">
-                        <a class="popular-item bg-transparent border rounded p-4 d-block text-center h-100 position-relative"
-                            href="#" data-bs-toggle="modal" data-bs-target="#menuModal-{{ $product->id }}">
-							@if($product->featured_action == 'decrease' && $discountPercent > 0)
-								<span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ $discountPercent }}% OFF</span>
-							@endif
-                            <div class="mb-3 d-flex justify-content-center">
-                                <img class="img-fluid" src="{{ asset($product->image) }}"
-                                    style="width: 150px; height: 150px; object-fit: cover; border-radius: 10px;">
-                            </div>
-                            <div class="mb-2">
-                                <h5 class="mb-2 main-heading">{{ $product->name }}</h5>
-                                <p class="mb-2">
-                                    @if ($product->variants && $product->variants->isNotEmpty())
-                                        @if($product->featured_action == 'decrease' && $product->original_price)
-                                            <span class="text-muted text-decoration-line-through small d-block">£{{ number_format($originalPrice, 2) }}</span>
-                                            <span class="badge bg-primary fs-6 py-2 px-3">From £{{ number_format($finalPrice, 2) }}</span>
-                                        @else
-                                            <span class="badge bg-primary fs-6 py-2 px-3">From £{{ $product->variants->first()->price }}</span>
-                                        @endif
-                                    @else
-                                        @if($product->featured_action == 'decrease' && $product->original_price)
-                                            <span class="text-muted text-decoration-line-through small d-block">£{{ number_format($originalPrice, 2) }}</span>
-                                            <span class="badge bg-primary fs-6 py-2 px-3">£{{ number_format($finalPrice, 2) }}</span>
-                                        @else
-                                            <span class="badge bg-primary fs-6 py-2 px-3">£{{ $product->price }}</span>
-                                        @endif
-                                    @endif
-                                </p>
-                            </div>
-                            {{-- <p class="mb-0 text-muted small">{!! $product->description !!}</p> --}}
-                        </a>
-                    </div>
-                @endforeach
+    if ($product->featured_action == 'decrease' && $product->original_price) {
+        if ($product->featured_method == 'percentage') {
+            $discountPercent = (int) $product->featured_amount;
+        } elseif ($product->featured_method == 'amount') {
+            $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
+        }
+    }
+
+    // Complementary Product
+    $comp = optional($product->complementaryProduct);
+@endphp
+
+<div class="item">
+<a class="popular-item bg-transparent border rounded p-4 d-block text-center h-100 position-relative"
+    href="#" data-bs-toggle="modal" data-bs-target="#menuModal-{{ $product->id }}">
+
+@if($product->featured_action == 'decrease' && $discountPercent > 0)
+<span class="badge bg-danger position-absolute top-0 end-0 m-2">
+    {{ $discountPercent }}% OFF
+</span>
+@endif
+
+
+{{-- Product + Complementary Section --}}
+<div class="mb-3 d-flex justify-content-center align-items-center gap-2 flex-wrap">
+
+    {{-- Main Product --}}
+    <img class="img-fluid"
+        src="{{ asset($product->image) }}"
+        style="width:150px;height:150px;object-fit:cover;border-radius:10px;">
+
+    {{-- Complementary Product --}}
+    @if(optional($comp)->complementary)
+
+        <span style="font-size:22px;font-weight:bold;">+</span>
+
+        <div>
+            <img class="img-fluid"
+                src="{{ asset($comp->complementary->image) }}"
+                style="width:90px;height:90px;object-fit:cover;border-radius:10px;">
+
+            <p class="mb-0 small mt-1" style="color:#000;">
+                {{ $comp->complementary->name }}
+            </p>
+        </div>
+
+    @endif
+
+</div>
+
+
+<div class="mb-2">
+<h5 class="mb-2 main-heading">{{ $product->name }}</h5>
+
+<p class="mb-2">
+
+@if ($product->variants && $product->variants->isNotEmpty())
+
+    @if($product->featured_action == 'decrease' && $product->original_price)
+
+        <span class="text-muted text-decoration-line-through small d-block">
+            £{{ number_format($originalPrice, 2) }}
+        </span>
+
+        <span class="badge bg-primary fs-6 py-2 px-3">
+            From £{{ number_format($finalPrice, 2) }}
+        </span>
+
+    @else
+
+        <span class="badge bg-primary fs-6 py-2 px-3">
+            From £{{ $product->variants->first()->price }}
+        </span>
+
+    @endif
+
+@else
+
+    @if($product->featured_action == 'decrease' && $product->original_price)
+
+        <span class="text-muted text-decoration-line-through small d-block">
+            £{{ number_format($originalPrice, 2) }}
+        </span>
+
+        <span class="badge bg-primary fs-6 py-2 px-3">
+            £{{ number_format($finalPrice, 2) }}
+        </span>
+
+    @else
+
+        <span class="badge bg-primary fs-6 py-2 px-3">
+            £{{ $product->price }}
+        </span>
+
+    @endif
+
+@endif
+
+</p>
+</div>
+
+</a>
+</div>
+
+@endforeach
             </div>
 
             <!-- <div class="text-center">

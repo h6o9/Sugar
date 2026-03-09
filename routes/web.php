@@ -94,10 +94,13 @@ Route::prefix('admin')->middleware('admin')->group(function () {
 // Complementary Product Routes
 	Route::get('/complementary-products', [ComplementaryProductController::class, 'index'])
     ->name('complementary.index');
+Route::get('/products/search', [ComplementaryProductController::class, 'search'])->name('products.search');
 
 Route::delete('/complementary-products/{id}', [ComplementaryProductController::class, 'destroy'])
     ->name('complementary.destroy');
 
+    // products loadding
+Route::get('/admin/products/get-products', [ProductController::class, 'getProducts'])->name('admin.products.get');
     // Branch Views
     Route::get('branch', [BranchController::class, 'view'])->name('branches.index');
     Route::get('create-branch', [BranchController::class, 'create'])->name('create-branch');

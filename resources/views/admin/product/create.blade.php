@@ -70,13 +70,8 @@
 <div class="col-sm-6">
 <div class="form-group mb-2">
 <label>Complement Product (Optional)</label>
-<select class="form-control" name="complementary_product_id">
-<option value="" disabled selected>Select Complement Product</option>
-@foreach ($products as $product)
-<option value="{{ $product->id }}">
-    {{ $product->name }}
-</option>
-@endforeach
+<select class="form-control select2-product" name="complementary_product_id" style="width: 100%;">
+<option value="" selected>Select Complement Product</option>
 </select>
 </div>
 </div>
@@ -236,6 +231,37 @@ $(document).ready(function () {
     // Clean value before submit
     $('#add_student').on('submit', function () {
         amount.val(amount.val().replace(/[£%]/g,''));
+    });
+
+    $('.select2-product').select2({
+        placeholder: 'Search Complement Product...',
+        allowClear: true,
+        minimumInputLength: 0,
+
+        ajax: {
+            url: '{{ route("products.search") }}',
+            type: 'GET',
+            dataType: 'json',
+            delay: 250,
+
+            data: function (params) {
+                return {
+                    search: params.term || '', 
+                    page: params.page || 1
+                };
+            },
+
+            processResults: function (data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: data.more
+                    }
+                };
+            },
+            cache: true
+        }
     });
 
 });

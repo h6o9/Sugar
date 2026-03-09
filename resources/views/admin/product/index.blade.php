@@ -1,250 +1,123 @@
 @extends('admin.layout.app')
-@section('title', 'index')
+@section('title','Products')
 @section('content')
-    <div class="main-content" style="min-height: 562px;">
-        <section class="section">
-            <div class="section-body">
-                <div class="row">
-                    <div class="col-12 col-md-12 col-lg-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <div class="col-12">
-                                    <h4>Products</h4>
-                                </div>
-                            </div>
-                            <div class="card-body table-striped table-bordered table-responsive">
-                                <a class="btn btn-success mb-3" href="{{ route('product.create') }}">Add Product</a>
-                                <table class="table text-center" id="table_id_events">
-                                    <thead>
-                                        <tr>
-                                            <th>Sr.</th>
-                                            <th>Menu Name</th>
-                                            <th>Product Name</th>
-                                            <th>image</th>
-                                            <th>Base Price</th>
-											<th>Adjustment Price</th>
-                                            <th>Sizes</th>
-											<th>Settings Applied</th>
-                                            {{-- <th>Description</th> --}}
-                                            <th>Featured</th>
-                                            <th>Status</th>
-                                            <th scope="col">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+<div class="main-content">
+    <section class="section">
+        <div class="section-body">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h4>Products</h4>
+                            <a class="btn btn-success" href="{{ route('product.create') }}">Add Product</a>
+                        </div>
+                        <div class="card-body table-responsive">
+                            <div class="mb-3 d-flex justify-content-between align-items-center">
+    <!-- Left side: Rows per page -->
+    <div class="d-flex align-items-center gap-2">
+        <label for="perPage" class="mb-0">Show</label>
+        <select id="perPage" class="form-control" style="width:80px">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>  
+            <option value="100">100</option>
+        </select>
+        <label for="perPage" class="mb-0">entries</label>
+    </div>
 
-                                        @foreach ($products as $product)
-                                            <tr>
-                                                <td>{{ $loop->iteration }}</td>
-                                                <td>{{ $product->menu->name }}</td>
-                                                <td>{{ $product->name }}</td>
-                                                <td>
-                                                    <img src="{{ asset($product->image) }}" alt="" height="50"
-                                                        width="50" class="image">
-                                                </td>
-                                               <td>
-													@if ($product->variants->isNotEmpty())
+    <!-- Right side: Search bar -->
+    <div class="d-flex align-items-center gap-2">
+        <label for="searchInput" class="mb-0" style="margin-right: 8px;">Search:</label>
+        <input type="text" id="searchInput" class="form-control ms-1">
+    </div>
+</div>
 
-														@php
-															$prices = $product->variants
-																->pluck('original_price')
-																->filter()
-																->map(function ($price) {
-																	return rtrim(rtrim(number_format($price, 2, '.', ''), '0'), '.');
-																})
-																->implode(', £');
-														@endphp
-
-														£{{ $prices ?: rtrim(rtrim(number_format($product->original_price, 2, '.', ''), '0'), '.') }}
-
-													@else
-														£{{ rtrim(rtrim(number_format($product->original_price, 2, '.', ''), '0'), '.') }}
-													@endif
-												</td>
-												<td> @if ($product->variants->isNotEmpty()) @php $prices = $product->variants->pluck('price')->filter()->implode(', $'); @endphp @if ($prices) £{{ $prices }} @else £{{ $product->price }} @endif @else £{{ $product->price }} @endif </td>
-                                                <td>
-                                                    @if ($product->variants->isNotEmpty())
-                                                        @php
-                                                            $sizes =
-                                                                $product->variants
-                                                                    ->pluck('size')
-                                                                    ->filter()
-                                                                    ->implode(', ') ?:
-                                                                'No size';
-                                                        @endphp
-                                                        {{ $sizes }}
-                                                    @else
-                                                    <div class="badge badge-danger badge-shadow">No size</div>
-                                                    @endif
-                                                </td>
-                                                {{-- <td>{!! $product->description !!}</td> --}}
-												<td>
-    @php
-        $ruleValue = $product->rule ?? null;
-        $rule = $ruleValue == 'Priority'
-                    ? 'Individual'
-                    : ucfirst($ruleValue);
-    @endphp
-
-    @if(empty($ruleValue))
-        <span class="badge badge-primary badge-shadow">
-            No Settings Applied
-        </span>
-
-    @elseif(strtolower($ruleValue) == 'bulk')
-        <span class="badge badge-success badge-shadow">
-            {{ ucfirst($ruleValue) }}
-        </span>
-
-    @elseif($ruleValue == 'Priority')
-        <span class="badge badge-danger badge-shadow">
-            {{ $rule }}
-        </span>
-
-    @else
-        <span class="badge badge-secondary badge-shadow">
-            {{ $rule }}
-        </span>
-    @endif
-</td>
-												<td>
-                                                    @if ($product->is_featured)
-                                                        <a href="{{ route('admin.featured', ['id' => $product->id]) }}"
-                                                        class="btn btn-success" title="Click to Unfeature">
-                                                            <i class="fas fa-star"></i>
-                                                        </a>
-                                                    @else
-                                                        <a href="{{ route('admin.featured', ['id' => $product->id]) }}"
-                                                        class="btn btn-secondary" title="Click to Feature">
-                                                            <i class="far fa-star"></i>
-                                                        </a>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    @if ($product->status == 1)
-                                                        <div class="badge badge-success badge-shadow">Active</div>
-                                                    @else
-                                                        <div class="badge badge-danger badge-shadow">DeActive</div>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                <div style="display: flex;align-items: center;justify-content: center;column-gap: 8px">
-                                                    @if ($product->status == 1)
-                                                        <a href="{{ route('admin.status', ['id' => $product->id]) }}"
-                                                            class="btn btn-success"><svg xmlns="http://www.w3.org/2000/svg"
-                                                                width="24" height="24" viewBox="0 0 24 24"
-                                                                fill="none" stroke="currentColor"
-                                                                stroke-width="2"stroke-linecap="round"
-                                                                stroke-linejoin="round"class="feather feather-toggle-left">
-                                                                <rect x="1" y="5" width="22" height="14"
-                                                                    rx="7" ry="7"></rect>
-                                                                <circle cx="16" cy="12" r="3">
-                                                                </circle>
-                                                            </svg></a>
-                                                    @else
-                                                        <a href="{{ route('admin.status', ['id' => $product->id]) }}"
-                                                            class="btn btn-danger"><svg xmlns="http://www.w3.org/2000/svg"
-                                                                width="24" height="24" viewBox="0 0 24 24"
-                                                                fill="none" stroke="currentColor" stroke-width="2"
-                                                                stroke-linecap="round" stroke-linejoin="round"
-                                                                class="feather feather-toggle-right">
-                                                                <rect x="1" y="5" width="22" height="14"
-                                                                    rx="7" ry="7"></rect>
-                                                                <circle cx="8" cy="12" r="3">
-                                                                </circle>
-                                                            </svg></a>
-                                                    @endif
-
-                                                    {{-- <button type="button" class="btn btn-primary product-data"
-                                                        id="{{ $product->id }}" data-toggle="modal"
-                                                        data-target=".bd-example-modal-lg">view</button> --}}
-
-                                                    <a class="btn btn-info"
-                                                        href="{{ route('product.edit', $product->id) }}">Edit</a>
-                                                    <form method="post"
-                                                        action="{{ route('product.destroy', $product->id) }}">
-                                                        @csrf
-                                                        <input name="_method" type="hidden" value="DELETE">
-                                                        <button type="submit" class="btn btn-danger btn-flat show_confirm"
-                                                            data-toggle="tooltip">Delete</button>
-                                                    </form>
-                                                </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-
-                                    </tbody>
-                                </table>
-                            </div>
-
+                            <table class="table table-striped table-bordered text-center">
+                                <thead>
+                                    <tr>
+                                        <th>Sr.</th>
+                                        <th>Menu Name</th>
+                                        <th>Product Name</th>
+                                        <th>Image</th>
+                                        <th>Base Price</th>
+                                        <th>Adjustment Price</th>
+                                        <th>Sizes</th>
+                                        <th>Settings Applied</th>
+                                        <th>Featured</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productsTableBody">
+                                    <tr><td colspan="11" class="text-center">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                            <div id="paginationContainer" class="mt-3"></div>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
-
-        <div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel"
-            aria-hidden="true">
-            <div class="modal-dialog modal-lg scrol" id="mymodal">
-            </div>
-
         </div>
-    </div>
-
+    </section>
+</div>
 @endsection
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.0/sweetalert.min.js"></script>
 @section('js')
-    @if (\Illuminate\Support\Facades\Session::has('message'))
-        <script>
-            toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
-        </script>
-    @endif
-    <script>
-        $(document).ready(function() {
-            $('#table_id_events').DataTable()
+<script>
+$(document).ready(function(){
+    loadProducts(1);
 
-        })
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.0/sweetalert.min.js"></script>
-    <script type="text/javascript">
-        $('.show_confirm').click(function(event) {
-            var form = $(this).closest("form");
-            var name = $(this).data("name");
-            event.preventDefault();
-            swal({
-                    title: `Are you sure you want to delete this record?`,
-                    text: "If you delete this, it will be gone forever.",
-                    icon: "warning",
-                    buttons: true,
-                    dangerMode: true,
-                })
-                .then((willDelete) => {
-                    if (willDelete) {
-                        form.submit();
-                    }
-                });
-        });
+    $('#perPage').change(function(){ loadProducts(1); });
+    $('#searchInput').on('keyup', function(){ loadProducts(1); });
 
-        $(document).on('click', '.product-data', function() {
-            var id = $(this).attr('id');
-            alert('id');
-            $.ajax({
-                type: "GET",
-                dataType: "json",
-                headers: {
-                    'X-CSRF-Token': '{{ csrf_token() }}',
-                },
-                url: "{{ url('admin/product/show') }}",
-                data: {
-                    'id': id,
+    $(document).on('click','.pageBtn', function(){ loadProducts($(this).data('page')); });
 
-                },
-                success: function(response) {
-                    $("#mymodal").html(response);
+    $(document).on('click', '.show_confirm', function(event) {
 
-                }
-            });
-        });
-    </script>
+    event.preventDefault();
 
+    var form = $(this).closest("form");
+
+    swal({
+        title: "Are you sure you want to delete this record?",
+        text: "If you delete this, it will be gone forever.",
+        icon: "warning",
+        buttons: true,
+        dangerMode: true,
+    })
+    .then((willDelete) => {
+        if (willDelete) {
+            form.submit();
+        }
+    });
+
+});
+});
+
+function loadProducts(page){
+    let perPage = $('#perPage').val();
+    let search = $('#searchInput').val();
+
+    $('#productsTableBody').html('<tr><td colspan="11" class="text-center">Loading...</td></tr>');
+
+    $.ajax({
+        url: "{{ route('admin.products.get') }}",
+        type: "GET",
+        data: {page: page, per_page: perPage, search: search},
+        success: function(response){
+            $('#productsTableBody').html(response.html);
+            renderPagination(response.current_page, response.last_page);
+        }
+    });
+}
+
+function renderPagination(current, last){
+    let html = '<ul class="pagination justify-content-center">';
+    if(current>1) html += `<li class="page-item"><a class="page-link pageBtn" data-page="${current-1}">Previous</a></li>`;
+    for(let i=1;i<=last;i++) html += `<li class="page-item ${i==current?'active':''}"><a class="page-link pageBtn" data-page="${i}">${i}</a></li>`;
+    if(current<last) html += `<li class="page-item"><a class="page-link pageBtn" data-page="${current+1}">Next</a></li>`;
+    html += '</ul>';
+    $('#paginationContainer').html(html);
+}
+</script>
 @endsection

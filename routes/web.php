@@ -114,6 +114,7 @@ Route::get('/admin/products/get-products', [ProductController::class, 'getProduc
     Route::get('user', [UserController::class, 'userView'])->name('users.index');
     Route::get('user/rewards/{id}', [UserController::class, 'rewards'])->name('rewards');
     Route::delete('/user-delete/{id}', [UserController::class, 'destroy'])->name('users-delete');
+	Route::get('/user-ajax', [UserController::class, 'getUsers'])->name('users.ajax');
     // User Views End
 
     /** resource controller */

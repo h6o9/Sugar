@@ -1,7 +1,15 @@
 @extends('admin.layout.app')
 @section('title', 'Dashboard')
-
 @section('content')
+<style>
+	.select2-container--default .select2-selection--single .select2-selection__rendered {
+		display: flex;
+	}
+	.select2-container--default .select2-selection--single .select2-selection__clear {
+		height: 44px;
+	}
+</style>
+
 <div class="main-content">
 <section class="section">
 <div class="section-body">
@@ -69,9 +77,9 @@
 {{-- COMPLEMENTARY PRODUCT --}}
 <div class="col-sm-6">
 <div class="form-group mb-2">
-<label>Complement Product (Optional)</label>
+<label>Complementary Product (Optional)</label>
 <select class="form-control select2-product" name="complementary_product_id" style="width: 100%;">
-<option value="" selected>Select Complement Product</option>
+<option value="" selected>Select Complementary Product</option>
 </select>
 </div>
 </div>

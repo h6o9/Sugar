@@ -13,7 +13,15 @@ class UserController extends Controller
 
 public function userView()
 {
-    $users = User::withCount([
+    return view('admin.users.index');
+}
+
+public function getUsers(Request $request)
+{
+    $perPage = $request->get('per_page', 10);
+    $search = $request->get('search');
+
+    $query = User::withCount([
             'orders as completed_orders_count' => function ($q) {
                 $q->where('status', 'Delivered');
             }
@@ -23,20 +31,36 @@ public function userView()
                 $q->where('status', 'Delivered');
             }
         ], 'total_amount')
-        ->get();
+        ->select('id','name','email','phone','postcode','address')
+        ->latest();
 
-    // Average Spend calculate
-    $users->transform(function ($user) {
+    if ($search) {
+        $query->where(function($q) use ($search){
+            $q->where('name','like',"%$search%")
+              ->orWhere('email','like',"%$search%")
+              ->orWhere('phone','like',"%$search%");
+        });
+    }
+
+    $users = $query->paginate($perPage);
+
+    // calculate average spend
+    $users->getCollection()->transform(function ($user) {
+
         $user->average_spend = $user->completed_orders_count > 0
             ? round($user->completed_orders_total / $user->completed_orders_count, 2)
             : 0;
+
         return $user;
     });
 
-    // ✅ Sort by average_spend descending
-    $users = $users->sortByDesc('average_spend')->values();
+    $html = view('admin.users.partials.user_rows', compact('users'))->render();
 
-    return view('admin.users.index', compact('users'));
+    return response()->json([
+        'html' => $html,
+        'current_page' => $users->currentPage(),
+        'last_page' => $users->lastPage()
+    ]);
 }
     public function rewards($id){
         $user = User::find($id);

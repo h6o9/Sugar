@@ -62,6 +62,13 @@
 </div>
 @endsection
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.0/sweetalert.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+@if(Session::has('message'))
+<script>
+    toastr.success("{{ Session::get('message') }}");
+</script>
+@endif
 @section('js')
 <script>
 $(document).ready(function(){
@@ -72,11 +79,13 @@ $(document).ready(function(){
 
     $(document).on('click','.pageBtn', function(){ loadProducts($(this).data('page')); });
 
-    $(document).on('click', '.show_confirm', function(event) {
+ $(document).on('click', '.show_confirm', function(event) {
 
     event.preventDefault();
 
-    var form = $(this).closest("form");
+    let button = $(this);
+    let form = button.closest("form");
+    let url = form.attr('action');
 
     swal({
         title: "Are you sure you want to delete this record?",
@@ -86,9 +95,28 @@ $(document).ready(function(){
         dangerMode: true,
     })
     .then((willDelete) => {
+
         if (willDelete) {
-            form.submit();
+
+            $.ajax({
+                url: url,
+                type: "POST",
+                data: form.serialize(),
+                success: function(response){
+
+                    toastr.success("Product deleted successfully");
+
+                    // Row remove from table
+                    button.closest('tr').remove();
+
+                },
+                error: function(){
+                    toastr.error("Something went wrong");
+                }
+            });
+
         }
+
     });
 
 });
@@ -112,11 +140,62 @@ function loadProducts(page){
 }
 
 function renderPagination(current, last){
+
     let html = '<ul class="pagination justify-content-center">';
-    if(current>1) html += `<li class="page-item"><a class="page-link pageBtn" data-page="${current-1}">Previous</a></li>`;
-    for(let i=1;i<=last;i++) html += `<li class="page-item ${i==current?'active':''}"><a class="page-link pageBtn" data-page="${i}">${i}</a></li>`;
-    if(current<last) html += `<li class="page-item"><a class="page-link pageBtn" data-page="${current+1}">Next</a></li>`;
+
+    // Previous
+    if(current > 1){
+        html += `<li class="page-item">
+                    <a class="page-link pageBtn" data-page="${current-1}">Previous</a>
+                 </li>`;
+    }else{
+        html += `<li class="page-item disabled"><span class="page-link">Previous</span></li>`;
+    }
+
+    let start = Math.max(1, current - 2);
+    let end = Math.min(last, current + 2);
+
+    // First page
+    if(start > 1){
+        html += `<li class="page-item">
+                    <a class="page-link pageBtn" data-page="1">1</a>
+                 </li>`;
+
+        if(start > 2){
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+
+    // Middle pages
+    for(let i = start; i <= end; i++){
+        html += `<li class="page-item ${i==current?'active':''}">
+                    <a class="page-link pageBtn" data-page="${i}">${i}</a>
+                 </li>`;
+    }
+
+    // Last pages
+    if(end < last){
+
+        if(end < last - 1){
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+
+        html += `<li class="page-item">
+                    <a class="page-link pageBtn" data-page="${last}">${last}</a>
+                 </li>`;
+    }
+
+    // Next
+    if(current < last){
+        html += `<li class="page-item">
+                    <a class="page-link pageBtn" data-page="${current+1}">Next</a>
+                 </li>`;
+    }else{
+        html += `<li class="page-item disabled"><span class="page-link">Next</span></li>`;
+    }
+
     html += '</ul>';
+
     $('#paginationContainer').html(html);
 }
 </script>

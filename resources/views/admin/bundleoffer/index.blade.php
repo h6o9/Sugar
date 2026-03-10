@@ -10,7 +10,7 @@
                         <div class="card-header">
                             <div class="col-12">
                                 <h4>Bundle Offers <small class="font-weight-bold text-danger">
-                                (In this section, you can view and manage all bundle offers (combo deals). Bundle offers include promotions like Buy 1 Get 1 Free or Buy a Burger and Get an Ice Cream. These offers are created from the admin panel using existing products.)
+                                (In this section, you can view and manage all bundle offers (combo deals). Bundle offers include promotions,for example Buy 1 Get 1 Free or Buy a Burger and Get an Ice Cream. These offers are created from the admin panel using existing products.)
                                 </small>
                                 </h4>
                             </div>
@@ -22,7 +22,7 @@
                                     <tr>
                                         <th>Sr.</th>
                                         <th>Base Product</th>
-                                        <th>Complement Product</th>
+                                        <th>Complementary Product</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>

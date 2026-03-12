@@ -38,7 +38,7 @@ class MenuController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required',
+            'name' => 'required|unique:menus,name',
         ]);
 
         $menu = Menu::create([

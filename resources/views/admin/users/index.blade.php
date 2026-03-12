@@ -1,250 +1,105 @@
 @extends('admin.layout.app')
-@section('title','Users')
-
+@section('title', 'Users')
 @section('content')
+<div class="main-content" style="min-height: 562px;">
+    <section class="section">
+        <div class="section-body">
+            <div class="row">
+                <div class="col-12 col-md-12 col-lg-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="col-12">
+                                <h4>Users
+                                </h4>
+                            </div>
+                        </div>
 
-<div class="main-content">
-<section class="section">
-<div class="section-body">
+                        <div class="card-body table-striped table-bordered table-responsive">
+                            <table class="table text-center" id="table_id_events">
+                                <thead>
+                                    <tr>
+                                        <th>Sr.</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+										<th>Phone</th>
+										<th>Postcode</th>
+										<th>Address</th>
+										<th>Average Spend (£)</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+							@foreach ($users as $user)
+							<tr>
+								<td>{{ $loop->iteration }}</td>
 
-<div class="card">
+								<td>{{ $user->name }}</td>
+								<td>{{ $user->email }}</td>
+								<td>{{ $user->phone }}</td>
+								<td>{{ $user->postcode }}</td>
+								<td>{{ $user->address }}</td>
 
-<div class="card-header">
-<h4>Users</h4>
+								<td>£{{ $averagespend[$user->id] ?? 0 }}</td>
+
+								<td style="display: flex; align-items: center; justify-content: center; column-gap: 8px">
+									<form method="POST" action="{{ route('users-delete', $user->id) }}">
+										@csrf
+										@method('DELETE')
+
+										<button type="submit" class="btn btn-danger btn-flat show_confirm">
+											Delete
+										</button>
+									</form>
+								</td>
+							</tr>
+							@endforeach
+							</tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg scrol" id="mymodal">
+        </div>
+    </div>
 </div>
-
-<div class="card-body table-responsive">
-
-<div class="d-flex justify-content-between mb-3">
-
-<div>
-<label>Rows per page</label>
-
-<select id="perPage" class="form-control" style="width:80px">
-
-<option value="10">10</option>
-<option value="20">20</option>
-<option value="50">50</option>
-
-</select>
-</div>
-
-<div>
-<input type="text" id="searchUser"
-class="form-control"
-placeholder="Search User"
-style="width:250px">
-</div>
-
-</div>
-
-<table class="table table-bordered text-center">
-
-<thead>
-<tr>
-<th>Sr.</th>
-<th>Name</th>
-<th>Email</th>
-<th>Phone</th>
-<th>Postcode</th>
-<th>Address</th>
-<th>Average Spend (£)</th>
-<th>Action</th>
-</tr>
-</thead>
-
-<tbody id="usersTableBody">
-
-<tr>
-<td colspan="8">Loading...</td>
-</tr>
-
-</tbody>
-
-</table>
-
-<div id="paginationContainer"></div>
-
-</div>
-</div>
-</div>
-</section>
-</div>
-
 @endsection
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.0/sweetalert.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
-@section('scripts')
+@section('js')
+@if (\Illuminate\Support\Facades\Session::has('message'))
+    <script>
+        toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
+    </script>
+@endif
+
 <script>
+$(document).ready(function() {
+    $('#table_id_events').DataTable();
 
-$(document).ready(function(){
-
-    loadUsers(1);
-
-    $("#perPage").change(function(){
-        loadUsers(1);
+    // Delete Confirmation
+    $('.show_confirm').click(function(event) {
+        var form = $(this).closest("form");
+        event.preventDefault();
+        swal({
+            title: `Are you sure you want to delete this record?`,
+            text: "If you delete this, it will be gone forever.",
+            icon: "warning",
+            buttons: true,
+            dangerMode: true,
+        })
+        .then((willDelete) => {
+            if (willDelete) {
+                form.submit();
+            }
+        });
     });
-
-    $("#searchUser").keyup(function(){
-        loadUsers(1);
-    });
-
-    $(document).on("click",".pageBtn",function(){
-        let page=$(this).data("page");
-        loadUsers(page);
-    });
-
 });
-
-function loadUsers(page){
-
-    let perPage=$("#perPage").val();
-    let search=$("#searchUser").val();
-
-    $.ajax({
-
-        url:"{{ route('users.ajax') }}",
-        type:"GET",
-
-        data:{
-            page:page,
-            per_page:perPage,
-            search:search
-        },
-
-        success:function(res){
-
-            $("#usersTableBody").html(res.html);
-
-            renderPagination(res.current_page,res.last_page);
-
-        }
-
-    });
-
-}
-
-
-// DELETE USER AJAX
-$(document).on('click','.show_confirm',function(e){
-
-    e.preventDefault();
-
-    let button=$(this);
-    let form=button.closest("form");
-    let url=form.attr("action");
-
-    swal({
-
-        title:"Are you sure you want to delete this user?",
-        text:"If you delete this it will be gone forever.",
-        icon:"warning",
-        buttons:true,
-        dangerMode:true,
-
-    })
-
-    .then((willDelete)=>{
-
-        if(willDelete){
-
-            $.ajax({
-
-                url:url,
-                type:"POST",
-                data:form.serialize(),
-
-                success:function(){
-
-                    button.closest("tr").remove();
-
-                    toastr.success("User deleted successfully");
-
-                },
-
-                error:function(){
-                    toastr.error("Something went wrong");
-                }
-
-            });
-
-        }
-
-    });
-
-});
-
-
-
-// PAGINATION FUNCTION
-function renderPagination(current,last){
-
-    let html='<ul class="pagination justify-content-center">';
-
-    if(current>1){
-
-        html+=`<li class="page-item">
-        <a class="page-link pageBtn" data-page="${current-1}">Previous</a>
-        </li>`;
-
-    }
-
-    let start=Math.max(1,current-2);
-    let end=Math.min(last,current+2);
-
-    if(start>1){
-
-        html+=`<li class="page-item">
-        <a class="page-link pageBtn" data-page="1">1</a>
-        </li>`;
-
-        if(start>2){
-            html+=`<li class="page-item disabled">
-            <span class="page-link">...</span>
-            </li>`;
-        }
-
-    }
-
-    for(let i=start;i<=end;i++){
-
-        html+=`<li class="page-item ${i==current?'active':''}">
-        <a class="page-link pageBtn" data-page="${i}">${i}</a>
-        </li>`;
-
-    }
-
-    if(end<last){
-
-        if(end<last-1){
-
-            html+=`<li class="page-item disabled">
-            <span class="page-link">...</span>
-            </li>`;
-
-        }
-
-        html+=`<li class="page-item">
-        <a class="page-link pageBtn" data-page="${last}">${last}</a>
-        </li>`;
-
-    }
-
-    if(current<last){
-
-        html+=`<li class="page-item">
-        <a class="page-link pageBtn" data-page="${current+1}">Next</a>
-        </li>`;
-
-    }
-
-    html+='</ul>';
-
-    $("#paginationContainer").html(html);
-
-}
-
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.0/sweetalert.min.js"></script>
 @endsection

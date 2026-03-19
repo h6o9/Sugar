@@ -76,6 +76,20 @@ if (Auth::guard('user')->check()) {
 <!-- Disclaimer Modal End -->
 
 <!-- Navbar Start -->
+<div class="promo-bar">
+    <a href="/offers">🔥 20% OFF on Pasta – Order Now</a>
+</div>
+<div class="app-download-banner">
+    <p>🍕 Craving your favorites? Get the Sugar Pappi App for exclusive offers!</p>
+    <div>
+        <a href="#" target="_blank" class="d-inline-block">
+            <img src="{{ asset('public/img/gslogo.png') }}" alt="Google Play" width="145">
+        </a>
+        <a href="#" target="_blank" class="d-inline-block">
+            <img src="{{ asset('public/img/pslogo.png') }}" alt="App Store" width="145">
+        </a>
+    </div>
+</div>
 <nav class="navbar navbar-expand-lg navbar-dark px-4 px-lg-5 py-lg-0 py-2">
     <div>
         <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
@@ -120,7 +134,7 @@ if (Auth::guard('user')->check()) {
                 </div>
                 <!-- UPDATED: Disable View All Notifications if no notifications -->
                 <div class="pt-3 border-top mt-1 text-center">
-                    <a href="{{ route('notifications.index') }}" class="btn btn-danger px-5 {{ $notificationCount == 0 ? 'disabled' : '' }}">
+                    <a href="{{ route('web.notifications.index') }}" class="btn btn-danger px-5 {{ $notificationCount == 0 ? 'disabled' : '' }}">
                         View All Notifications
                     </a>
                 </div>
@@ -210,9 +224,9 @@ if (Auth::guard('user')->check()) {
                     <p class="text-danger text-center">Your cart is empty!</p>
                     @endforelse
                 </div>
-                <!-- FIXED: Added class for JavaScript and dynamic disabled state -->
+                <!-- UPDATED: Disable Continue To Cart if cart empty -->
                 <div class="pt-3 border-top mt-1 text-center">
-                    <a href="{{ route('my-cart') }}" class="btn btn-danger px-5 continue-cart-btn {{ count(session('cart', [])) == 0 ? 'disabled' : '' }}" id="continueCartBtn">
+                    <a href="{{ route('my-cart') }}" class="btn btn-danger px-5 {{ count(session('cart', [])) == 0 ? 'disabled' : '' }}">
                         Continue To Cart
                     </a>
                 </div>
@@ -243,105 +257,46 @@ if (Auth::guard('user')->check()) {
 <script>
 $(document).ready(function(){
 
-    /* ==============================
-       UPDATE CART ON SERVER
-    ============================== */
     function updateServerCart(productId, variantId, quantity){
         $.post('{{ route("update.cart") }}', {
-            _token:'{{ csrf_token() }}',
+            '_token':'{{ csrf_token() }}',
             product_id: productId,
             variant_id: variantId,
             quantity: quantity
-        });
+        }, function(data){ console.log('Cart updated', data); });
     }
 
-    /* ==============================
-       CART UI SYNC FUNCTION (MAIN FIX)
-    ============================== */
     function helper(){
-
-        let totalQty = 0;
-
-        $('.cart-input').each(function(){
-            totalQty += parseInt($(this).val()) || 0;
-        });
-
-        // Update badge counter everywhere
-        $('.cart-counter-1').text(totalQty);
-
-        // Continue button enable / disable
-        let btn = $('#continueCartBtn');
-
-        if(totalQty > 0){
-            btn.removeClass('disabled');
-            btn.css('pointer-events','auto');
-            btn.css('opacity','1');
-        }else{
-            btn.addClass('disabled');
-            btn.css('pointer-events','none');
-            btn.css('opacity','0.6');
-        }
+        let total = 0;
+        $('.cart-input').each(function(){ total += parseInt($(this).val()); });
+        $('.cart-counter-1').text(total);
     }
 
-    /* ==============================
-       INCREMENT
-    ============================== */
-    $(document).on('click','.increment-btn',function(){
-
+    $(document).on('click', '.increment-btn', function(){
         let input = $(this).siblings('.increment-input');
-        let qty = (parseInt(input.val()) || 0) + 1;
+        let qty = parseInt(input.val())+1;
         input.val(qty);
 
         let data = $(this).data('product-id').split(',');
-
         updateServerCart(data[0].trim(), data[1]?.trim(), qty);
-
-        let parent = $(this).closest('.carting-child');
-        let price = parseFloat(parent.find('.product-price').text());
-
-        parent.find('.total-price')
-              .text('£' + (price * qty).toFixed(2));
-
+        let price = parseFloat($(this).closest('.carting-child').find('.product-price').text());
+        $(this).closest('.carting-child').find('.total-price').text('£'+(price*qty).toFixed(2));
         helper();
     });
 
-    /* ==============================
-       DECREMENT
-    ============================== */
-    $(document).on('click','.decrement-btn',function(){
-
+    $(document).on('click', '.decrement-btn', function(){
         let input = $(this).siblings('.increment-input');
-        let qty = parseInt(input.val()) || 0;
-
-        let data = $(this).data('product-id').split(',');
-        let parent = $(this).closest('.carting-child');
-        let price = parseFloat(parent.find('.product-price').text());
-
-        if(qty > 1){
-
-            qty--;
-            input.val(qty);
-
+        let qty = parseInt(input.val());
+        if(qty>1){ 
+            qty--; input.val(qty);
+            let data = $(this).data('product-id').split(',');
             updateServerCart(data[0].trim(), data[1]?.trim(), qty);
-
-            parent.find('.total-price')
-                  .text('£' + (price * qty).toFixed(2));
-
-        }else{
-            // REMOVE ITEM WHEN QTY = 0
-            parent.remove();
-
-            updateServerCart(data[0].trim(), data[1]?.trim(), 0);
+            let price = parseFloat($(this).closest('.carting-child').find('.product-price').text());
+            $(this).closest('.carting-child').find('.total-price').text('£'+(price*qty).toFixed(2));
+            helper();
         }
-
-        helper();
     });
 
-    /* ==============================
-       INITIAL LOAD SYNC
-    ============================== */
     helper();
-
 });
 </script>
-<!-- Navbar End -->

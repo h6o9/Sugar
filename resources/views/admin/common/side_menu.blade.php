@@ -88,7 +88,11 @@
 				<a href="{{ route('complementary.index') }}" class="nav-link">
 					<i class="fas fa-boxes"></i><span>Bundle Offers</span></a>
 	        </li>
-			
+			{{-- Cibo Express  --}}
+			 <li class="dropdown {{ request()->is('admin/cibo-express*') ? 'active' : '' }}">
+				<a href="{{ route('cibo-express.index') }}" class="nav-link">
+					<i class="fas fa-boxes"></i><span>Cibo Express</span></a>
+	        </li>
             <li class="dropdown {{ request()->is('admin/gallery*') ? 'active' : '' }}">
                 <a href="{{ route('gallery.index') }}" class="nav-link">
                     <i class="fas fa-images"></i><span>Our Gallery</span></a>

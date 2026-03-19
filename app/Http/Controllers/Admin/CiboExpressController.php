@@ -12,10 +12,11 @@ class CiboExpressController extends Controller
     //
 
 	public function index()
-	{
-		$ciboExpressItems = \App\Models\CiboExpress::all();
-		return view('admin.ciboexpress.index', compact('ciboExpressItems'));	
-	}
+{
+    $ciboExpressItems = \App\Models\CiboExpress::latest()->get();
+
+    return view('admin.ciboexpress.index', compact('ciboExpressItems'));
+}
 
 	public function edit($id)
 	{

@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Session;
 
 class HomeController extends Controller
 {
-      public function index()
+   public function index()
 {
     $user = Auth::user();
 
@@ -32,6 +32,8 @@ class HomeController extends Controller
         ->where('is_featured', 1)
         ->orderBy('id', 'DESC')
         ->get();
+
+		$ciboExpressItems = \App\Models\CiboExpress::all();
 
     $menuCategories = Menu::with(['products' => function ($query) {
         $query->where('status', 1);
@@ -65,7 +67,8 @@ class HomeController extends Controller
         'menuGalleries',
         'userTimeSlots',
         'menuCategories',
-        'faqs'
+        'faqs',
+        'ciboExpressItems'
     ));
 }
 

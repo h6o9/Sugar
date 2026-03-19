@@ -775,36 +775,29 @@
 
 
 {{-- Product + Complementary Section --}}
-<div class="mb-3 d-flex justify-content-center align-items-center gap-2 flex-wrap">
-
-    {{-- Main Product --}}
-    <img class="img-fluid"
-        src="{{ asset($product->image) }}"
-        style="width:150px;height:150px;object-fit:cover;border-radius:10px;">
-
+<div class="mb-3 d-flex justify-content-center align-items-center gap-2 flex-column">
     {{-- Complementary Product --}}
     @if(optional($comp)->complementary)
-
-        <span style="font-size:22px;font-weight:bold;">+</span>
-
-        <div>
-            <img class="img-fluid"
-                src="{{ asset($comp->complementary->image) }}"
-                style="width:90px;height:90px;object-fit:cover;border-radius:10px;">
-
-            <p class="mb-0 small mt-1" style="color:#000;">
-                {{ $comp->complementary->name }}
-            </p>
-        </div>
-
+        {{-- Main Product --}}
+            <img class="img-fluid" src="{{ asset($product->image) }}">
+    
+            <span style="font-size:22px;font-weight:bold;">+</span>
+    
+            <img class="img-fluid" src="{{ asset($comp->complementary->image) }}">
+            <span class="badge bg-success m-2">
+                BUY 1 GET 1 FREE
+            </span>
+    @else
+        <img class="img-fluid" src="{{ asset($product->image) }}" style="width:150px;height:150px;object-fit:cover;border-radius:10px">
     @endif
-
 </div>
 
-
 <div class="mb-2">
-<h5 class="mb-2 main-heading">{{ $product->name }}</h5>
-
+<h5 class="mb-2 main-heading">{{ $product->name }}</h5>    
+    @if(optional($comp)->complementary)
+        <span>+</span>
+        <h6 class="mt-2">{{ $comp->complementary->name }}</h6>        
+    @endif
 <p class="mb-2">
 
 @if ($product->variants && $product->variants->isNotEmpty())
@@ -955,7 +948,7 @@
         src="{{ asset($prod->image) }}"
         style="width:120px;height:120px;object-fit:cover;border-radius:10px;">
 @php
-$comp = optional($prod->complementaryProduct)->first();
+$comp = optional($prod->complementaryProduct);
 @endphp
 
 @if(optional($comp)->complementary)

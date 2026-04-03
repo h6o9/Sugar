@@ -330,6 +330,20 @@
                                                                         @endforeach
                                                                     @endforeach
                                                                 @endif
+                                                                {{-- ✅ Complementary Product --}}
+                                                                    {{-- @if ($item->complementaryProduct)
+                                                                        <div class="mt-2">
+                                                                            <h6 class="small text-success">Free Item</h6>
+                                                                            <div class="d-flex align-items-center gap-2">
+                                                                                <img src="{{ asset($item->complementaryProduct->image) }}"
+                                                                                    alt="{{ $item->complementaryProduct->name }}"
+                                                                                    width="40"
+                                                                                    height="40"
+                                                                                    style="object-fit: cover; border-radius: 5px;">
+                                                                                <p class="small m-0">{{ $item->complementaryProduct->name }}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    @endif --}}
                                                             </div>
                                                         </div>
                                                     </div>

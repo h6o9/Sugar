@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\Admin\AboutusController;
 use App\Http\Controllers\Admin\AdminController;
-use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\AuthController; 
 use App\Http\Controllers\Admin\BranchController;
 use App\Http\Controllers\Admin\BulkFeatureController;
 use App\Http\Controllers\Admin\CategoryController;
@@ -63,6 +63,7 @@ Admin routes
 // Notification 
 Route::get('/user/notifications', [NotificationController::class, 'Webindex'])->name('web.notifications.index');
 Route::get('/import-products', [ProductController::class, 'importProducts']);
+Route::post('/set-on-top-product', [ProductController::class, 'setOnTop'])->name('product.setOnTop');
 Route::get('/admin-login', [AuthController::class, 'getLoginPage'])->name('admin-login');
 Route::post('admin/login', [AuthController::class, 'Login']);
 Route::get('/admin-forgot-password', [AdminController::class, 'forgetPassword']);

@@ -358,10 +358,11 @@ public function getUserCartItems()
     });
 
     return response()->json([
-        'success' => true,
+        'success' => 200,
+		'message' => "Cart items retrieved successfully",
         'summary' => $summary,
         'items'   => $items
-    ]);
+    ], 200);
 }
 
 
@@ -395,9 +396,9 @@ public function deleteCartItem($id)
     $cartItem->delete();
 
     return response()->json([
-        'success' => true,
+        'success' => 200,
         'message' => 'Cart item removed successfully.'
-    ]);
+    ],200);
 }
 
 }

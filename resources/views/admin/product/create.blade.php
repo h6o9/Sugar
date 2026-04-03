@@ -40,7 +40,7 @@
 {{-- MENU --}}
 <div class="col-sm-6">
 <div class="form-group mb-2">
-<label>Menus</label>
+<label>Menus</label> 
 <select class="form-control" name="menu_id">
 <option disabled selected>Select Menus</option>
 @foreach ($menus as $menu)

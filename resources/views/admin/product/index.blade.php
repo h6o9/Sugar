@@ -1,6 +1,14 @@
 @extends('admin.layout.app')
 @section('title','Products')
 @section('content')
+<style>
+.custom-dropdown {
+    border-radius: 4px !important;   /* remove circular */
+    height: 38px;
+    padding: 10px 10px;
+    width: 220px; /* optional */
+}
+</style>
 <div class="main-content">
     <section class="section">
         <div class="section-body">
@@ -8,9 +16,29 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h4>Products</h4>
-                            <a class="btn btn-success" href="{{ route('product.create') }}">Add Product</a>
-                        </div>
+                            <!-- LEFT SIDE -->
+                            <h4 class="mb-0">Products</h4>
+                            <!-- RIGHT SIDE -->
+                            <div class="d-flex align-items-center gap-3">
+                                <!-- Label + Dropdown INLINE -->
+                                <div class="d-flex align-items-center">
+                                    <select id="onTopProduct" class="form-control custom-dropdown">
+                                        <option disabled>Select Highlight Product</option>
+
+                                        @foreach($products as $product)
+                                            <option value="{{ $product->id }}"
+                                                {{ $product->on_top == 1 ? 'selected' : '' }}>
+                                                {{ $product->name }} - Rs {{ $product->price }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <!-- BUTTON -->
+                                <a class="btn btn-success" href="{{ route('product.create') }}">
+                                    Add Product
+                                </a>
+                            </div>
+                        </div>  
                         <div class="card-body table-responsive">
                             <div class="mb-3 d-flex justify-content-between align-items-center">
     <!-- Left side: Rows per page -->
@@ -70,6 +98,34 @@
 </script>
 @endif
 @section('js')
+<script>
+$(document).ready(function () {
+    $('#onTopProduct').on('change', function () {
+        let productId = $(this).val();
+        $.ajax({
+            url: "{{ route('product.setOnTop') }}",
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token() }}",
+                product_id: productId
+            },
+            success: function (response) {
+                if (response.success) {
+                    // ✅ dropdown update
+                    $('#onTopProduct option').prop('selected', false);
+                    $('#onTopProduct option[value="' + productId + '"]').prop('selected', true);
+                    toastr.success('Product highlighted successfully');
+                }
+            },
+            error: function () {
+                toastr.error('Something went wrong');
+            }
+        });
+
+    });
+
+});
+</script>
 <script>
 $(document).ready(function(){
     loadProducts(1);

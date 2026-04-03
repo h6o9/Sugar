@@ -24,7 +24,12 @@ class ProductController extends Controller
 public function index()
 {
     // Blade page ko load karna, initial table empty
-    return view('admin.product.index');
+    $products = Product::where('featured_amount', '!=', null)->where('featured_method', '!=', null)
+    ->where('featured_action', '!=', null)
+    ->select('id','menu_id','name','image','original_price','price','status','is_featured','rule','on_top')
+        ->latest()
+        ->get();
+    return view('admin.product.index', compact('products'));
 }
 
 public function getProducts(Request $request)
@@ -54,7 +59,37 @@ public function getProducts(Request $request)
         'current_page' => $products->currentPage(),
         'last_page' => $products->lastPage(),
     ]);
-} /**
+} 
+
+    public function setOnTop(Request $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            // Pehle sab ka on_top = 0 karo
+            Product::query()->update(['on_top' => 0]);
+
+            // Selected product ka on_top = 1 karo
+            Product::where('id', $request->product_id)
+                ->update(['on_top' => 1]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+/**
      * Show the form for creating a new resource.
      *
      * @return \Illuminate\Http\Response

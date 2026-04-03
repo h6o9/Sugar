@@ -9,9 +9,10 @@ use App\Http\Controllers\Controller;
 
 class OrderController extends Controller
 {
-    public function index()
+    public function index() 
     {
-        $orders= Order::with(['orderItem.orderToppings.category', 'orderItem.orderToppings.toppings', 'user', 'orderItem.branch'])->latest()->get();
+        $orders= Order::with(['orderItem.complementaryProduct','orderItem.orderToppings.category', 'orderItem.orderToppings.toppings', 'user', 'orderItem.branch'])->latest()->get();
+        // return $orders;
         return view('admin.orders.index', compact('orders'));
     }
 }

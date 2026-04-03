@@ -496,9 +496,7 @@
                                         @if(isset($item['delivery_status']))
                                             <p class="mb-1 fw-bold">
                                                 @if($item['delivery_status'] == 1)
-                                                    
                                                 @elseif($item['delivery_status'] == 2)
-                                                    
                                                 @else
                                                     Delivery Type: Not Specified
                                                 @endif
@@ -551,7 +549,25 @@
                                                 @endforeach
                                             @endforeach
                                         @endif
+                                        {{-- ✅ Complementary Product --}}
+                                        {{-- @if (!empty($item['complementary']))
+                                            <div class="mt-2">
+                                                <h6>Free Item</h6>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <img 
+                                                        src="{{ asset($item['complementary']['image']) }}" 
+                                                        alt="{{ $item['complementary']['name'] }}" 
+                                                        width="40" 
+                                                        height="40"
+                                                        style="object-fit: cover; border-radius: 5px;"
+                                                    >
+                                                    <p class="small m-0">
+                                                        {{ $item['complementary']['name'] }}
+                                                    </p>
 
+                                                </div>
+                                            </div>
+                                        @endif --}}
                                         {{-- Quantity & Delete --}}
                                         <div class="d-flex justify-content-between">
                                             <div class="item-btn-parent">
@@ -660,6 +676,8 @@
                                             </div>
                                         @endif
                                     </div>
+
+                                </div>
                             <!-- Alert And Location End -->
                             <!-- Tip part-->
                             <div class="mt-sm-4 pb-sm-4 mt-3 pb-3 border-bottom">
@@ -672,22 +690,6 @@
                                 </div>
                             </div>
                             <!-- Tip Part End -->
-                            <!-- Delivery Charges -->
-                            <div class="mt-sm-4 pb-sm-4 mt-3 pb-3 border-bottom">
-                                <div class="d-flex justify-content-between">
-                                    <p class="text-muted">Delivery Charges</p>
-                                    <p class="delivery-value">£0</p>
-                                </div>
-                                <div class="collapse-div mt-3 align-items-center justify-content-between">
-                                    <span class="border border-2 px-2 py-3 d-flex align-items-center">
-                                        £
-                                        <input type="text"
-                                               class="ps-2 w-100 cart_input increment-input delivery-input"
-                                               value="0">
-                                    </span>
-                                </div>
-                            </div>
-                            <!-- Delivery Charges End -->
                             <!-- Coupan Part Start -->
                             {{-- <div
                                 class="mt-sm-4 pb-sm-4 mt-3 pb-3 align-items-center justify-content-between border-bottom">
@@ -701,47 +703,42 @@
                             </div> --}}
                             <!-- Coupan Part End -->
                             <!-- Blling Start -->
-                            <!-- Blling Start -->
-@php
-    $cartItems = session('cart', []);
-    $firstItem = reset($cartItems);
-@endphp
+                            @php
+                                $cartItems = session('cart', []);
+                                $firstItem = reset($cartItems);
+                            @endphp
 
-<div class="mt-sm-4 pb-sm-4 mt-3 pb-3">
-    @if ($firstItem)
-        <div class="d-flex justify-content-between">
-            <p class="text-muted">Sub Total</p>
-            <p class="sub-total">£0.00</p>
-        </div>
-        <div class="d-flex justify-content-between">
-            @foreach ($branchess as $index => $branch)
-                @if ($branch->status == 1)
-                    <p class="text-muted">Estimated taxes (New York)</p>
-                    <p class="tax-value">£{{$branch->tax}}</p>
-                @endif
-            @endforeach
-        </div>
-        <div class="d-flex justify-content-between">
-            <p class="text-muted">Tip</p>
-            <p class="tip-value">£0</p>
-        </div>
-        <div class="d-flex justify-content-between">
-            <p class="text-muted">Delivery Charges</p>
-            <p class="delivery-value">£0</p>
-        </div>
-        <div class="d-flex justify-content-between">
-            <p class="text-muted">Estimated order total</p>
-            <p class="total-value">£0.00</p>
-        </div>
-    @else
-        <p class="text-danger text-center">Your cart is empty.</p>
-    @endif
+                            <div class="mt-sm-4 pb-sm-4 mt-3 pb-3">
+                                @if ($firstItem)
+                                    <div class="d-flex justify-content-between">
+                                        <p class="text-muted">Sub Total</p>
+                                        <p class="sub-total">£{{ $firstItem['price'] }}</p>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        @foreach ($branchess as $index => $branch)
+                                        @if ($branch->status == 1)
+                                        <p class="text-muted">Estimated Taxes (New York)</p>
+                                        <p class="tax-value">£{{$branch->tax}}</p>
+                                        @endif
+                                    @endforeach
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <p class="text-muted">Tip</p>
+                                        <p class="tip-value">£0</p>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <p class="text-muted">Estimated order Total</p>
+                                        <p class="total-value">£{{ floatval($firstItem['price']) + $branch->tax }}</p>
+                                    </div>
+                                @else
+                                    <p class="text-danger text-center">Your cart is empty.</p>
+                                @endif
 
-    <p>Additional taxes and fees will be calculated at checkout</p>
-    <a href="{{ route('checkout') }}"
-        class="mt-3 w-100 btn py-2 btn-danger continue-to-add-tip continue-to-payment">Continue
-        to Payment</a>
-</div>
+                                <a href="{{ route('checkout') }}"
+                                    class="mt-3 w-100 btn py-2 btn-danger continue-to-add-tip continue-to-payment">Continue
+                                    to Payment</a>
+                            </div>
+
                             <!-- Billing ENd -->
                         </div>
                     </div>
@@ -863,86 +860,54 @@
             }
             Total();
         });
-        
-        // Tip input handler
         $('.tip-input').on('click keydown keyup keypress', function() {
             if ($(this).val() < 0) {
-                $(this).val(0);
+                $(this).val(0)
             }
             $('.tip-value').text('£' + $(this).val());
             Total();
         });
-        
-        // Delivery input handler - FIXED
-        $('.delivery-input').on('click keydown keyup keypress', function() {
-            let delivery = Number($(this).val());
-            
-            if (delivery < 0 || isNaN(delivery)) {
-                delivery = 0;
-                $(this).val(0);
-            }
-            
-            $('.delivery-value').text('£' + delivery);
-            Total();
-        });
-        
         $('.minus-btn').each(function() {
             let a = Number($(this).closest('.item-btn-parent').find('input').val());
             if (a >= 2) {
                 $(this).removeAttr('disabled');
             }
         })
-        
         //Control of Total and Sub Total
-        //Control of Total and Sub Total
-//Control of Total and Sub Total
-function Total() {
-    let count = 0;
-    let sum = 0;
-    
-    // toppings
-    $('.topping_price-1').each(function() {
-        let toppingPriceText = $(this).text().trim();
-        // Extract price from text like "(£1.50)"
-        let match = toppingPriceText.match(/£([\d\.]+)/);
-        if (match) {
-            let toppingPrice = parseFloat(match[1]);
-            if (!isNaN(toppingPrice)) {
-                sum += toppingPrice;
-            }
+        function Total() {
+            let count = 0;
+            let sum = 0;
+            let item=0;
+            $('.topping_price-1').each(function() {
+                item++;
+                console.log(item)
+                let toppingPriceText = $(this).text().trim();
+                console.log(toppingPriceText);
+                // Check if the topping price is not empty
+                if (toppingPriceText !== '') {
+                    let toppingPrice = parseFloat(toppingPriceText.slice(2, -
+                        1)); // Extract the numeric part
+                    sum += toppingPrice;
+                }
+            });
+            let a = 0;
+            $('.count-input').each(function() {
+                let productPriceText = $(this).closest('.order-card').find('.price').text().slice(1);
+                let productPrice = parseFloat(productPriceText);
+                let ItemCount = Number($(this).val());
+                a += ItemCount;
+                count += ItemCount;
+                sum += productPrice * ItemCount;
+                sum = parseFloat(sum.toFixed(2));
+            });
+            $('.order-items').text(a);
+            $('.sub-total').text('£' + sum);
+            let tipValue = Number($('.tip-value').text().slice(1));
+            let tax = Number($('.tax-value').text().slice(1));
+            $('.total-value').text('£' + (tipValue + tax + sum).toFixed(2));
+            $('.order-input').text(count);
         }
-    });
-    
-    // products
-    $('.count-input').each(function() {
-        let productPriceText = $(this).closest('.order-card').find('.price').text().trim();
-        let productPrice = parseFloat(productPriceText.replace('£', ''));
-        let qty = Number($(this).val());
-        
-        count += qty;
-        sum += productPrice * qty;
-    });
-    
-    sum = parseFloat(sum.toFixed(2));
-    
-    $('.order-items').text(count);
-    $('.sub-total').text('£' + sum.toFixed(2));
-    
-    let tip = parseFloat($('.tip-input').val()) || 0;
-    if (isNaN(tip)) tip = 0;
-    
-    let taxText = $('.tax-value').text().trim();
-    let tax = parseFloat(taxText.replace('£', '')) || 0;
-    
-    let delivery = parseFloat($('.delivery-input').val()) || 0;
-    if (isNaN(delivery)) delivery = 0;
-    
-    let total = sum + tip + tax + delivery;
-    
-    $('.tip-value').text('£' + tip.toFixed(2));
-    $('.delivery-value').text('£' + delivery.toFixed(2));
-    $('.total-value').text('£' + total.toFixed(2));
-}
+
         //delete the border of the last child
         $('.card-parent .cart_card:last').removeClass('border-bottom');
         //Count Input Control
@@ -965,7 +930,6 @@ function Total() {
         })
         Total();
     });
-    
     $('.del-btn').each(function() {
         $(this).click(function() {
             let a = $(this).siblings('.helper-p').text();
@@ -1000,8 +964,7 @@ function Total() {
             $('.sub-total').text('£' + sum);
             let tipValue = Number($('.tip-value').text().slice(1));
             let tax = Number($('.tax-value').text().slice(1));
-            let deliveryValue = Number($('.delivery-value').text().slice(1));
-            $('.total-value').text('£' + (tipValue + tax + deliveryValue + sum).toFixed(2));
+            $('.total-value').text('£' + (tipValue + tax + sum).toFixed(2));
             $('.order-input').text(count);
         })
     });
@@ -1081,6 +1044,7 @@ function Total() {
         });
     }
 
+
     $('.updateTimeBtn').on('click', function() {
         var timeModal = $(this).closest('.time-modal');
         var date_input = timeModal.find('input[name="date_input"]').val();
@@ -1124,54 +1088,51 @@ function Total() {
         }
     });
 
-$('.continue-to-payment').on('click', function(e) {
-    e.preventDefault();
+    $('.continue-to-payment').on('click', function(e) {
+        e.preventDefault();
 
-    // Get the selected time from the data attribute
-    var selectedTime = $('.selected-time').data('time');
+        // Get the selected time from the data attribute
+        var selectedTime = $('.selected-time').data('time');
 
-    // Make an AJAX request to store the selected time in the session
-    $.ajax({
-        type: 'POST',
-        url: '{{ route('time-solt') }}',
-        data: {
-            '_token': '{{ csrf_token() }}',
-            'selectedTime': selectedTime,
-        },
-        success: function(data) {
-            console.log(data);
+        // Make an AJAX request to store the selected time in the session
+        $.ajax({
+            type: 'POST',
+            url: '{{ route('time-solt') }}',
+            data: {
+                '_token': '{{ csrf_token() }}',
+                'selectedTime': selectedTime,
+            },
+            success: function(data) {
+                console.log(data);
 
-            // ✅ FIXED: Both tip AND delivery charges ko session mein save karein
-            var tipAmount = $('.tip-input').val() || 0;
-            var deliveryAmount = $('.delivery-input').val() || 0;
-            
-            console.log('Tip Amount:', tipAmount);
-            console.log('Delivery Amount:', deliveryAmount);
-            
-            $.ajax({
-                type: 'POST',
-                url: '{{ route('store.tip') }}', // Is route ka naam change karna chahiye
-                data: {
-                    '_token': '{{ csrf_token() }}',
-                    'tipAmount': tipAmount,
-                    'deliveryAmount': deliveryAmount  // ✅ Ye naya parameter add kiya
-                },
-                success: function(data) {
-                    console.log('Tip and Delivery saved:', data);
-                    // Redirect to the checkout page after storing in session
-                    window.location.href = $(e.currentTarget).attr('href');
-                },
-                error: function(error) {
-                    console.error('Error storing tip/delivery in session:', error);
-                }
-            });
-        },
-        error: function(error) {
-            console.error('Error storing selected time in session:', error);
-        }
+                // Send the tip amount to the server using AJAX
+                var tipAmount = $('.tip-input').val();
+                $.ajax({
+                    type: 'POST',
+                    url: '{{ route('store.tip') }}', // Replace with the actual route
+                    data: {
+                        '_token': '{{ csrf_token() }}',
+                        'tipAmount': tipAmount
+                    },
+                    success: function(data) {
+                        // Redirect to the checkout page after storing the tip in the session
+                        window.location.href = $(e.currentTarget).attr('href');
+                    },
+                    error: function(error) {
+                        // Handle errors if needed
+                        console.error('Error storing tip in session:', error);
+                    }
+                });
+            },
+            error: function(error) {
+                console.error('Error storing selected time in session:', error);
+            }
+        });
     });
-});
+
+
     // location update
+
     $('.updateLocationBtn').on('click', function() {
         // Find the selected radio button
         var selectedBranch = $('input[name="choosen_location"]:checked');
@@ -1194,7 +1155,15 @@ $('.continue-to-payment').on('click', function(e) {
             },
             success: function(data) {
                 toastr.success('Updated Successfully');
-                console.log(data.message);
+                // setTimeout(function() {
+                //     location.reload();
+                // }, 500);
+                console.log(response.message);
+
+                // Reload the page after a short delay
+                // setTimeout(function() {
+                //     location.reload();
+                // }, 500);
             },
             error: function(error) {
                 console.error('Error updating branch status:', error);

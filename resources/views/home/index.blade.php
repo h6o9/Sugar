@@ -371,6 +371,11 @@
                     $discountPercent = (int) $product->featured_amount;
                 }
             }
+<<<<<<< HEAD
+=======
+             $comp = optional($product->complementaryProduct);
+
+>>>>>>> 7745d886c7acc091771227dbe658e0d378a6622a
         @endphp
         <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
             <div class="modal fade menu-modal" id="menuModal-{{ $product->id }}" tabindex="-1"
@@ -387,7 +392,28 @@
                             </div>
                             <div class="p-3 description">
                                 <h3>{{ $product->name }}</h3>
+<<<<<<< HEAD
 
+=======
+                                @if(optional($comp)->complementary)
+                                <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
+
+                                                            {{-- <div class="my-2">
+                                                            </div>
+															 <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
+                                                            <div class="text-center">
+                                                                <img class="img-fluid rounded" 
+                                                                     src="{{ asset($comp->complementary->image) }}" 
+                                                                     alt="{{ $comp->complementary->name }}"
+                                                                     style="width:100px;height:100px;object-fit:cover;">
+																	 <br>
+																	 <span class="badge bg-success m-2">BUY 1 GET 1 FREE
+                                                                </span>
+                                                                
+                                                                <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
+                                                            </div> --}}
+                                                        @endif
+>>>>>>> 7745d886c7acc091771227dbe658e0d378a6622a
                                 @if (count($product->variants) > 0)
                                     @if($hasDiscount)
                                         <p>
@@ -873,20 +899,32 @@
                                                         @if(optional($comp)->complementary)
                                                             {{-- Plus Sign with "BUY 1 GET 1 FREE" text --}}
                                                             <div class="my-2">
+<<<<<<< HEAD
                                                                 <span class="d-block fw-bold text-success small">BUY 1 GET 1 FREE</span>
                                                                 <span class="mx-2" style="font-size:24px;font-weight:bold;">+</span>
                                                             </div>
 
+=======
+                                                            </div>
+															 <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
+>>>>>>> 7745d886c7acc091771227dbe658e0d378a6622a
                                                             {{-- Complementary Product --}}
                                                             <div class="text-center">
                                                                 <img class="img-fluid rounded" 
                                                                      src="{{ asset($comp->complementary->image) }}" 
                                                                      alt="{{ $comp->complementary->name }}"
                                                                      style="width:100px;height:100px;object-fit:cover;">
+<<<<<<< HEAD
+=======
+																	 <br>
+																	 <span class="badge bg-success m-2">BUY 1 GET 1 FREE
+                                                                </span>
+>>>>>>> 7745d886c7acc091771227dbe658e0d378a6622a
                                                                 
                                                                 <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
                                                             </div>
 
+<<<<<<< HEAD
                                                             {{-- Price Section --}}
                                                             <div class="mt-3">
                                                                 @if($originalPrice > $finalPrice)
@@ -894,6 +932,9 @@
                                                                 @endif
                                                                 <span class="fw-bold text-primary">£{{ number_format($finalPrice, 2) }}</span>
                                                             </div>
+=======
+                                                    
+>>>>>>> 7745d886c7acc091771227dbe658e0d378a6622a
                                                         @endif
                                                     </div>
                                                 </div>
@@ -999,6 +1040,8 @@
                             $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
                         }
                     }
+                    $comp = optional($prod->complementaryProduct);
+
                 @endphp
 
                 <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
@@ -1022,7 +1065,24 @@
 
                                     <div class="p-3 description">
                                         <h3>{{ $prod->name }}</h3>
+                                                    @if(optional($comp)->complementary)
+                                <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
 
+                                                            {{-- <div class="my-2">
+                                                            </div>
+															 <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
+                                                            <div class="text-center">
+                                                                <img class="img-fluid rounded" 
+                                                                     src="{{ asset($comp->complementary->image) }}" 
+                                                                     alt="{{ $comp->complementary->name }}"
+                                                                     style="width:100px;height:100px;object-fit:cover;">
+																	 <br>
+																	 <span class="badge bg-success m-2">BUY 1 GET 1 FREE
+                                                                </span>
+                                                                
+                                                                <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
+                                                            </div> --}}
+                                                        @endif
                                         <!-- PRICE SECTION with Discount Logic -->
                                         @if (count($prod->variants) > 0)
                                             @if($prod->featured_action == 'decrease' && $prod->original_price)
@@ -1303,6 +1363,11 @@
         });
 
         $('.addto-cart').on('click', function() {
+            var modal = $(this).closest('.food-modal');
+            var complementry_id = modal.find('input[name="complementary_id"]').length 
+                ? modal.find('input[name="complementary_id"]').val() 
+                : null;
+                
             var productId = $(this).closest('.food-modal').find('input[name="product_id"]').val();
             var quantity = $(this).closest('.food-modal').find('input[name="quantity"]').val();
             var isLocationChecked = $(this).closest('.food-modal').find('input[name="location"]:checked').length > 0;
@@ -1356,7 +1421,8 @@
                     'location': isLocationChecked,
                     'variant_id': variantId,
                     'delivery_status': deliveryStatus,
-                    'delivery_address': deliveryAddress
+                    'delivery_address': deliveryAddress,
+                    'complementary_id': complementry_id
                 },
                 success: function(data) {
                     toastr.success('Product Added To Cart Successfully!');

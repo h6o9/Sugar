@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 class CheckoutController extends Controller
 {
-   public function getCheckout(){
+   public function getCheckout(){ 
     $branchess = Branch::all();
     $userId = Auth::guard('user')->id();
     $userTimeSlots = UserTimeSlotes::where('user_id', $userId)

@@ -57,6 +57,7 @@ Route::get('/product-details/{id}', [ProductDetailsController::class, 'getProduc
 Route::post('/product-add-to-cart', [AddToCartController::class, 'addToCart']);
 Route::get('/get-user-cart-items', [AddToCartController::class, 'getUserCartItems']);
 Route::post('/delete-cart-item/{id}', [AddToCartController::class, 'deleteCartItem']);
+Route::post('/cart-update-quantity/{id}', [AddToCartController::class, 'updateCartItemQuantity']);
 Route::post('/continue-tRewardHistoryControllero-payments', [AddToCartController::class, 'proceedToPayment']);
 Route::post('/place-order', [PlaceOrderController::class, 'placeOrder']);
 // filter data 

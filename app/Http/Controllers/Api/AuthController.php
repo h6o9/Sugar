@@ -235,98 +235,83 @@ public function register(Request $request)
 //         ], 500);
 //     }
 // }
+public function Login(Request $request)
+{
+    $request->validate([
+        'email'    => 'required|email',
+        'password' => 'required|string|min:6',
+        'fcm_token'=> 'nullable|string'
+    ]);
+
+    $user = User::where('email', $request->email)->first();
+
+    if (!$user || empty($user->password) || !\Hash::check($request->password, $user->password)) {
+        return response()->json([
+            'status'  => false,
+            'message' => 'Invalid credentials'
+        ], 401);
+    }
+
+    $user->fcmtoken     = $request->fcm_token ?? $user->fcmtoken;
+    $user->login_date   = now();
+    $user->availability = 1;
+    $user->save();
+
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'status'       => true,
+        'access_token' => $token,
+        'message'      => 'Logged in successfully',
+        'user'         => $user
+    ], 200);
+}
 
 public function socialLogin(Request $request)
 {
-    try {
+    $request->validate([
+        'social_id'  => 'required|string',
+        'login_type' => 'required|in:google,apple',
+        'email'      => 'required|email',
+        'name'       => 'nullable|string',
+        'image'      => 'nullable|url',
+        'fcm_token'  => 'nullable|string'
+    ]);
 
-        $data = $request->only([
-            'social_id',
-            'login_type',
-            'fcm_token',
-            'email',
-            'name',
-            'image',
-            'password'
-        ]);
+    $socialColumn = $request->login_type === 'apple' 
+        ? 'apple_social_id' 
+        : 'google_social_id';
 
-        // CASE 0: Manual Login
-        if (!empty($data['email']) && !empty($data['password']) && empty($data['social_id'])) {
+    $user = User::where('email', $request->email)->first();
 
-            $user = User::where('email', $data['email'])->first();
-
-            if (!$user || empty($user->password) || !\Hash::check($data['password'], $user->password)) {
-                return response()->json([
-                    'status'  => false,
-                    'message' => 'Invalid credentials'
-                ], 401);
-            }
-
-            $user->fcmtoken     = $data['fcm_token'] ?? $user->fcmtoken;
-            $user->login_date  = now();
-            $user->availability = 1;
-            $user->save();
-
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            return response()->json([
-                'status' => true,
-                'access_token' => $token,
-                'message' => 'Logged in successfully',
-                'user' => $user,
-            ], 200);
-        }
-
-        // CASE 1: Social Login
-        if (empty($data['social_id']) || empty($data['login_type']) || empty($data['email'])) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'social_id, login_type and email are required'
-            ], 422);
-        }
-
-        $socialColumn = $data['login_type'] === 'apple'
-            ? 'apple_social_id'
-            : 'google_social_id';
-
-        $user = User::where('email', $data['email'])->first();
-
-        if (!$user) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'This email does not exist'
-            ], 404);
-        }
-
-        if (empty($user->$socialColumn)) {
-            $user->$socialColumn = $data['social_id'];
-        }
-
-        $user->fcmtoken     = $data['fcm_token'] ?? $user->fcmtoken;
-        $user->login_type  = $data['login_type'];
-        $user->name        = $data['name'] ?? $user->name;
-        $user->image       = $data['image'] ?? $user->image;
-        $user->login_date  = now();
-        $user->availability = 1;
-        $user->save();
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
+    if (!$user) {
         return response()->json([
-            'status' => true,
-            'access_token' => $token,
-            'message' => 'Logged in successfully',
-            'user' => $user,
-        ], 200);
-
-    } catch (\Throwable $e) {
-        return response()->json([
-            'status' => false,
-            'error'  => $e->getMessage(),
-            'line'   => $e->getLine(),
-            'file'   => $e->getFile(),
-        ], 500);
+            'status'  => false,
+            'message' => 'This email does not exist. Please sign up first.'
+        ], 404);
     }
+
+    // Agar social ID save nahi hai toh update karo
+    if (empty($user->$socialColumn)) {
+        $user->$socialColumn = $request->social_id;
+    }
+
+    $user->fcmtoken     = $request->fcm_token ?? $user->fcmtoken;
+    $user->login_type   = $request->login_type;
+    $user->name         = $request->name ?? $user->name;
+    $user->image        = $request->image ?? $user->image;
+    $user->login_date   = now();
+    $user->availability = 1;
+    $user->save();
+
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'status'       => true,
+        'access_token' => $token,
+        'message'      => 'Social login successful',
+        'user'         => $user
+    ], 200);
 }
 
 public function updateProfile(Request $request)

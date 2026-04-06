@@ -37,7 +37,8 @@ use App\Http\Controllers\Api\ProductDetailsController;
 
 Route::post('/register-user', [AuthController::class, 'register']);
 Route::post('/register-verify-otp', [AuthController::class, 'verifyOtp']);
-Route::post('/login-user', [AuthController::class, 'socialLogin']);
+Route::post('/login-user', [AuthController::class, 'Login']);
+Route::post('/user-social-login', [AuthController::class, 'socialLogin']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/user-forget-password', [AuthController::class, 'forgetPassword']);
 Route::post('/user-verify-forget-password', [AuthController::class, 'verifyForgetOtp']);
@@ -57,6 +58,7 @@ Route::get('/product-details/{id}', [ProductDetailsController::class, 'getProduc
 Route::post('/product-add-to-cart', [AddToCartController::class, 'addToCart']);
 Route::get('/get-user-cart-items', [AddToCartController::class, 'getUserCartItems']);
 Route::post('/delete-cart-item/{id}', [AddToCartController::class, 'deleteCartItem']);
+Route::post('/cart-update-quantity/{id}', [AddToCartController::class, 'updateCartItemQuantity']);
 Route::post('/continue-tRewardHistoryControllero-payments', [AddToCartController::class, 'proceedToPayment']);
 Route::post('/place-order', [PlaceOrderController::class, 'placeOrder']);
 // filter data 

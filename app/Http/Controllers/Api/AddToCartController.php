@@ -358,10 +358,11 @@ public function getUserCartItems()
     });
 
     return response()->json([
-        'success' => true,
+        'success' => 200,
+		'message' => "Cart items retrieved successfully",
         'summary' => $summary,
         'items'   => $items
-    ]);
+    ], 200);
 }
 
 
@@ -395,9 +396,147 @@ public function deleteCartItem($id)
     $cartItem->delete();
 
     return response()->json([
-        'success' => true,
+        'success' => 200,
         'message' => 'Cart item removed successfully.'
-    ]);
+    ],200);
+}
+
+public function updateCartItemQuantity(Request $request, $id)
+{
+    DB::beginTransaction();
+
+    try {
+        $userId = auth()->id();
+
+        // =========================
+        // BASIC INPUTS FROM REQUEST
+        // =========================
+        $newQuantity = (int) $request->quantity;
+        $newPrice = (float) $request->price;
+        $newOriginalPrice = (float) $request->original_price;
+        $newVariantId = $request->variant_id ? (int) $request->variant_id : null;  // ✅ VARIANT HANDLED
+
+        if ($newQuantity < 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Quantity must be at least 1.'
+            ], 400);
+        }
+
+        // =========================
+        // FIND EXISTING CART ITEM
+        // =========================
+        $cartItem = AddToCartItem::where('id', $id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$cartItem) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cart item not found.'
+            ], 404);
+        }
+
+        // =========================
+        // GET TOPPINGS FROM REQUEST (IF ANY)
+        // =========================
+        $toppingDetails = [];
+        if ($request->toppings) {
+            $toppingsJson = json_decode($request->toppings, true);
+            if (!empty($toppingsJson) && is_array($toppingsJson)) {
+                foreach ($toppingsJson as $categoryKey => $toppingsArray) {
+                    foreach ($toppingsArray as $item) {
+                        if (isset($item['topping_id']) && isset($item['category_id'])) {
+                            $toppingDetails[] = [
+                                'topping_id'  => (int) $item['topping_id'],
+                                'category_id' => (int) $item['category_id'],
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        // =========================
+        // UPDATE VARIANT IF CHANGED
+        // =========================
+        if ($newVariantId !== null && $cartItem->variant_id != $newVariantId) {
+            $cartItem->variant_id = $newVariantId;  // ✅ VARIANT UPDATE
+        }
+
+        // =========================
+        // UPDATE QUANTITY AND PRICES
+        // =========================
+        $cartItem->quantity = $newQuantity;
+        $cartItem->price = $newPrice;
+        $cartItem->original_price = $newOriginalPrice;
+        $cartItem->subtotal = $newPrice;
+        $cartItem->save();
+
+        // =========================
+        // UPDATE TOPPINGS IF PROVIDED
+        // =========================
+        if (!empty($toppingDetails)) {
+            // Delete old toppings
+            AddToCartItemTopping::where('add_to_cart_item_id', $cartItem->id)->delete();
+            
+            // Insert new toppings
+            $toppingsInsert = [];
+            foreach ($toppingDetails as $topping) {
+                $toppingsInsert[] = [
+                    'add_to_cart_item_id' => $cartItem->id,
+                    'topping_id'          => $topping['topping_id'],
+                    'category_id'         => $topping['category_id'],
+                ];
+            }
+            AddToCartItemTopping::insert($toppingsInsert);
+        }
+
+        // =========================
+        // UPDATE CART TOTAL (same as addToCart logic)
+        // =========================
+        $allCartItems = AddToCartItem::where('user_id', $userId)->get();
+        $totalSubtotal = $allCartItems->sum('subtotal');
+        $tips = AddToCartItem::where('user_id', $userId)
+            ->where('tips', '>', 0)
+            ->value('tips') ?? 0;
+        $estimatedTotal = $totalSubtotal + $tips;
+
+        AddToCartItem::where('user_id', $userId)->update([
+            'subtotal'        => $totalSubtotal,
+            'estimated_total' => $estimatedTotal,
+        ]);
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cart item updated successfully',
+            'cart_item_id' => $cartItem->id,
+            'data' => [
+                'quantity' => $cartItem->quantity,
+                'variant_id' => $cartItem->variant_id,  // ✅ VARIANT IN RESPONSE
+                'price' => round($cartItem->price, 2),
+                'original_price' => round($cartItem->original_price, 2),
+                'subtotal' => round($totalSubtotal, 2),
+                'estimated_total' => round($estimatedTotal, 2),
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Update cart quantity error', [
+            'error' => $e->getMessage(),
+            'cart_item_id' => $id,
+            'request' => $request->all()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Something went wrong while updating quantity.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
 }
 
 }

@@ -182,9 +182,10 @@ public function homeProducts(Request $request)
     });
 
     return response()->json([
-        'status' => true,
+        'status' => 200,
+		'message' => 'Products retrieved successfully',
         'data'   => $response
-    ]);
+    ], 200);
 }
 /**
  * Calculate discount information for a product

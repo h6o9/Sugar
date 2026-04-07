@@ -374,7 +374,7 @@ class OrderController extends Controller
             $order->user_id = $userId;
             $order->vehicle_color = $vehicle_color ?: 'NULL';
             $order->vehicle_number = $vehicle_number ?: 'NULL';
-            $order->redeemed = $redeemedAmount ?: 'NULL';
+            $order->redeemed = $redeemedAmount ?: 0;
             $order->redeemed_points = $redeemedPoints ?: 0;
             $order->status = 'Pending';
             $order->payment = 'offline'; // ✅ manual payment

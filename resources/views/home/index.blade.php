@@ -371,6 +371,8 @@
                     $discountPercent = (int) $product->featured_amount;
                 }
             }
+             $comp = optional($product->complementaryProduct);
+
         @endphp
         <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
             <div class="modal fade menu-modal" id="menuModal-{{ $product->id }}" tabindex="-1"
@@ -387,6 +389,24 @@
                             </div>
                             <div class="p-3 description">
                                 <h3>{{ $product->name }}</h3>
+                                @if(optional($comp)->complementary)
+                                <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
+
+                                                            {{-- <div class="my-2">
+                                                            </div>
+															 <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
+                                                            <div class="text-center">
+                                                                <img class="img-fluid rounded" 
+                                                                     src="{{ asset($comp->complementary->image) }}" 
+                                                                     alt="{{ $comp->complementary->name }}"
+                                                                     style="width:100px;height:100px;object-fit:cover;">
+																	 <br>
+																	 <span class="badge bg-success m-2">BUY 1 GET 1 FREE
+                                                                </span>
+                                                                
+                                                                <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
+                                                            </div> --}}
+                                                        @endif
                                 @if (count($product->variants) > 0)
                                     @if($hasDiscount)
                                         <p>
@@ -872,27 +892,22 @@
                                                         @if(optional($comp)->complementary)
                                                             {{-- Plus Sign with "BUY 1 GET 1 FREE" text --}}
                                                             <div class="my-2">
-                                                                <span class="d-block fw-bold text-success small">BUY 1 GET 1 FREE</span>
-                                                                <span class="mx-2" style="font-size:24px;font-weight:bold;">+</span>
                                                             </div>
-
+															 <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
                                                             {{-- Complementary Product --}}
                                                             <div class="text-center">
                                                                 <img class="img-fluid rounded" 
                                                                      src="{{ asset($comp->complementary->image) }}" 
                                                                      alt="{{ $comp->complementary->name }}"
                                                                      style="width:100px;height:100px;object-fit:cover;">
+																	 <br>
+																	 <span class="badge bg-success m-2">BUY 1 GET 1 FREE
+                                                                </span>
                                                                 
                                                                 <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
                                                             </div>
 
-                                                            {{-- Price Section --}}
-                                                            <div class="mt-3">
-                                                                @if($originalPrice > $finalPrice)
-                                                                    <span class="text-muted text-decoration-line-through small me-2">£{{ number_format($originalPrice, 2) }}</span>
-                                                                @endif
-                                                                <span class="fw-bold text-primary">£{{ number_format($finalPrice, 2) }}</span>
-                                                            </div>
+                                                    
                                                         @endif
                                                     </div>
                                                 </div>

@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\Home;
 
-use App\Models\User;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Mail\UserRegisterMail;
-use App\Mail\UserPasswordReset;
-use App\Mail\UserResetPassword;
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Mail\UserConfirmRegistration;
+use App\Mail\UserPasswordReset;
+use App\Mail\UserRegisterMail;
+use App\Mail\UserResetPassword;
+use App\Models\Reward;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\UserConfirmRegistration;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -84,7 +85,8 @@ class AuthController extends Controller
     {
         $userId = auth::guard('user')->id();
         $user = User::where('id', $userId)->first();
-        return view('home.my-profile', compact('user'));
+        $reward = Reward::where('user_id', $user->id)->first();
+        return view('home.my-profile', compact('user', 'reward'));
     }
 
  public function updateProfile(Request $request, $id)

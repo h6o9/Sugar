@@ -448,6 +448,10 @@
                                                         </p>
                                                     </div>
                                                     <div class="d-flex justify-content-between">
+                                                        <p class="text-muted mb-1">Delivery Charges</p>
+                                                        <p class="delivery-charge mb-1">£{{ number_format($order->order->delivery_charge ?? 0, 2) }}</p>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
                                                         <p class="text-muted m-0">Estimated item total</p>
                                                         <p class="total-value m-0">£{{ $order->order->total_amount }}
                                                         </p>

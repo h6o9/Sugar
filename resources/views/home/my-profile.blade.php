@@ -67,6 +67,16 @@
                                     <div class="text-danger">{{ $message }}</div>
                                 @enderror
                                 </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="userLoyaltyPoints"
+                                            name="rewards" placeholder="Loyalty Points" value="{{ $reward->rewards ?? 0 }}" readonly>
+                                        <label for="userLoyaltyPoints">Loyalty Points</label>
+                                    </div>
+                                    @error('rewards')
+                                    <div class="text-danger">{{ $message }}</div>
+                                @enderror
+                                </div>
                                 <div class="col-12">
                                     <button class="btn btn-primary w-100 py-3" type="submit">Update</button>
                                 </div>

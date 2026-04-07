@@ -25,6 +25,7 @@
 										<th>Postcode</th>
 										<th>Address</th>
 										<th>Average Spend (£)</th>
+                                        <th>Loyalty Points</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
@@ -40,6 +41,7 @@
 								<td>{{ $user->address }}</td>
 
 								<td>£{{ $averagespend[$user->id] ?? 0 }}</td>
+                                <td>{{ $user->reward->first()->rewards ?? 0 }}</td>
 
 								<td style="display: flex; align-items: center; justify-content: center; column-gap: 8px">
 									<form method="POST" action="{{ route('users-delete', $user->id) }}">

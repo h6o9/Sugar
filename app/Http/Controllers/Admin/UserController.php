@@ -23,6 +23,7 @@ public function userView()
                 $q->where('status', 'Delivered');
             }
         ], 'total_amount')
+        ->with('reward') 
         ->select('id','name','email','phone','postcode','address')
         ->latest()
         ->get();

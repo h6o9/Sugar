@@ -34,6 +34,7 @@
                                         <th>Sub Total</th>
                                         <th>Tip Amount</th>
                                         <th>Branch Tax</th>
+                                        <th>Delivery Charges</th>
                                         <th>Order Total</th>
                                         <th>After Redeemed</th>
                                         <th>Redeemed</th>
@@ -232,6 +233,7 @@
                                             @endif
                                             @endforeach
                                         </td>
+                                        <td>£{{ $order->delivery_charge }}</td>
                                         <td>£{{ $order->total_amount }}</td>
                                         @php
                                         $redeemedAmount = is_numeric($order->redeemed) ? $order->redeemed : 0;

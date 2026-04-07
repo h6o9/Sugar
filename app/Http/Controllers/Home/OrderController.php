@@ -364,6 +364,7 @@ class OrderController extends Controller
             $startTime = session('start_time', []);
             $tip_amount = session('tip_amount', []);
             $orderTotal = session('orderTotal', []);
+            $deliveryCharge = session('delivery_charge', 0);
             // return $redeemedAmount;
             $total = 0;
             foreach ($products as $id => $details) {
@@ -390,6 +391,7 @@ class OrderController extends Controller
             $branch = Branch::find($branchId);
             $tax = $branch && $branch->status == 1 ? $branch->tax : 0;
             $order->total_amount = $total;
+            $order->delivery_charge = $deliveryCharge;
             $order->save();
 
             $orderId = $order->id;
@@ -430,7 +432,7 @@ class OrderController extends Controller
                 }
             }
 
-            $order->total_amount = $total + ($tip_amount ?: 0) + $tax - ($redeemedAmount ?: 0);
+            $order->total_amount = $total + ($tip_amount ?: 0) + $tax + $deliveryCharge - ($redeemedAmount ?: 0);
             // ✅ Extract delivery info from session cart
             $order->save();
 
@@ -463,6 +465,7 @@ class OrderController extends Controller
             session()->forget('vehicle_number');
             session()->forget('time');
             session()->forget('start_time'); 
+            session()->forget('delivery_charge');
             DB::commit();
             return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order placed successfully! Payment will be handled manually.']);
         } catch (\Exception $e) {

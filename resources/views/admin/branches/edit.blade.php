@@ -49,9 +49,15 @@
                                     <div class="row mx-0 px-4">
                                         <div class="col-sm-6 pl-sm-0 pr-sm-2">
                                             <div class="form-group mb-3">
-                                                <label for="phone">Location</label>
-                                                    <input type="text"  name="location"
-                                                    value="{{ $branch->location }}" class="form-control">
+                                                <label>Location</label>
+
+                                                <!-- New Google Element -->
+                                                <gmp-place-autocomplete id="place-autocomplete"></gmp-place-autocomplete>
+
+                                                <!-- Hidden fields -->
+                                                <input type="text" name="location" id="location">
+                                                <input type="text" name="lat" id="lat">
+                                                <input type="text" name="lng" id="lng">
                                             </div>
                                         </div>
                                     </div>
@@ -86,4 +92,46 @@
             toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
         </script>
     @endif
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&v=beta"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const el = document.getElementById('place-autocomplete');
+
+    if (!el) {
+        console.log('Element not found');
+        return;
+    }
+
+    el.addEventListener('gmp-placechange', async () => {
+
+        console.log('EVENT TRIGGERED');
+
+        const place = el.value; // ✅ IMPORTANT FIX
+
+        if (!place) {
+            console.log('No place selected');
+            return;
+        }
+
+        await place.fetchFields({
+            fields: ['formattedAddress', 'location']
+        });
+
+        console.log('PLACE DATA:', place);
+
+        if (!place.location) {
+            alert('No location data');
+            return;
+        }
+
+        document.getElementById('location').value = place.formattedAddress;
+        document.getElementById('lat').value = place.location.lat();
+        document.getElementById('lng').value = place.location.lng();
+
+        console.log('SUCCESS SET');
+    });
+
+});
+</script>
 @endsection

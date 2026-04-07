@@ -15,6 +15,7 @@ use App\Models\OrderItem;
 use App\Mail\OrderConfirm;
 use App\Models\OrderAddress;
 use Illuminate\Http\Request;
+use App\Models\OrderComplationReward;
 use App\Models\OrderItemToppings;
 use Square\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 use Square\Models\CreatePaymentRequest;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -91,83 +93,97 @@ class OrderController extends Controller
     //     return redirect()->back()->with(['status' => true, 'message' => 'Order Updated Successfully']);
     // }
 
-public function updateStatus(Request $request, $orderId)
-{
-    // 1️⃣ Validate status
-    $request->validate([
-        'status' => 'required|in:Pending,Order Ready,Delivered',
-    ]);
-
-    // 2️⃣ Find order
-    $order = Order::find($orderId);
-    if (!$order) {
-        return redirect()->back()->with([
-            'status' => false,
-            'message' => 'Order Updated Unsuccessfully'
+    public function updateStatus(Request $request, $orderId)
+    {
+        // 1️⃣ Validate status
+        $request->validate([
+            'status' => 'required|in:Pending,Order Ready,Delivered',
         ]);
-    }
 
-    $oldStatus = $order->status;
-    $newStatus = $request->status;
-
-    // 3️⃣ Update order status
-    $order->status = $newStatus;
-
-    // 4️⃣ If Delivered, reset seen (website logic untouched)
-    if ($newStatus === 'Delivered') {
-        $order->seen = 0;
-    }
-
-    $order->save();
-
-    // 5️⃣ If status changed → APP notification + DB notification
-    if ($oldStatus !== $newStatus) {
-
-        $user = $order->user; // relation se user
-
-        if ($user) {
-
-            $title = 'Order Update';
-            $description = '';
-
-            if ($newStatus === 'Order Ready') {
-                $description = 'Your order is ready for delivery!';
-            } elseif ($newStatus === 'Delivered') {
-                $description = 'Your order has been delivered successfully!';
-            }
-
-            // =========================
-            // 🔔 SAVE NOTIFICATION IN DB
-            // =========================
-            \App\Models\Notification::create([
-                'user_id'     => $user->id,
-                'title'       => $title,
-                'description' => $description,
-                'seenByUser'  => 0,
+        // 2️⃣ Find order
+        $order = Order::find($orderId);
+        if (!$order) {
+            return redirect()->back()->with([
+                'status' => false,
+                'message' => 'Order Updated Unsuccessfully'
             ]);
+        }
 
-            // =========================
-            // 🔔 PUSH NOTIFICATION (APP)
-            // =========================
-            if ($user->fcmtoken) {
-                dispatch(new \App\Jobs\JobNotification(
-                    $user->fcmtoken,
-                    $title,
-                    $description,
-                    [
-                        'order_id' => $order->id,
-                        'status'   => $newStatus
-                    ]
-                ));
+        $oldStatus = $order->status;
+        $newStatus = $request->status;
+
+        // 3️⃣ Update order status
+        $order->status = $newStatus;
+
+        // 4️⃣ If Delivered, reset seen (website logic untouched)
+        if ($newStatus === 'Delivered') {
+            $order->seen = 0;
+            $reward = Reward::where('user_id', $order->user_id)->first();
+            $points = OrderComplationReward::first()->points ?? 0;
+            if($reward) {
+                $reward->update([
+                    'rewards' => $reward->rewards + $points,
+                    'redeemed' => 0,
+                ]);
+            }else { 
+                Reward::create([
+                    'user_id' => $order->user_id,
+                    'rewards' => $points,
+                    'redeemed' => 0,
+                ]);
             }
         }
-    }
 
-    return redirect()->back()->with([
-        'status' => true,
-        'message' => 'Order Updated Successfully'
-    ]);
-}
+        $order->save();
+
+        // 5️⃣ If status changed → APP notification + DB notification
+        if ($oldStatus !== $newStatus) {
+
+            $user = $order->user; // relation se user
+
+            if ($user) {
+
+                $title = 'Order Update';
+                $description = '';
+
+                if ($newStatus === 'Order Ready') {
+                    $description = 'Your order is ready for delivery!';
+                } elseif ($newStatus === 'Delivered') {
+                    $description = 'Your order has been delivered successfully!';
+                }
+
+                // =========================
+                // 🔔 SAVE NOTIFICATION IN DB
+                // =========================
+                \App\Models\Notification::create([
+                    'user_id'     => $user->id,
+                    'title'       => $title,
+                    'description' => $description,
+                    'seenByUser'  => 0,
+                ]);
+
+                // =========================
+                // 🔔 PUSH NOTIFICATION (APP)
+                // =========================
+                if ($user->fcmtoken) {
+                    dispatch(new \App\Jobs\JobNotification(
+                        $user->fcmtoken,
+                        $title,
+                        $description,
+                        [
+                            'order_id' => $order->id,
+                            'status'   => $newStatus
+                        ]
+                    ));
+                }
+            }
+        }
+
+        return redirect()->back()->with([
+            'status' => true,
+            'message' => 'Order Updated Successfully'
+        ]);
+    }
 
 
     // public function order(Request $request)
@@ -333,18 +349,20 @@ public function updateStatus(Request $request, $orderId)
     // }
     public function order(Request $request)
     {
+        DB::beginTransaction();
         try {
             $user = Auth::guard('user')->user();
             $userId = $user->id;
             $products = session('cart', []);
             $vehicle_color = session('vehicle_color', []);
             $vehicle_number = session('vehicle_number', []);
-            $redeemed = session('redeemed', []);
+            $redeemedAmount = session('redeem_amount', []);
+            $redeemedPoints = session('redeem_points', []);
             $dateTime = session('time', []);
             $startTime = session('start_time', []);
             $tip_amount = session('tip_amount', []);
             $orderTotal = session('orderTotal', []);
-
+            // return $redeemedAmount;
             $total = 0;
             foreach ($products as $id => $details) {
                 $branchId = $details['branch_id'];
@@ -356,7 +374,8 @@ public function updateStatus(Request $request, $orderId)
             $order->user_id = $userId;
             $order->vehicle_color = $vehicle_color ?: 'NULL';
             $order->vehicle_number = $vehicle_number ?: 'NULL';
-            $order->redeemed = $redeemed ?: 'NULL';
+            $order->redeemed = $redeemedAmount ?: 'NULL';
+            $order->redeemed_points = $redeemedPoints ?: 'NULL';
             $order->status = 'Pending';
             $order->payment = 'offline'; // ✅ manual payment
             $order->date = $dateTime['date'] ?? null;
@@ -409,7 +428,7 @@ public function updateStatus(Request $request, $orderId)
                 }
             }
 
-            $order->total_amount = $total + ($tip_amount ?: 0) + $tax;
+            $order->total_amount = $total + ($tip_amount ?: 0) + $tax - ($redeemedAmount ?: 0);
             // ✅ Extract delivery info from session cart
             $order->save();
 
@@ -422,22 +441,11 @@ public function updateStatus(Request $request, $orderId)
             }
 
             $reward = Reward::where('user_id', $user->id)->first();
-            $redeemedPoints = $redeemed ?: 0;
-            if ($totalPoints >= 150) {
-                $rewards = floor(($totalPoints / 150)) * 5;
-                if ($reward) {
-                    $redeemedPoints += $reward->redeemed;
-                    $reward->update([
-                        'rewards' => $rewards,
-                        'redeemed' => $redeemedPoints,
-                    ]);
-                } else {
-                    Reward::create([
-                        'user_id' => $user->id,
-                        'rewards' => $rewards,
-                        'redeemed' => 0,
-                    ]);
-                }
+            if($reward) {
+               $reward->update([
+                    'rewards' =>$reward->rewards - $redeemedPoints ,
+                    'redeemed' => $redeemedPoints + ($reward->redeemed ?? 0),
+                ]);
             }
 
             // ✅ Email notification
@@ -447,13 +455,16 @@ public function updateStatus(Request $request, $orderId)
             // ✅ Clear session
             session()->forget('cart');
             session()->forget('tip_amount');
+            session()->forget('redeem_points');
+            session()->forget('redeem_amount');
             session()->forget('vehicle_color');
             session()->forget('vehicle_number');
             session()->forget('time');
             session()->forget('start_time'); 
-
+            DB::commit();
             return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order placed successfully! Payment will be handled manually.']);
         } catch (\Exception $e) {
+            DB::rollBack();
             return redirect()->back()->with(['status' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
     }

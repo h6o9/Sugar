@@ -6,6 +6,8 @@ use App\Models\Branch;
 use App\Models\Product;
 use App\Models\Topping;
 use App\Models\Category;
+use App\Models\Reward;
+use App\Models\RewardSetting;
 use App\Models\TimeSlot;
 use Illuminate\Http\Request;
 use App\Models\UserTimeSlotes;
@@ -25,7 +27,9 @@ class CartController extends Controller
             ->first();
         $timeSlots = TimeSlot::all();
         // return $carts;
-        return view('home.my-cart', compact('timeSlots', 'userTimeSlots', 'branchess'));
+        $loyaltyPoints = Reward::where('user_id', $userId)->first();
+        $pricePerPoint = RewardSetting::first();
+        return view('home.my-cart', compact('timeSlots', 'userTimeSlots', 'branchess','loyaltyPoints', 'carts','pricePerPoint'));
     }
 
     public function addToCart(Request $request)
@@ -391,11 +395,19 @@ class CartController extends Controller
     public function storeTipInSession(Request $request)
     {
         $tipAmount = $request->input('tipAmount');
+        $redeemAmount = $request->input('redeemAmount');
+        $redeemPoints = $request->input('redeemPoints');
         if (is_array($tipAmount)) {
             // If it's an array, you might want to handle it differently, such as summing the values
             $tipAmount = array_sum($tipAmount);
         }
+        if (is_array($redeemAmount)) {
+            // If it's an array, you might want to handle it differently, such as summing the values
+            $redeemAmount = array_sum($redeemAmount);
+        }
         session(['tip_amount' => $tipAmount]);
+        session(['redeem_amount' => $redeemAmount]);
+        session(['redeem_points' => $redeemPoints]);
     }
 
     public function storeVehicleInfo(Request $request)

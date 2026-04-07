@@ -689,6 +689,32 @@
                                             class="ps-2 w-100 cart_input increment-input tip-input"></span>
                                 </div>
                             </div>
+                             <!-- Loyalty Points Section-->
+                            <div class="mt-sm-4 pb-sm-4 mt-3 pb-3 border-bottom">
+                                <!-- Available Points -->
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Loyalty Points:</span>
+                                    <strong id="availablePoints">{{ $loyaltyPoints->rewards ?? 0 }}</strong>
+                                </div>
+                                <!-- Input + Button -->
+                                <div class="collapse-div mt-3 d-flex align-items-center gap-2">
+                                    <span class="border border-2 px-2 py-3 d-flex align-items-center w-100">
+                                        £ 
+                                        <input type="number" name="loyalty_points" id="loyaltyPointInput"
+                                            class="ps-2 w-100 cart_input"
+                                            placeholder="Enter points">
+                                    </span>
+                                    <!-- Use Points Button -->
+                                    {{-- <button type="button" class="btn btn-primary" id="usePointsBtn">
+                                        Redeem
+                                    </button> --}}
+                                </div>
+                                <!-- Discount Display -->
+                                <div class="mt-2">
+                                    <small>Price Per Point: £<span id="pricePerPoint">{{ $pricePerPoint->price ?? 0 }}</span></small>
+                                </div>
+                            </div>
+
                             <!-- Tip Part End -->
                             <!-- Coupan Part Start -->
                             {{-- <div
@@ -727,6 +753,10 @@
                                         <p class="tip-value">£0</p>
                                     </div>
                                     <div class="d-flex justify-content-between">
+                                        <p class="tecontinue-to-add-tipxt-muted">Redeem Points Amount</p>
+                                        <span>- </span><p class="redeem-value">£0</p>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
                                         <p class="text-muted">Estimated order Total</p>
                                         <p class="total-value">£{{ floatval($firstItem['price']) + $branch->tax }}</p>
                                     </div>
@@ -760,7 +790,9 @@
     toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
 </script>
 @endif
-<script>
+<script> 
+
+   
     $(function() {
         $('.location-update-btn').click(function() {
             $('.location-radio').each(function() {
@@ -846,6 +878,35 @@
                 $('.coupan span').css('width', '100%')
             }
         })
+        // redeem control
+        let loyaltyRedeemAmount = 0;
+        $('#loyaltyPointInput').on('input', function () {
+            let availablePoints = parseFloat($('#availablePoints').text()) || 0;
+            let pricePerPoint = parseFloat($('#pricePerPoint').text()) || 0
+            let enteredPoints = parseFloat($(this).val()) || 0;
+            // Reset case
+            if (enteredPoints <= 0) {
+                loyaltyRedeemAmount = 0;
+                $('.redeem-value').text('£0');
+                Total();
+                return;
+            }
+            // Validation
+            if (enteredPoints > availablePoints) {
+                alert('You cannot use more than available points');
+                $(this).val('');
+                loyaltyRedeemAmount = 0;
+                $('.redeem-value').text('£0');
+                Total();
+                return;
+            }
+            // Calculate
+            loyaltyRedeemAmount = enteredPoints * pricePerPoint;
+            $('.redeem-value').text('£' + loyaltyRedeemAmount.toFixed(2));
+            // Recalculate total
+            Total();
+            return;
+        });
         //Order Control
         $('.item-btn-parent').on('click', '.btn', function() {
             let b = $(this).siblings('p').text();
@@ -904,7 +965,8 @@
             $('.sub-total').text('£' + sum);
             let tipValue = Number($('.tip-value').text().slice(1));
             let tax = Number($('.tax-value').text().slice(1));
-            $('.total-value').text('£' + (tipValue + tax + sum).toFixed(2));
+            let redeem = Number($('.redeem-value').text().slice(1));
+            $('.total-value').text('£' + (tipValue + tax + sum - redeem).toFixed(2));
             $('.order-input').text(count);
         }
 
@@ -1107,12 +1169,16 @@
 
                 // Send the tip amount to the server using AJAX
                 var tipAmount = $('.tip-input').val();
+                var redeemPoints = $('#loyaltyPointInput').val();
+                var redeemAmount = Number($('.redeem-value').text().slice(1));
                 $.ajax({
                     type: 'POST',
                     url: '{{ route('store.tip') }}', // Replace with the actual route
                     data: {
                         '_token': '{{ csrf_token() }}',
-                        'tipAmount': tipAmount
+                        'tipAmount': tipAmount,
+                        'redeemAmount': redeemAmount,
+                        'redeemPoints': redeemPoints
                     },
                     success: function(data) {
                         // Redirect to the checkout page after storing the tip in the session

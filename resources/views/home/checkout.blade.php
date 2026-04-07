@@ -318,11 +318,12 @@
                                 // Assuming a fixed tax amount
                                 $tip = $tip_amount;
                                 $redeem_amount = session('redeem_amount', 0);
+                                $deliveryCharge = session('delivery_charge', 0);
 
                                 // @dd($tip);
                                 // $tip = is_array($tip_amount) ? 0 : $tip_amount;
                                 // $orderTotal = $subtotal + $tax + $tip;
-                                $orderTotal = $subtotal + $tax + $tip - $redeem_amount;
+                                $orderTotal = $subtotal + $tax + $tip + $deliveryCharge - $redeem_amount;
                                 session(['orderTotal' => $orderTotal]);
                             @endphp
 
@@ -347,6 +348,10 @@
                                 <div class="d-flex justify-content-between">
                                     <p class="text-muted">Redeem Amount</p>
                                     <p class="redeem-value">£{{ number_format($redeemAmount, 2) }}</p>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <p class="text-muted">Delivery Charges</p>
+                                    <p class="delivery-charge">£{{ number_format($deliveryCharge, 2) }}</p>
                                 </div>
                                 <!-- Estimated order total -->
                                 <div class="d-flex justify-content-between">

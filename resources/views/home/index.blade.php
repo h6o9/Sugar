@@ -371,11 +371,8 @@
                     $discountPercent = (int) $product->featured_amount;
                 }
             }
-<<<<<<< HEAD
-=======
              $comp = optional($product->complementaryProduct);
 
->>>>>>> 7745d886c7acc091771227dbe658e0d378a6622a
         @endphp
         <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
             <div class="modal fade menu-modal" id="menuModal-{{ $product->id }}" tabindex="-1"

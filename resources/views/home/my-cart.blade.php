@@ -732,6 +732,8 @@
                             @php
                                 $cartItems = session('cart', []);
                                 $firstItem = reset($cartItems);
+                                $deliveryCharge = rand(2, 10);
+                                session(['delivery_charge' => $deliveryCharge]);
                             @endphp
 
                             <div class="mt-sm-4 pb-sm-4 mt-3 pb-3">
@@ -755,6 +757,10 @@
                                     <div class="d-flex justify-content-between">
                                         <p class="tecontinue-to-add-tipxt-muted">Redeem Points Amount</p>
                                         <span>- </span><p class="redeem-value">£0</p>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <p class="text-muted">Delivery Charges</p>
+                                        <p class="delivery-charge">£{{ $deliveryCharge }}</p>
                                     </div>
                                     <div class="d-flex justify-content-between">
                                         <p class="text-muted">Estimated order Total</p>
@@ -966,7 +972,8 @@
             let tipValue = Number($('.tip-value').text().slice(1));
             let tax = Number($('.tax-value').text().slice(1));
             let redeem = Number($('.redeem-value').text().slice(1));
-            $('.total-value').text('£' + (tipValue + tax + sum - redeem).toFixed(2));
+            let delivery = Number($('.delivery-charge').text().slice(1));
+            $('.total-value').text('£' + (tipValue + tax + delivery + sum - redeem).toFixed(2));
             $('.order-input').text(count);
         }
 
@@ -1026,7 +1033,8 @@
             $('.sub-total').text('£' + sum);
             let tipValue = Number($('.tip-value').text().slice(1));
             let tax = Number($('.tax-value').text().slice(1));
-            $('.total-value').text('£' + (tipValue + tax + sum).toFixed(2));
+            let delivery = Number($('.delivery-charge').text().slice(1));
+            $('.total-value').text('£' + (tipValue + tax + delivery + sum).toFixed(2));
             $('.order-input').text(count);
         })
     });

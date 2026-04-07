@@ -298,3 +298,8 @@ Route::get('loyality-points' ,[LoyalityPointsController::class, 'index'])->name(
 Route::post('/update-branch-status', [BranchUpdateController::class, 'updateBranchStatus'])
     ->name('update.branch.status');
 
+//stripe payment route
+Route::post('/stripe/payment', [OrderController::class, 'stripePayment'])->name('stripe.payment');
+Route::get('/stripe/success', [OrderController::class, 'stripeSuccess'])->name('stripe.success');
+Route::get('/stripe/cancel', [OrderController::class, 'stripeCancel'])->name('stripe.cancel');
+

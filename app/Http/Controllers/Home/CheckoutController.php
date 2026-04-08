@@ -22,7 +22,9 @@ class CheckoutController extends Controller
     $cart = session('cart', []);
     
     // ✅ Session se tip aur delivery charges lein
-    $tip = session('tip', 0);
+    $tip = session('tip', 0);  
+    $redeemAmount = session('redeem_amount', 0);
+    $redeemPoints = session('redeem_points', 0);
     $deliveryCharges = session('delivery_charges', 0);
     
     // ✅ Calculate subtotal from cart
@@ -44,7 +46,7 @@ class CheckoutController extends Controller
     }
     
     // ✅ Calculate total
-    $total = $subtotal + $tip + $deliveryCharges + $tax;
+    $total = $subtotal + $tip + $deliveryCharges + $tax - $redeemAmount;
     
     // ✅ Debug ke liye log
     \Log::info('Checkout Page Data:', [
@@ -55,7 +57,7 @@ class CheckoutController extends Controller
         'tax' => $tax,
         'total' => $total
     ]);
-    
+    // return ['redeemAmount' => $redeemAmount, 'redeemPoints' => $redeemPoints];
     return view('home.checkout', compact(
         'timeSlots',
         'userTimeSlots',
@@ -63,6 +65,8 @@ class CheckoutController extends Controller
         'cart',
         'subtotal',
         'tip',
+        'redeemAmount',
+        'redeemPoints',
         'deliveryCharges',
         'tax',
         'total',

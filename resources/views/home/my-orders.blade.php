@@ -424,9 +424,9 @@
                                                 <!-- Billing Start -->
                                                 <div class="mt-2">
                                                     <div class="d-flex justify-content-between">
-                                                        <p class="text-muted m-0">Total Amount</p>
+                                                        <p class="text-muted m-0">Sub Total</p>
                                                         <p class="total-value m-0">
-                                                            £{{ $order->order->total_amount - $order->tip - $order->branch->tax }}
+                                                            £{{ $order->order->total_amount - $order->tip - $order->branch->tax - ($order->order->delivery_charge ?? 0) }}
                                                         </p>
                                                     </div>
                                                     <div class="d-flex justify-content-between">
@@ -442,7 +442,17 @@
                                                         @endif
                                                     </div>
                                                     <div class="d-flex justify-content-between">
-                                                        <p class="text-muted m-0">Estimated item total</p>
+                                                        <p class="text-muted mb-1">Redeemed Amount</p>
+                                                       <p class="redeemed-value mb-1">
+                                                            £{{ $order->order->redeemed }}
+                                                        </p>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <p class="text-muted mb-1">Delivery Charges</p>
+                                                        <p class="delivery-charge mb-1">£{{ number_format($order->order->delivery_charge ?? 0, 2) }}</p>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <p class="text-muted m-0">Estimated order total</p>
                                                         <p class="total-value m-0">£{{ $order->order->total_amount }}
                                                         </p>
                                                     </div>

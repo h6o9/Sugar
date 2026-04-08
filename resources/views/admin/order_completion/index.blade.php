@@ -10,7 +10,7 @@
                             <div class="card-header">
                                 <div class="col-12">
                                     <h4>Order Completion Rewards <small class="font-weight-bold text-danger">
-								(Points will be awarded to users on each successful order completion as specified below.)
+								(Loyalty points will be awarded to users on each successful order completion as specified below.)
 								</small>
 								</h4>
                                 </div>
@@ -21,7 +21,7 @@
                                     <thead>
                                         <tr>
                                             <th>Sr.</th>
-                                            <th>Points</th>
+                                            <th>Loyalty Points</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>

@@ -10,7 +10,7 @@
                             <div class="card-header">
                                 <div class="col-12">
                                     <h4>Referal Link Reward Settings <small class="font-weight-bold text-danger">
-								(Users earn points for every successful action completed through their referral links. For example, if a user shares a link with 10 people and 3 of them register on the app after installing it, the user will earn points only for those 3 registrations. If each registration is worth 10 points, the user will receive 30 points.)
+								(Users earn loyalty points for every successful action completed through their referral links. For example, if a user shares a link with 10 people and 3 of them register on the app after installing it, the user will earn loyalty points only for those 3 registrations. If each registration is worth 10 loyalty points, the user will receive 30 loyalty points.)
 								</small>
 								</h4>
                                 </div>
@@ -21,7 +21,7 @@
                                     <thead>
                                         <tr>
                                             <th>Sr.</th>
-                                            <th>Points</th>
+                                            <th>Loyalty Points</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>

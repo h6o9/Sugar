@@ -464,7 +464,7 @@
                                             <div class="form-check">
                                                 <input class="form-check-input" 
                                                     type="radio" 
-                                                    name="status_{{ $product->id }}"
+                                                    name="status_{{ $product->id }}_{{ $branch->id }}"
                                                     id="pickupStatus{{ $product->id }}_{{ $branch->id }}" 
                                                     value="1" 
                                                     checked 

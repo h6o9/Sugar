@@ -331,19 +331,19 @@
                                                                     @endforeach
                                                                 @endif
                                                                 {{-- ✅ Complementary Product --}}
-                                                                    {{-- @if ($item->complementaryProduct)
-                                                                        <div class="mt-2">
-                                                                            <h6 class="small text-success">Free Item</h6>
-                                                                            <div class="d-flex align-items-center gap-2">
-                                                                                <img src="{{ asset($item->complementaryProduct->image) }}"
-                                                                                    alt="{{ $item->complementaryProduct->name }}"
-                                                                                    width="40"
-                                                                                    height="40"
-                                                                                    style="object-fit: cover; border-radius: 5px;">
-                                                                                <p class="small m-0">{{ $item->complementaryProduct->name }}</p>
-                                                                            </div>
-                                                                        </div>
-                                                                    @endif --}}
+                                                                @if ($item->complementaryProduct)
+                                                                    <div class="d-flex flex-column align-items-start mt-2">
+                                                                        <span class="badge bg-success my-2">Included (Free)</span>
+                                                                        <img 
+                                                                            src="{{ asset($item->complementaryProduct->image) }}" 
+                                                                            alt="{{ $item->complementaryProduct->name }}" 
+                                                                            width="40" 
+                                                                            height="40"
+                                                                            style="object-fit: cover" class="rounded-circle"
+                                                                        >
+                                                                        <p class="badge bg-success my-2">{{ $item->complementaryProduct->name }}</p>
+                                                                    </div>
+                                                                @endif
                                                             </div>
                                                         </div>
                                                     </div>
@@ -424,9 +424,9 @@
                                                 <!-- Billing Start -->
                                                 <div class="mt-2">
                                                     <div class="d-flex justify-content-between">
-                                                        <p class="text-muted m-0">Total Amount</p>
+                                                        <p class="text-muted m-0">Sub Total</p>
                                                         <p class="total-value m-0">
-                                                            £{{ $order->order->total_amount - $order->tip - $order->branch->tax }}
+                                                            £{{ $order->order->total_amount - $order->tip - $order->branch->tax - ($order->order->delivery_charge ?? 0) }}
                                                         </p>
                                                     </div>
                                                     <div class="d-flex justify-content-between">
@@ -452,7 +452,7 @@
                                                         <p class="delivery-charge mb-1">£{{ number_format($order->order->delivery_charge ?? 0, 2) }}</p>
                                                     </div>
                                                     <div class="d-flex justify-content-between">
-                                                        <p class="text-muted m-0">Estimated item total</p>
+                                                        <p class="text-muted m-0">Estimated order total</p>
                                                         <p class="total-value m-0">£{{ $order->order->total_amount }}
                                                         </p>
                                                     </div>

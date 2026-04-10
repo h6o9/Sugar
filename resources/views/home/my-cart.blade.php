@@ -550,24 +550,19 @@
                                             @endforeach
                                         @endif
                                         {{-- ✅ Complementary Product --}}
-                                        {{-- @if (!empty($item['complementary']))
-                                            <div class="mt-2">
-                                                <h6>Free Item</h6>
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <img 
-                                                        src="{{ asset($item['complementary']['image']) }}" 
-                                                        alt="{{ $item['complementary']['name'] }}" 
-                                                        width="40" 
-                                                        height="40"
-                                                        style="object-fit: cover; border-radius: 5px;"
-                                                    >
-                                                    <p class="small m-0">
-                                                        {{ $item['complementary']['name'] }}
-                                                    </p>
-
-                                                </div>
+                                        @if (!empty($item['complementary']))
+                                            <div class="d-flex flex-column align-items-start mt-2">
+                                                <span class="badge bg-success my-2">Included (Free)</span>
+                                                <img 
+                                                    src="{{ asset($item['complementary']['image']) }}" 
+                                                    alt="{{ $item['complementary']['name'] }}" 
+                                                    width="40" 
+                                                    height="40"
+                                                    style="object-fit: cover" class="rounded-circle"
+                                                >
+                                                <p class="badge bg-success my-2">{{ $item['complementary']['name'] }}</p>
                                             </div>
-                                        @endif --}}
+                                        @endif
                                         {{-- Quantity & Delete --}}
                                         <div class="d-flex justify-content-between">
                                             <div class="item-btn-parent">
@@ -973,7 +968,7 @@
             let tax = Number($('.tax-value').text().slice(1));
             let redeem = Number($('.redeem-value').text().slice(1));
             let delivery = Number($('.delivery-charge').text().slice(1));
-            $('.total-value').text('£' + (tipValue + tax + delivery + sum - redeem).toFixed(2));
+            $('.total-value').text('£' + (tipValue + tax + delivery  + sum - redeem).toFixed(2));
             $('.order-input').text(count);
         }
 
@@ -1034,7 +1029,7 @@
             let tipValue = Number($('.tip-value').text().slice(1));
             let tax = Number($('.tax-value').text().slice(1));
             let delivery = Number($('.delivery-charge').text().slice(1));
-            $('.total-value').text('£' + (tipValue + tax + delivery + sum).toFixed(2));
+            $('.total-value').text('£' + (tipValue + tax + delivery  + sum).toFixed(2));
             $('.order-input').text(count);
         })
     });

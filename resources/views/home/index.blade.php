@@ -391,22 +391,19 @@
                                 <h3>{{ $product->name }}</h3>
                                 @if(optional($comp)->complementary)
                                 <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
-
-                                                            {{-- <div class="my-2">
-                                                            </div>
-															 <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
-                                                            <div class="text-center">
-                                                                <img class="img-fluid rounded" 
-                                                                     src="{{ asset($comp->complementary->image) }}" 
-                                                                     alt="{{ $comp->complementary->name }}"
-                                                                     style="width:100px;height:100px;object-fit:cover;">
-																	 <br>
-																	 <span class="badge bg-success m-2">BUY 1 GET 1 FREE
-                                                                </span>
-                                                                
-                                                                <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
-                                                            </div> --}}
-                                                        @endif
+                                {{-- <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span> --}}
+                                <div class="mt-3 text-center">
+                                    <img class="img-fluid rounded-circle" 
+                                            src="{{ asset($comp->complementary->image) }}" 
+                                            alt="{{ $comp->complementary->name }}"
+                                            style="width:100px;height:100px;object-fit:cover;">
+                                            <br>
+                                            <span class="badge bg-success m-2">BUY 1 GET 1 FREE
+                                    </span>
+                                    
+                                    <p class="mb-0 small fw-medium text-dark">{{ $comp->complementary->name }}</p>
+                                </div>
+                                @endif
                                 @if (count($product->variants) > 0)
                                     @if($hasDiscount)
                                         <p>
@@ -464,7 +461,7 @@
                                             <div class="form-check">
                                                 <input class="form-check-input" 
                                                     type="radio" 
-                                                    name="status_{{ $product->id }}"
+                                                    name="status_{{ $product->id }}_{{ $branch->id }}"
                                                     id="pickupStatus{{ $product->id }}_{{ $branch->id }}" 
                                                     value="1" 
                                                     checked 
@@ -1038,24 +1035,20 @@
 
                                     <div class="p-3 description">
                                         <h3>{{ $prod->name }}</h3>
-                                                    @if(optional($comp)->complementary)
-                                <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
-
-                                                            {{-- <div class="my-2">
-                                                            </div>
-															 <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
-                                                            <div class="text-center">
-                                                                <img class="img-fluid rounded" 
-                                                                     src="{{ asset($comp->complementary->image) }}" 
-                                                                     alt="{{ $comp->complementary->name }}"
-                                                                     style="width:100px;height:100px;object-fit:cover;">
-																	 <br>
-																	 <span class="badge bg-success m-2">BUY 1 GET 1 FREE
-                                                                </span>
-                                                                
-                                                                <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
-                                                            </div> --}}
-                                                        @endif
+                                        @if(optional($comp)->complementary)
+                                        <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
+                                        {{-- <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span> --}}
+                                        <div class="mt-3 text-center">
+                                            <img class="img-fluid rounded-circle" 
+                                                    src="{{ asset($comp->complementary->image) }}" 
+                                                    alt="{{ $comp->complementary->name }}"
+                                                    style="width:100px;height:100px;object-fit:cover;">
+                                                    <br>
+                                                    <span class="badge bg-success m-2">BUY 1 GET 1 FREE
+                                            </span>
+                                            <p class="mb-0 small fw-medium text-dark">{{ $comp->complementary->name }}</p>
+                                        </div>
+                                        @endif
                                         <!-- PRICE SECTION with Discount Logic -->
                                         @if (count($prod->variants) > 0)
                                             @if($prod->featured_action == 'decrease' && $prod->original_price)

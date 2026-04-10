@@ -21,7 +21,7 @@
                                     <thead>
                                         <tr>
                                             <th>Sr.</th>
-                                            <th>Point</th>
+                                            <th>Loyalty Point</th>
 											<th>Price</th>
                                             <th>Action</th>
                                         </tr>

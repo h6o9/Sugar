@@ -51,13 +51,17 @@
                                             <div class="form-group mb-3">
                                                 <label>Location</label>
 
-                                                <!-- New Google Element -->
-                                                <gmp-place-autocomplete id="place-autocomplete"></gmp-place-autocomplete>
+                                                <!-- Autocomplete Input -->
+                                                <input type="text" id="location" class="form-control" placeholder="Select location" autocomplete="off" name ="location" value="{{ $branch->location }}">
 
-                                                <!-- Hidden fields -->
-                                                <input type="text" name="location" id="location">
-                                                <input type="text" name="lat" id="lat">
-                                                <input type="text" name="lng" id="lng">
+                                                <!-- Hidden Fields -->
+                                                <input type="hidden" name="latitude" id="lat" value="{{ $branch->latitude }}">
+                                                <input type="hidden" name="longitude" id="lng" value="{{ $branch->longitude }}">
+
+                                                <!-- Error message -->
+                                                <small id="location-error" style="color:red; display:none;">
+                                                    Please select a valid location from suggestions
+                                                </small>
                                             </div>
                                         </div>
                                     </div>
@@ -92,44 +96,67 @@
             toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
         </script>
     @endif
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&v=beta"></script>
+<script async
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&v=beta&loading=async">
+</script>
+
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+window.addEventListener("load", function () {
 
-    const el = document.getElementById('place-autocomplete');
+    const input = document.getElementById("location");
+    const latInput = document.getElementById("lat");
+    const lngInput = document.getElementById("lng");
+    const errorMsg = document.getElementById("location-error");
 
-    if (!el) {
-        console.log('Element not found');
-        return;
-    }
+    let selected = false;
 
-    el.addEventListener('gmp-placechange', async () => {
+    // Initialize Autocomplete
+    const autocomplete = new google.maps.places.Autocomplete(input, {
+        types: ["geocode"], // addresses only
+        // componentRestrictions: { country: "pk" } // optional (Pakistan only)
+    });
 
-        console.log('EVENT TRIGGERED');
+    // When user selects place
+    autocomplete.addListener("place_changed", function () {
 
-        const place = el.value; // ✅ IMPORTANT FIX
+        const place = autocomplete.getPlace();
 
-        if (!place) {
-            console.log('No place selected');
+        if (!place.geometry) {
+            selected = false;
+            latInput.value = "";
+            lngInput.value = "";
+            errorMsg.style.display = "block";
             return;
         }
 
-        await place.fetchFields({
-            fields: ['formattedAddress', 'location']
-        });
+        // Set values
+        latInput.value = place.geometry.location.lat();
+        lngInput.value = place.geometry.location.lng();
 
-        console.log('PLACE DATA:', place);
+        input.value = place.formatted_address;
 
-        if (!place.location) {
-            alert('No location data');
-            return;
+        selected = true;
+        errorMsg.style.display = "none";
+
+        console.log("LAT:", latInput.value);
+        console.log("LNG:", lngInput.value);
+    });
+
+    // ❌ Prevent manual typing
+    input.addEventListener("input", function () {
+        selected = false;
+        latInput.value = "";
+        lngInput.value = "";
+    });
+
+    // ❌ Prevent leaving field without selection
+    input.addEventListener("blur", function () {
+        if (!selected) {
+            input.value = "";
+            latInput.value = "";
+            lngInput.value = "";
+            errorMsg.style.display = "block";
         }
-
-        document.getElementById('location').value = place.formattedAddress;
-        document.getElementById('lat').value = place.location.lat();
-        document.getElementById('lng').value = place.location.lng();
-
-        console.log('SUCCESS SET');
     });
 
 });

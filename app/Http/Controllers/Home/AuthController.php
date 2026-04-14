@@ -86,7 +86,7 @@ class AuthController extends Controller
         $userId = auth::guard('user')->id();
         $user = User::where('id', $userId)->first();
         $reward = Reward::where('user_id', $user->id)->first();
-        return view('home.my-profile', compact('user', 'reward'));
+        return view('home.my-profile', compact('user','reward'));
     }
 
  public function updateProfile(Request $request, $id)

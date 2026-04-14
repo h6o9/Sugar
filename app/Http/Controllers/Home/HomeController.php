@@ -27,7 +27,7 @@ class HomeController extends Controller
 {
     $user = Auth::user();
 
-    $products = Product::with(['variants','complementaryProduct.complementary'])
+    $products = Product::with(['variants','category','complementaryProduct.complementary'])
         ->where('status', 1)
         ->where('is_featured', 1)
         ->orderBy('id', 'DESC')
@@ -59,7 +59,7 @@ class HomeController extends Controller
     $timeSlots = TimeSlot::all();
 
     $menuGalleries = MenuGallery::orderBy('id', 'DESC')->take(4)->get();
-
+    // return $products;
     return view('home.index', compact(
         'products',
         'branches',

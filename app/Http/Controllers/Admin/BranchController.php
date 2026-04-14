@@ -72,7 +72,7 @@ class BranchController extends Controller
             'location' => 'required',
             'tax' => 'required',
         ]);
-
+        // return $request->all();
         $branch = Branch::find($id);
         $branch->update([
             'name' => $request->name,
@@ -80,6 +80,8 @@ class BranchController extends Controller
             'phone_number' => $request->phone_number,
             'branch_number' => $request->branch_number,
             'location' => $request->location,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
             'tax' => $request->tax,
         ]);
         return redirect()->route('branches.index')->with(['status' => true, 'message' => 'Updated successfully']);

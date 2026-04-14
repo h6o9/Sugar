@@ -684,6 +684,12 @@
                                             class="ps-2 w-100 cart_input increment-input tip-input"></span>
                                 </div>
                             </div>
+                            {{-- @php
+                                $loyaltyPoints = 0;
+                                if (Auth::check()) {
+                                    $loyaltyPoints = App\Models\Reward::where('user_id', Auth::id())->first()->points ?? 0;
+                                }
+                            @endphp --}}
                              <!-- Loyalty Points Section-->
                             <div class="mt-sm-4 pb-sm-4 mt-3 pb-3 border-bottom">
                                 <!-- Available Points -->
@@ -727,8 +733,11 @@
                             @php
                                 $cartItems = session('cart', []);
                                 $firstItem = reset($cartItems);
-                                $deliveryCharge = rand(2, 10);
+                                $deliveryCharge = $distanceData['delivery_charge'] ?? 0;
+                                $deliveryDistance = $distanceData['distance_miles'] ?? 0;
+                                $distanceData = session('distance_data', []);
                                 session(['delivery_charge' => $deliveryCharge]);
+                                session(['delivery_distance' => $deliveryDistance]);
                             @endphp
 
                             <div class="mt-sm-4 pb-sm-4 mt-3 pb-3">

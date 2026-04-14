@@ -213,7 +213,7 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
             </div>
         </div>
         @endif
-
+ 
         <!-- Cart Dropdown -->
         <div class="ms-2 nav-item dropdown">
             <a href="#" class="nav-link p-0" data-bs-toggle="dropdown">
@@ -221,7 +221,8 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
             </a>
             <div class="carting-card dropdown-menu py-3 px-0">
                 <div class="border-bottom mb-1 pb-3 px-3">
-                    <h5 class="m-0">Your Cart (<span class="cart-counter-1">{{ count(session('cart', [])) }}</span>)</h5>
+                    <h5>Your Cart (<span class="cart-counter-1">{{ count(session('cart', [])) }}</span>)</h5>
+                    <b class="small text-danger">You’re viewing a quick summary. Full details including toppings and complimentary items will be available on the cart page.</b>
                 </div>
                 <div class="cards-parent scrollable">
                     @forelse(session('cart', []) as $item)
@@ -401,10 +402,20 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
                                                     {{-- Delivery Address Input --}}
                                                     <div id="deliveryAddressField{{ $product->id }}_{{ $branch->id }}_{{ $index }}" 
                                                         class="mt-2" style="display: none;">
-                                                        <input type="text" 
-                                                            name="delivery_address_{{ $product->id }}" 
-                                                            class="form-control" 
-                                                            placeholder="Enter your delivery address">
+                                                        <input 
+                                                                type="text" 
+                                                                id="deliveryInput{{ $product->id }}_{{ $branch->id }}"
+                                                                name="delivery_address_{{ $product->id }}" 
+                                                                class="form-control location-input"
+                                                                data-product="{{ $product->id }}"
+                                                                data-branch="{{ $branch->id }}"
+                                                                placeholder="Enter your delivery address"
+                                                                autocomplete="off"
+                                                            />
+
+                                                            <!-- Hidden lat/lng -->
+                                                            <input type="hidden" name="lat_{{ $product->id }}" id="lat{{ $product->id }}_{{ $branch->id }}">
+                                                            <input type="hidden" name="lng_{{ $product->id }}" id="lng{{ $product->id }}_{{ $branch->id }}">
                                                     </div>
                                                 </div>
                                             @endif
@@ -522,4 +533,73 @@ $(document).ready(function(){
 
     helper();
 });
+</script>
+<script async defer 
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&callback=initAllAutocomplete">
+</script>
+<script>
+   function bindAutocomplete(container = document) {
+
+    container.querySelectorAll('.location-input').forEach(input => {
+
+        if (input.dataset.autocompleteInit === "1") return;
+        input.dataset.autocompleteInit = "1";
+
+        const productId = input.dataset.product;
+        const branchId = input.dataset.branch;
+
+        let isSelectedFromList = false;
+        let isSelecting = false; // 👈 NEW FLAG
+
+        const autocomplete = new google.maps.places.Autocomplete(input, {
+            fields: ["geometry", "name"],
+            types: ['geocode'],
+            componentRestrictions: { country: "gb" }
+        });
+
+        const latField = document.getElementById(`lat${productId}_${branchId}`);
+        const lngField = document.getElementById(`lng${productId}_${branchId}`);
+
+        // 👉 Detect when user clicks suggestion
+        input.addEventListener('keydown', function () {
+            isSelecting = true;
+        });
+
+        input.addEventListener('input', function () {
+            isSelectedFromList = false;
+            latField.value = '';
+            lngField.value = '';
+        });
+
+        autocomplete.addListener('place_changed', function () {
+            const place = autocomplete.getPlace();
+
+            if (!place.geometry) return;
+
+            isSelectedFromList = true;
+            isSelecting = false;
+
+            latField.value = place.geometry.location.lat();
+            lngField.value = place.geometry.location.lng();
+        });
+
+        input.addEventListener('blur', function () {
+            setTimeout(() => {
+
+                // 👇 ignore blur if user is selecting
+                if (isSelecting) return;
+
+                if (!isSelectedFromList || !latField.value || !lngField.value) {
+                    input.value = '';
+                    latField.value = '';
+                    lngField.value = '';
+
+                    alert("Please select a location from suggestions only.");
+                }
+
+            }, 300); // 👈 increased delay
+        });
+
+    });
+}
 </script>

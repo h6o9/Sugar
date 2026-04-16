@@ -75,6 +75,13 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
 @media(max-width:768px){.mobile-notify-block{width:92%; left:4%;}}
 @media(max-width:480px){.mobile-notify-block{width:96%; left:2%;}}
 </style>
+@if (url()->current() !== url('/'))
+  <style>
+    .pac-container {
+            z-index: 9999999 !important;
+        }
+  </style>
+@endif
 
 <div id="spinner" class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
     <div class="spinner-border text-dark" style="width:3rem;height:3rem;" role="status">
@@ -534,72 +541,183 @@ $(document).ready(function(){
     helper();
 });
 </script>
+@if (url()->current() !== url('/'))
 <script async defer 
 src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&callback=initAllAutocomplete">
 </script>
-<script>
-   function bindAutocomplete(container = document) {
+    <script>
+                $('.addto-cart').on('click', function() {
+            var modal = $(this).closest('.food-modal');
+            var complementry_id = modal.find('input[name="complementary_id"]').length 
+                ? modal.find('input[name="complementary_id"]').val() 
+                : null;
+                
+            var productId = $(this).closest('.food-modal').find('input[name="product_id"]').val();
+            var quantity = $(this).closest('.food-modal').find('input[name="quantity"]').val();
+            var isLocationChecked = $(this).closest('.food-modal').find('input[name="location"]:checked').length > 0;
+            var branchId = isLocationChecked ? $(this).closest('.food-modal').find('input[name="branch_id"]').val() : '';
+            var variantId = '';
 
-    container.querySelectorAll('.location-input').forEach(input => {
+            var deliveryStatus = $(this).closest('.food-modal').find('input[name^="status_' + productId + '"]:checked').val();
+            var deliveryAddress = '';
+            // alert(deliveryStatus);
+            // return;
+            if (deliveryStatus == '2') {
+                deliveryAddress = $(this).closest('.food-modal').find('input[name="delivery_address_' + productId + '"]').val();
+                if (!deliveryAddress) {
+                    toastr.error('Please enter delivery address');
+                    return;
+                }
+            }
 
-        if (input.dataset.autocompleteInit === "1") return;
-        input.dataset.autocompleteInit = "1";
+            var lat = '';
+            var lng = '';
+            if (deliveryStatus == '2') {
+                lat = $(this).closest('.food-modal').find('input[name="lat_' + productId + '"]').val();
+                lng = $(this).closest('.food-modal').find('input[name="lng_' + productId + '"]').val();
+            }
+            if(lat == '' || lng == '') {
+                toastr.error('Please select a valid delivery address from suggestions');
+                return;
+            }
 
-        const productId = input.dataset.product;
-        const branchId = input.dataset.branch;
+            var variantSelect = $(this).closest('.food-modal').find('select[name="variant_id"]');
+            if (variantSelect.length > 0) {
+                variantId = variantSelect.val().split(' ')[0];
+            }
 
-        let isSelectedFromList = false;
-        let isSelecting = false; // 👈 NEW FLAG
+            var selectedToppingsByCategory = {};
 
-        const autocomplete = new google.maps.places.Autocomplete(input, {
-            fields: ["geometry", "name"],
-            types: ['geocode'],
-            componentRestrictions: { country: "gb" }
+            $(this).closest('.food-modal').find('input[name="toppings[]"]:checked').each(function() {
+                var categoryId = $(this).data('category-id');
+                var toppingId = $(this).val();
+
+                if (!selectedToppingsByCategory.hasOwnProperty(categoryId)) {
+                    selectedToppingsByCategory[categoryId] = [];
+                }
+
+                selectedToppingsByCategory[categoryId].push(toppingId);
+            });
+
+            var toppingsArray = Object.entries(selectedToppingsByCategory).map(([categoryId, toppings]) => {
+                return {
+                    category_id: categoryId,
+                    toppings: toppings
+                };
+            });
+
+            $.ajax({
+                type: 'POST',
+                url: '{{ route('add.to.cart') }}',
+                data: {
+                    '_token': '{{ csrf_token() }}',
+                    'product_id': productId,
+                    'quantity': quantity,
+                    'branch_id': branchId,
+                    'toppings_by_category': toppingsArray,
+                    'location': isLocationChecked,
+                    'variant_id': variantId,
+                    'delivery_status': deliveryStatus,
+                    'delivery_address': deliveryAddress,
+                    'lat': lat,
+                    'lng': lng,
+                    'complementary_id': complementry_id
+                },
+                success: function(data) {
+                    toastr.success('Product Added To Cart Successfully!');
+                    // location.reload();
+                    $('.cart-counter-1').text(Object.keys(data.cart).length);
+                    updateCartUI(data);
+                },
+                error: function(error) {
+                    console.error('Error adding product to cart:', error);
+                }
+            });
         });
+        function toggleDelivery(productId, branchUnique) {
+            const pickupRadio = document.getElementById(`pickupStatus${productId}_${branchUnique}`);
+            const homeRadio = document.getElementById(`homeStatus${productId}_${branchUnique}`);
+            const pickupSection = document.getElementById(`storePickupSection${productId}_${branchUnique}`);
+            const deliveryField = document.getElementById(`deliveryAddressField${productId}_${branchUnique}`);
 
-        const latField = document.getElementById(`lat${productId}_${branchId}`);
-        const lngField = document.getElementById(`lng${productId}_${branchId}`);
+            if (homeRadio.checked) {
+                pickupSection.style.display = 'none';
+                deliveryField.style.display = 'block';
+            } else if (pickupRadio.checked) {
+                pickupSection.style.display = 'block';
+                deliveryField.style.display = 'none';
+                deliveryField.querySelector('input').value = '';
+            }
+        }
+        window.initAllAutocomplete = function () {
+            console.log("Google Loaded ✅");
+            bindAutocomplete();
 
-        // 👉 Detect when user clicks suggestion
-        input.addEventListener('keydown', function () {
-            isSelecting = true;
-        });
+            document.addEventListener('shown.bs.modal', function (event) {
+                bindAutocomplete(event.target);
+            });
+        };
 
-        input.addEventListener('input', function () {
-            isSelectedFromList = false;
-            latField.value = '';
-            lngField.value = '';
-        });
+    function bindAutocomplete(container = document) {
 
-        autocomplete.addListener('place_changed', function () {
-            const place = autocomplete.getPlace();
+        container.querySelectorAll('.location-input').forEach(input => {
 
-            if (!place.geometry) return;
+            if (input.dataset.autocompleteInit === "1") return;
+            input.dataset.autocompleteInit = "1";
 
-            isSelectedFromList = true;
-            isSelecting = false;
+            const productId = input.dataset.product;
+            const branchId = input.dataset.branch;
 
-            latField.value = place.geometry.location.lat();
-            lngField.value = place.geometry.location.lng();
-        });
+            let isSelectedFromList = false;
 
-        input.addEventListener('blur', function () {
-            setTimeout(() => {
+            const autocomplete = new google.maps.places.Autocomplete(input, {
+                fields: ["geometry", "name"],
+                types: ['geocode'],
+                componentRestrictions: { country: "gb" }
+            });
 
-                // 👇 ignore blur if user is selecting
-                if (isSelecting) return;
+            const latField = document.getElementById(`lat${productId}_${branchId}`);
+            const lngField = document.getElementById(`lng${productId}_${branchId}`);
 
-                if (!isSelectedFromList || !latField.value || !lngField.value) {
+            // 👉 Reset when typing
+            input.addEventListener('input', function () {
+                isSelectedFromList = false;
+                latField.value = '';
+                lngField.value = '';
+            });
+
+            // 👉 Detect selection
+            autocomplete.addListener('place_changed', function () {
+                const place = autocomplete.getPlace();
+
+                if (!place.geometry) return;
+
+                isSelectedFromList = true;
+
+                latField.value = place.geometry.location.lat();
+                lngField.value = place.geometry.location.lng();
+            });
+
+            // 👉 FIXED BLUR LOGIC
+            input.addEventListener('blur', function () {
+                setTimeout(() => {
+
+                    // agar lat/lng aa chuki hai → valid hai
+                    if (latField.value && lngField.value) {
+                        return;
+                    }
+
+                    // warna invalid
                     input.value = '';
                     latField.value = '';
                     lngField.value = '';
 
                     alert("Please select a location from suggestions only.");
-                }
 
-            }, 300); // 👈 increased delay
+                }, 300); // ⬅️ thoda zyada delay
+            });
+
         });
-
-    });
-}
-</script>
+    }
+    </script>
+@endif

@@ -234,9 +234,13 @@ public function proceedToPayment(Request $request)
 }
 
 
-public function getUserCartItems()
+public function getUserCartItems(Request $request)
 {
     $userId = auth()->id();
+
+    // Get delivery charges and tip from request
+    $deliveryCharges = $request->input('delivery_charges', 0);
+    $tip = $request->input('tip', 0);
 
     $cartItems = AddToCartItem::with([
             'product:id,name,image',
@@ -274,24 +278,30 @@ public function getUserCartItems()
     $tips = $cartItems->sum('tips');
     $tax = $cartItems->first()->tax_amount ?? 0;
 
-    $estimatedTotal = $totalPrice + $tips + $tax;
+    // Use tip from request or from cart items
+    $finalTip = $tip > 0 ? $tip : $tips;
+    
+    $estimatedTotal = $totalPrice + $finalTip + $tax + $deliveryCharges;
 
     // =========================
     // UPDATE TABLE
     // =========================
     AddToCartItem::where('user_id', $userId)->update([
-        'subtotal'        => $subtotal,
-        'estimated_total' => $estimatedTotal,
+        'subtotal'           => $subtotal,
+        'estimated_total'    => $estimatedTotal,
+        'delivery_charges'   => $deliveryCharges,
+        'tips'               => $finalTip,
     ]);
 
     // =========================
     // SUMMARY
     // =========================
     $summary = [
-        'subtotal'        => round($subtotal, 2),
-        'tax_amount'      => round($tax, 2),
-        'tips'            => round($tips, 2),
-        'estimated_total' => round($estimatedTotal, 2),
+        'subtotal'          => round($subtotal, 2),
+        'tax_amount'        => round($tax, 2),
+        'tips'              => round($finalTip, 2),
+        'delivery_charges'  => round($deliveryCharges, 2),
+        'estimated_total'   => round($estimatedTotal, 2),
     ];
 
     // =========================
@@ -315,18 +325,17 @@ public function getUserCartItems()
         $complementProduct = null;
         if ($complement) {
             $compProd = DB::table('products')
-                ->where('id', $complement->complementary_product_id) // correct column name
+                ->where('id', $complement->complementary_product_id)
                 ->first();
 
             if ($compProd) {
-                // Fetch complement product toppings if exist
                 $compToppings = DB::table('topping_products')
-    ->join('categories', 'topping_products.category_id', '=', 'categories.id')
-    ->where('topping_products.product_id', $compProd->id)
-    ->get([
-        'categories.id',
-        'categories.name'
-    ]);
+                    ->join('categories', 'topping_products.category_id', '=', 'categories.id')
+                    ->where('topping_products.product_id', $compProd->id)
+                    ->get([
+                        'categories.id',
+                        'categories.name'
+                    ]);
 
                 $complementProduct = [
                     'product_id'    => $compProd->id,
@@ -353,18 +362,18 @@ public function getUserCartItems()
             'delivery_address'   => $item->delivery_address,
             'order_type'         => $item->order_type,
             'pickup_time'        => $item->pickup_time,
+            'delivery_charges'   => $item->delivery_charges,
             'complement_product' => $complementProduct,
         ];
     });
 
     return response()->json([
         'success' => 200,
-		'message' => "Cart items retrieved successfully",
+        'message' => "Cart items retrieved successfully",
         'summary' => $summary,
         'items'   => $items
     ], 200);
 }
-
 
 public function deleteCartItem($id)
 {

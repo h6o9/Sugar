@@ -222,6 +222,10 @@
             white-space: nowrap;
             padding: 12px 25px !important;
         }
+
+        .pac-container {
+            z-index: 9999999 !important;
+        }
     </style>
 
     <div class="mt-4 container-fluid banner-container">
@@ -391,22 +395,19 @@
                                 <h3>{{ $product->name }}</h3>
                                 @if(optional($comp)->complementary)
                                 <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
-
-                                                            {{-- <div class="my-2">
-                                                            </div>
-															 <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
-                                                            <div class="text-center">
-                                                                <img class="img-fluid rounded" 
-                                                                     src="{{ asset($comp->complementary->image) }}" 
-                                                                     alt="{{ $comp->complementary->name }}"
-                                                                     style="width:100px;height:100px;object-fit:cover;">
-																	 <br>
-																	 <span class="badge bg-success m-2">BUY 1 GET 1 FREE
-                                                                </span>
-                                                                
-                                                                <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
-                                                            </div> --}}
-                                                        @endif
+                                {{-- <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span> --}}
+                                <div class="mt-3 text-center">
+                                    <img class="img-fluid rounded-circle" 
+                                            src="{{ asset($comp->complementary->image) }}" 
+                                            alt="{{ $comp->complementary->name }}"
+                                            style="width:100px;height:100px;object-fit:cover;">
+                                            <br>
+                                            <span class="badge bg-success m-2">BUY 1 GET 1 FREE
+                                    </span>
+                                    
+                                    <p class="mb-0 small fw-medium text-dark">{{ $comp->complementary->name }}</p>
+                                </div>
+                                @endif
                                 @if (count($product->variants) > 0)
                                     @if($hasDiscount)
                                         <p>
@@ -487,7 +488,7 @@
                                             <div class="form-check mt-3">
                                                 <input class="form-check-input" 
                                                     type="radio" 
-                                                    name="status_{{ $product->id }}" 
+                                                    name="status_{{ $product->id }}_{{ $branch->id }}" 
                                                     id="homeStatus{{ $product->id }}_{{ $branch->id }}" 
                                                     value="2" 
                                                     onchange="toggleDelivery('{{ $product->id }}', '{{ $branch->id }}')">
@@ -498,7 +499,20 @@
 
                                             {{-- Delivery Address Input --}}
                                             <div id="deliveryAddressField{{ $product->id }}_{{ $branch->id }}" class="mt-2" style="display: none;">
-                                                <input type="text" name="delivery_address_{{ $product->id }}" class="form-control" placeholder="Enter your delivery address">
+                                                <input 
+                                                    type="text" 
+                                                    id="deliveryInput{{ $product->id }}_{{ $branch->id }}"
+                                                    name="delivery_address_{{ $product->id }}" 
+                                                    class="form-control location-input"
+                                                    data-product="{{ $product->id }}"
+                                                    data-branch="{{ $branch->id }}"
+                                                    placeholder="Enter your delivery address"
+                                                    autocomplete="off"
+                                                />
+
+                                                <!-- Hidden lat/lng -->
+                                                <input type="hidden" name="lat_{{ $product->id }}" id="lat{{ $product->id }}_{{ $branch->id }}">
+                                                <input type="hidden" name="lng_{{ $product->id }}" id="lng{{ $product->id }}_{{ $branch->id }}">
                                             </div>
                                         </div>
                                     @endif
@@ -1038,24 +1052,20 @@
 
                                     <div class="p-3 description">
                                         <h3>{{ $prod->name }}</h3>
-                                                    @if(optional($comp)->complementary)
-                                <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
-
-                                                            {{-- <div class="my-2">
-                                                            </div>
-															 <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
-                                                            <div class="text-center">
-                                                                <img class="img-fluid rounded" 
-                                                                     src="{{ asset($comp->complementary->image) }}" 
-                                                                     alt="{{ $comp->complementary->name }}"
-                                                                     style="width:100px;height:100px;object-fit:cover;">
-																	 <br>
-																	 <span class="badge bg-success m-2">BUY 1 GET 1 FREE
-                                                                </span>
-                                                                
-                                                                <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
-                                                            </div> --}}
-                                                        @endif
+                                        @if(optional($comp)->complementary)
+                                        <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
+                                        {{-- <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span> --}}
+                                        <div class="mt-3 text-center">
+                                            <img class="img-fluid rounded-circle" 
+                                                    src="{{ asset($comp->complementary->image) }}" 
+                                                    alt="{{ $comp->complementary->name }}"
+                                                    style="width:100px;height:100px;object-fit:cover;">
+                                                    <br>
+                                                    <span class="badge bg-success m-2">BUY 1 GET 1 FREE
+                                            </span>
+                                            <p class="mb-0 small fw-medium text-dark">{{ $comp->complementary->name }}</p>
+                                        </div>
+                                        @endif
                                         <!-- PRICE SECTION with Discount Logic -->
                                         @if (count($prod->variants) > 0)
                                             @if($prod->featured_action == 'decrease' && $prod->original_price)
@@ -1065,7 +1075,7 @@
                                                     </span>
                                                     <br>
                                                     <span class="text-danger fw-bold prodPrice">
-                                                        {{ number_format($finalPrice,2) }}
+                                                        £{{ number_format($finalPrice,2) }}
                                                     </span>
                                                 </p>
                                             @else
@@ -1090,7 +1100,7 @@
                                                     </span>
                                                     <br>
                                                     <span class="text-danger fw-bold prodPrice">
-                                                        {{ number_format($finalPrice,2) }}
+                                                        £{{ number_format($finalPrice,2) }}
                                                     </span>
                                                 </p>
                                             @else
@@ -1164,10 +1174,20 @@
                                                     {{-- Delivery Address Input --}}
                                                     <div id="deliveryAddressField{{ $prod->id }}_{{ $branch->id }}_{{ $index }}" 
                                                         class="mt-2" style="display: none;">
-                                                        <input type="text" 
-                                                            name="delivery_address_{{ $prod->id }}" 
-                                                            class="form-control" 
-                                                            placeholder="Enter your delivery address">
+                                                        <input 
+                                                                type="text" 
+                                                                id="deliveryInput{{ $prod->id }}_{{ $branch->id }}"
+                                                                name="delivery_address_{{ $prod->id }}" 
+                                                                class="form-control location-input"
+                                                                data-product="{{ $prod->id }}"
+                                                                data-branch="{{ $branch->id }}"
+                                                                placeholder="Enter your delivery address"
+                                                                autocomplete="off"
+                                                            />
+
+                                                            <!-- Hidden lat/lng -->
+                                                            <input type="hidden" name="lat_{{ $prod->id }}" id="lat{{ $prod->id }}_{{ $branch->id }}">
+                                                            <input type="hidden" name="lng_{{ $prod->id }}" id="lng{{ $prod->id }}_{{ $branch->id }}">
                                                     </div>
                                                 </div>
                                             @endif
@@ -1347,14 +1367,27 @@
             var branchId = isLocationChecked ? $(this).closest('.food-modal').find('input[name="branch_id"]').val() : '';
             var variantId = '';
 
-            var deliveryStatus = $(this).closest('.food-modal').find('input[name="status_' + productId + '"]:checked').val();
+            var deliveryStatus = $(this).closest('.food-modal').find('input[name^="status_' + productId + '"]:checked').val();
             var deliveryAddress = '';
+            // alert(deliveryStatus);
+            // return;
             if (deliveryStatus == '2') {
                 deliveryAddress = $(this).closest('.food-modal').find('input[name="delivery_address_' + productId + '"]').val();
                 if (!deliveryAddress) {
                     toastr.error('Please enter delivery address');
                     return;
                 }
+            }
+
+            var lat = '';
+            var lng = '';
+            if (deliveryStatus == '2') {
+                lat = $(this).closest('.food-modal').find('input[name="lat_' + productId + '"]').val();
+                lng = $(this).closest('.food-modal').find('input[name="lng_' + productId + '"]').val();
+            }
+            if(lat == '' || lng == '') {
+                toastr.error('Please select a valid delivery address from suggestions');
+                return;
             }
 
             var variantSelect = $(this).closest('.food-modal').find('select[name="variant_id"]');
@@ -1395,6 +1428,8 @@
                     'variant_id': variantId,
                     'delivery_status': deliveryStatus,
                     'delivery_address': deliveryAddress,
+                    'lat': lat,
+                    'lng': lng,
                     'complementary_id': complementry_id
                 },
                 success: function(data) {
@@ -1547,7 +1582,9 @@
             }
         });
     </script>
-
+<script async defer 
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&callback=initAllAutocomplete">
+</script>
     <script>
         function toggleDelivery(productId, branchUnique) {
             const pickupRadio = document.getElementById(`pickupStatus${productId}_${branchUnique}`);
@@ -1564,5 +1601,75 @@
                 deliveryField.querySelector('input').value = '';
             }
         }
+        window.initAllAutocomplete = function () {
+            console.log("Google Loaded ✅");
+            bindAutocomplete();
+
+            document.addEventListener('shown.bs.modal', function (event) {
+                bindAutocomplete(event.target);
+            });
+        };
+
+    function bindAutocomplete(container = document) {
+
+        container.querySelectorAll('.location-input').forEach(input => {
+
+            if (input.dataset.autocompleteInit === "1") return;
+            input.dataset.autocompleteInit = "1";
+
+            const productId = input.dataset.product;
+            const branchId = input.dataset.branch;
+
+            let isSelectedFromList = false;
+
+            const autocomplete = new google.maps.places.Autocomplete(input, {
+                fields: ["geometry", "name"],
+                types: ['geocode'],
+                componentRestrictions: { country: "gb" }
+            });
+
+            const latField = document.getElementById(`lat${productId}_${branchId}`);
+            const lngField = document.getElementById(`lng${productId}_${branchId}`);
+
+            // 👉 Reset when typing
+            input.addEventListener('input', function () {
+                isSelectedFromList = false;
+                latField.value = '';
+                lngField.value = '';
+            });
+
+            // 👉 Detect selection
+            autocomplete.addListener('place_changed', function () {
+                const place = autocomplete.getPlace();
+
+                if (!place.geometry) return;
+
+                isSelectedFromList = true;
+
+                latField.value = place.geometry.location.lat();
+                lngField.value = place.geometry.location.lng();
+            });
+
+            // 👉 FIXED BLUR LOGIC
+            input.addEventListener('blur', function () {
+                setTimeout(() => {
+
+                    // agar lat/lng aa chuki hai → valid hai
+                    if (latField.value && lngField.value) {
+                        return;
+                    }
+
+                    // warna invalid
+                    input.value = '';
+                    latField.value = '';
+                    lngField.value = '';
+
+                    alert("Please select a location from suggestions only.");
+
+                }, 300); // ⬅️ thoda zyada delay
+            });
+
+        });
+    }
     </script>
 @endsection

@@ -411,7 +411,7 @@ class OrderController extends Controller
                 $orderItem->sub_total = floatval($details['price']) * floatval($details['quantity']);
                 $orderItem->delivery_status = $details['delivery_status'] ?? null;
                 $orderItem->delivery_address = $details['delivery_address'] ?? null;
-
+                
                 $orderItem->save();
 
                 if (isset($details['toppings_by_category'])) {

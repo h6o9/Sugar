@@ -10,7 +10,7 @@
                         <h1 class="text-dark mb-4">Join the Sugar Pappi family — where flavor meets fun!</h1>
 
                         <form method="POST" action="{{ route('registerUser') }}">
-                            @csrf
+                            @csrf 
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <div class="form-floating">

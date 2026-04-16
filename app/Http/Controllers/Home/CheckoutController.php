@@ -25,7 +25,8 @@ class CheckoutController extends Controller
     $tip = session('tip', 0);  
     $redeemAmount = session('redeem_amount', 0);
     $redeemPoints = session('redeem_points', 0);
-    $deliveryCharges = session('delivery_charges', 0);
+    $deliveryCharges = session('delivery_charge', 0);
+    $deliveryDistance = session('delivery_distance', 0);
     
     // ✅ Calculate subtotal from cart
     $subtotal = 0;
@@ -68,6 +69,7 @@ class CheckoutController extends Controller
         'redeemAmount',
         'redeemPoints',
         'deliveryCharges',
+        'deliveryDistance',
         'tax',
         'total',
         'quantity'

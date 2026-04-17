@@ -738,6 +738,41 @@
                                 $distanceData = session('distance_data', []);
                                 session(['delivery_charge' => $deliveryCharge]);
                                 session(['delivery_distance' => $deliveryDistance]);
+
+                                $subtotal = 0;
+
+                                foreach ($cartItems as $item) {
+                                    $subtotal += (float)$item['price'] * (int)$item['quantity'];
+
+                                    if (isset($item['toppings_by_category'])) {
+                                        foreach ($item['toppings_by_category'] as $toppings) {
+                                            foreach ($toppings as $toppingId) {
+                                                $topping = \App\Models\Topping::find($toppingId);
+                                                if ($topping) {
+                                                    $subtotal += $topping->price;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                $tax = 0;
+                                foreach ($branchess as $branch) {
+                                    if ($branch->status == 1) {
+                                        $tax = $branch->tax;
+                                        break;
+                                    }
+                                }
+
+                                $tip = 0; // or session('tip_amount', 0)
+                                $redeem = 0; // or session('redeem_amount', 0)
+
+                                $baseTotal = $subtotal + $tax + $deliveryCharge + $tip - $redeem;
+
+                                $gatewayFee = ($baseTotal * 0.025) + 0.25; // UK cards
+                                $gatewayFee = round($gatewayFee, 2);
+
+                                $total = $baseTotal + $gatewayFee;
                             @endphp
 
                             <div class="mt-sm-4 pb-sm-4 mt-3 pb-3">
@@ -765,6 +800,10 @@
                                     <div class="d-flex justify-content-between">
                                         <p class="text-muted">Delivery Charges</p>
                                         <p class="delivery-charge">£{{ $deliveryCharge }}</p>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <p class="text-muted">Stripe Fee</p>
+                                        <p class="gateway-fee">£{{ number_format($gatewayFee, 2) }}</p>
                                     </div>
                                     <div class="d-flex justify-content-between">
                                         <p class="text-muted">Estimated order Total</p>
@@ -977,7 +1016,11 @@
             let tax = Number($('.tax-value').text().slice(1));
             let redeem = Number($('.redeem-value').text().slice(1));
             let delivery = Number($('.delivery-charge').text().slice(1));
-            $('.total-value').text('£' + (tipValue + tax + delivery  + sum - redeem).toFixed(2));
+             let baseTotal = tipValue + tax + delivery + sum - redeem;
+            let gatewayFee = (baseTotal * 0.025) + 0.25;
+            gatewayFee = parseFloat(gatewayFee.toFixed(2));
+            $('.gateway-fee').text('£' + gatewayFee.toFixed(2));
+            $('.total-value').text('£' + (tipValue + tax + delivery  + sum - redeem + gatewayFee).toFixed(2));
             $('.order-input').text(count);
         }
 
@@ -1038,7 +1081,11 @@
             let tipValue = Number($('.tip-value').text().slice(1));
             let tax = Number($('.tax-value').text().slice(1));
             let delivery = Number($('.delivery-charge').text().slice(1));
-            $('.total-value').text('£' + (tipValue + tax + delivery  + sum).toFixed(2));
+            let baseTotal = tipValue + tax + delivery + sum ;
+            let gatewayFee = (baseTotal * 0.025) + 0.25;
+            gatewayFee = parseFloat(gatewayFee.toFixed(2));
+            $('.gateway-fee').text('£' + gatewayFee.toFixed(2));
+            $('.total-value').text('£' + (tipValue + tax + delivery  + sum + gatewayFee).toFixed(2));
             $('.order-input').text(count);
         })
     });

@@ -476,26 +476,12 @@ class OrderController extends Controller
 
   public function stripePayment()
 {
-    $products = session('cart', []);
-    $deliveryCharge = session('delivery_charge', 0);
-    $tip = session('tip_amount', 0);
-    $redeem = session('redeem_amount', 0);
+    $finalTotal = session('orderTotal');
 
-    $total = 0;
-    $branchId = null;
+    $gatewayFee = ($finalTotal * 0.025) + 0.25;
 
-    foreach ($products as $details) {
-        $total += $details['price'] * $details['quantity'];
-        $branchId = $details['branch_id'];
-    }
-
-    $branch = Branch::find($branchId);
-    $tax = $branch && $branch->status == 1 ? $branch->tax : 0;
-
-    // ✅ Final total
-    $finalTotal = $total + $tax + $tip + $deliveryCharge - $redeem;
-    $gatewayFee = ($finalTotal * 0.025) + 0.21;
-    $finalTotalWithFee = $finalTotal + $gatewayFee;
+    $gatewayFee = round($gatewayFee, 2);
+    $finalTotalWithFee = round($finalTotal + $gatewayFee, 2);
     
 
     Stripe::setApiKey(config('services.stripe.secret'));
@@ -508,7 +494,7 @@ class OrderController extends Controller
                 'product_data' => [
                     'name' => 'Order Payment',
                 ],
-                'unit_amount' => round($finalTotalWithFee * 100), // cents
+                'unit_amount' => (int) round($finalTotalWithFee * 100), // cents
             ],
             'quantity' => 1,
         ]],
@@ -617,9 +603,9 @@ public function stripeSuccess()
             }
 
             $finalTotal = $total + ($tip_amount ?: 0) + $tax + $deliveryCharge - ($redeemedAmount ?: 0);
-            $gatewayFee = ($finalTotal * 0.025) + 0.21;
+            $gatewayFee = ($finalTotal * 0.025) + 0.25;
 
-            $order->total_amount = $finalTotal;
+            $order->total_amount = $finalTotal + $gatewayFee;
             $order->gateway_fee = $gatewayFee;
             // ✅ Extract delivery info from session cart
             $order->save();
@@ -655,7 +641,7 @@ public function stripeSuccess()
             session()->forget('start_time'); 
             session()->forget('delivery_charge');
             DB::commit();
-            return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order placed successfully! Payment will be handled manually.']);
+            return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order placed successfully']);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with(['status' => false, 'message' => 'Error: ' . $e->getMessage()]);

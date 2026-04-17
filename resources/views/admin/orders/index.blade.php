@@ -35,6 +35,7 @@
                                         <th>Tip Amount</th>
                                         <th>Branch Tax</th>
                                         <th>Delivery Charges</th>
+                                        <th>Stripe Fee</th>
                                         <th>Order Total</th>
                                         <th>After Redeemed</th>
                                         <th>Redeemed</th>
@@ -191,7 +192,7 @@
                                         </td>
                                         <td>
                                             @foreach ($order->orderItem as $orderItem)
-                                            £{{ $orderItem->sub_total }}
+                                            £{{ number_format($orderItem->sub_total, 2) }}
                                             @if (!$loop->last)
                                             ,
                                             @endif
@@ -234,7 +235,8 @@
                                             @endforeach
                                         </td>
                                         <td>£{{ $order->delivery_charge }}</td>
-                                        <td>£{{ $order->total_amount }}</td>
+                                        <td>£{{ number_format($order->gateway_fee ?? 0, 2) }}</td>
+                                        <td>£{{ number_format($order->total_amount ?? 0, 2) }}</td>
                                         @php
                                         $redeemedAmount = is_numeric($order->redeemed) ? $order->redeemed : 0;
                                         $afterRedeemed = $order->total_amount - $redeemedAmount;

@@ -1384,11 +1384,12 @@
             if (deliveryStatus == '2') {
                 lat = $(this).closest('.food-modal').find('input[name="lat_' + productId + '"]').val();
                 lng = $(this).closest('.food-modal').find('input[name="lng_' + productId + '"]').val();
+                if(lat == '' || lng == '') {
+                    toastr.error('Please select a valid delivery address from suggestions');
+                    return;
+                }
             }
-            if(lat == '' || lng == '') {
-                toastr.error('Please select a valid delivery address from suggestions');
-                return;
-            }
+
 
             var variantSelect = $(this).closest('.food-modal').find('select[name="variant_id"]');
             if (variantSelect.length > 0) {

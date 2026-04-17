@@ -74,6 +74,7 @@ public function myOrders(Request $request)
                     'product_image'    => $item->product->image ?? null,
                     'product_size'     => $item->product_size,
                     'product_price'    => $item->product_price,
+					'product_original_price' => $item->original_price,
                     'delivery_address' => $item->delivery_address,
                     'order_type'       => $item->order_type,
                     'toppings'         => $toppings,

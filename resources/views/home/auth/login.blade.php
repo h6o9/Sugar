@@ -118,16 +118,16 @@
             });
 
             // Password toggle functionality
-            const togglePassword = document.querySelector('.toggle-password');
-            if (togglePassword) {
-                togglePassword.addEventListener('click', function() {
-                    const passwordInput = document.querySelector(this.getAttribute('toggle'));
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
-                    this.classList.toggle('fa-eye');
-                    this.classList.toggle('fa-eye-slash');
-                });
-            }
+            // const togglePassword = document.querySelector('.toggle-password');
+            // if (togglePassword) {
+            //     togglePassword.addEventListener('click', function() {
+            //         const passwordInput = document.querySelector(this.getAttribute('toggle'));
+            //         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            //         passwordInput.setAttribute('type', type);
+            //         this.classList.toggle('fa-eye');
+            //         this.classList.toggle('fa-eye-slash');
+            //     });
+            // }
         });
     </script>
 @endsection

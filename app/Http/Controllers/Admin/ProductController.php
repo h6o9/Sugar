@@ -26,7 +26,7 @@ public function index()
     // Blade page ko load karna, initial table empty
     $products = Product::where('featured_amount', '!=', null)->where('featured_method', '!=', null)
     ->where('featured_action', '!=', null)
-    ->select('id','menu_id','name','image','original_price','price','status','is_featured','rule','on_top')
+    ->select('id','menu_id','name','image','original_price','price','status','is_featured','rule','on_top','featured_amount')
         ->latest()
         ->get();
     return view('admin.product.index', compact('products'));

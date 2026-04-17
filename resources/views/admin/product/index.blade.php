@@ -22,15 +22,17 @@
                             <div class="d-flex align-items-center gap-3">
                                 <!-- Label + Dropdown INLINE -->
                                 <div class="d-flex align-items-center">
+                                    <label for="onTopProduct">Highlight Product:</label>
                                     <select id="onTopProduct" class="form-control custom-dropdown">
                                         <option disabled>Select Highlight Product</option>
-
-                                        @foreach($products as $product)
-                                            <option value="{{ $product->id }}"
-                                                {{ $product->on_top == 1 ? 'selected' : '' }}>
-                                                {{ $product->name }} - Rs {{ $product->price }}
-                                            </option>
-                                        @endforeach
+                                            @foreach($products as $product)
+                                                <option value="{{ $product->id }}"
+                                                    {{ $product->on_top == 1 ? 'selected' : '' }}>
+                                                    {{ $product->name }}
+                                                    (£ {{ $product->price }})
+                                                    | Discount : {{ $product->featured_amount }} %
+                                                </option>
+                                            @endforeach
                                     </select>
                                 </div>
                                 <!-- BUTTON -->

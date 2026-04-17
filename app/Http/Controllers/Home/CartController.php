@@ -14,6 +14,7 @@ use App\Models\UserTimeSlotes;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Http;
 
 class CartController extends Controller
 {
@@ -29,8 +30,71 @@ class CartController extends Controller
         // return $carts;
         $loyaltyPoints = Reward::where('user_id', $userId)->first();
         $pricePerPoint = RewardSetting::first();
-        return view('home.my-cart', compact('timeSlots', 'userTimeSlots', 'branchess','loyaltyPoints', 'carts','pricePerPoint'));
+        // return $carts;
+        $lastItem = collect($carts)->last();
+        $distanceData = $this->applyDistanceCalculation($carts);
+        // return $loyaltyPoints;
+        return view('home.my-cart', compact('timeSlots', 'userTimeSlots', 'branchess','loyaltyPoints', 'carts','pricePerPoint','distanceData'));
     }
+    Private function applyDistanceCalculation($cart)
+    {
+        $lastItem = collect($cart)->last();
+        $deliveryStatus = $lastItem['delivery_status'] ?? null;
+        $userLat = $lastItem['home_address_latitude'] ?? null;
+        $userLng = $lastItem['home_address_longitude'] ?? null;
+        // Branch location
+        $branchLat = Branch::first()->latitude ?? 0;
+        $branchLng = Branch::first()->longitude ?? 0;
+        $deliveryCharge = 0;
+        $distance = 0;
+                if ($deliveryStatus == 2 && $userLat && $userLng) {
+                    $distance = $this->getDistanceFromGoogle($branchLat, $branchLng, $userLat, $userLng);
+                    // return $distance;
+                    if ($distance <= 1) {
+                        $deliveryCharge = 1.99;
+                    } elseif ($distance <= 2) {
+                        $deliveryCharge = 2.99;
+                    } elseif ($distance <= 3) {
+                        $deliveryCharge = 3.49;
+                    } elseif ($distance <= 5) {
+                        $deliveryCharge = 4.99;
+                    } else {
+                        $deliveryCharge = 5.99;
+                    }
+                }
+                // session save
+                Session::put('delivery_charge', $deliveryCharge);
+                Session::put('distance', $distance);
+                return [
+                    'delivery_charge' => $deliveryCharge,
+                    'distance_miles' => round($distance, 2),
+                ];
+    }
+    Private function getDistanceFromGoogle($originLat, $originLng, $destLat, $destLng)
+        {
+            $apiKey = env('GOOGLE_MAPS_API_KEY');
+
+            $response = Http::get('https://maps.googleapis.com/maps/api/distancematrix/json', [
+                'origins' => $originLat . ',' . $originLng,
+                'destinations' => $destLat . ',' . $destLng,
+                'units' => 'imperial', // miles
+                'key' => $apiKey
+            ]);
+
+            $data = $response->json();
+
+            if (
+                isset($data['rows'][0]['elements'][0]['distance']['value'])
+            ) {
+                // meters → miles
+                $meters = $data['rows'][0]['elements'][0]['distance']['value'];
+                $miles = $meters * 0.000621371;
+
+                return $miles;
+            }
+
+            return 0;
+        }
 
     public function addToCart(Request $request)
         {
@@ -58,7 +122,7 @@ class CartController extends Controller
                         ], 404);
                     }
                 }
-                
+                // return $request->all();
                 $toppingsByCategory = $request->toppings_by_category ?? [];
                 $cart = Session::get('cart', []);
 
@@ -93,6 +157,8 @@ class CartController extends Controller
                         'delivery_status' => $request->delivery_status ?? session('delivery_status', 1),
                         'delivery_address' => $request->delivery_address ?? session('delivery_address', ''),
                         'toppingsName_by_categoryName' => $toppingsNameByCategory ?? [],
+                        'home_address_latitude' => $request->lat,
+                        'home_address_longitude' => $request->lng,
                         // ✅ complementary product
                         'complementary' => $complementryProduct ? [
                             'id' => $complementryProduct->id,
@@ -100,6 +166,7 @@ class CartController extends Controller
                             'image' => $complementryProduct->image,
                         ] : null,
                     ];
+
                     session()->put('cart', $cart);
                     // Loop through each category and add toppings
                     foreach ($toppingsByCategory as $toppingCategory) {
@@ -111,6 +178,7 @@ class CartController extends Controller
 
                         // Merge new topping IDs with existing ones
                         $cart[$cartKey]['toppings_by_category'][$categoryId] = array_unique(array_merge($existingToppings, $toppingIds));
+
                     }
 
                     foreach ($toppingsByCategory as $toppingCategory) {
@@ -131,6 +199,7 @@ class CartController extends Controller
                             'category_name' => $categoryName,
                             'topping_names' => $toppingNames,
                         ];
+                        
                     }
                 }
                 // ✅ ALWAYS handle complementary separately

@@ -75,6 +75,13 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
 @media(max-width:768px){.mobile-notify-block{width:92%; left:4%;}}
 @media(max-width:480px){.mobile-notify-block{width:96%; left:2%;}}
 </style>
+@if (url()->current() !== url('/'))
+  <style>
+    .pac-container {
+            z-index: 9999999 !important;
+        }
+  </style>
+@endif
 
 <div id="spinner" class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
     <div class="spinner-border text-dark" style="width:3rem;height:3rem;" role="status">
@@ -213,7 +220,7 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
             </div>
         </div>
         @endif
-
+ 
         <!-- Cart Dropdown -->
         <div class="ms-2 nav-item dropdown">
             <a href="#" class="nav-link p-0" data-bs-toggle="dropdown">
@@ -221,7 +228,8 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
             </a>
             <div class="carting-card dropdown-menu py-3 px-0">
                 <div class="border-bottom mb-1 pb-3 px-3">
-                    <h5 class="m-0">Your Cart (<span class="cart-counter-1">{{ count(session('cart', [])) }}</span>)</h5>
+                    <h5>Your Cart (<span class="cart-counter-1">{{ count(session('cart', [])) }}</span>)</h5>
+                    <b class="small text-danger">You’re viewing a quick summary. Full details including toppings and complimentary items will be available on the cart page.</b>
                 </div>
                 <div class="cards-parent scrollable">
                     @forelse(session('cart', []) as $item)
@@ -401,10 +409,20 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
                                                     {{-- Delivery Address Input --}}
                                                     <div id="deliveryAddressField{{ $product->id }}_{{ $branch->id }}_{{ $index }}" 
                                                         class="mt-2" style="display: none;">
-                                                        <input type="text" 
-                                                            name="delivery_address_{{ $product->id }}" 
-                                                            class="form-control" 
-                                                            placeholder="Enter your delivery address">
+                                                        <input 
+                                                                type="text" 
+                                                                id="deliveryInput{{ $product->id }}_{{ $branch->id }}"
+                                                                name="delivery_address_{{ $product->id }}" 
+                                                                class="form-control location-input"
+                                                                data-product="{{ $product->id }}"
+                                                                data-branch="{{ $branch->id }}"
+                                                                placeholder="Enter your delivery address"
+                                                                autocomplete="off"
+                                                            />
+
+                                                            <!-- Hidden lat/lng -->
+                                                            <input type="hidden" name="lat_{{ $product->id }}" id="lat{{ $product->id }}_{{ $branch->id }}">
+                                                            <input type="hidden" name="lng_{{ $product->id }}" id="lng{{ $product->id }}_{{ $branch->id }}">
                                                     </div>
                                                 </div>
                                             @endif
@@ -523,3 +541,183 @@ $(document).ready(function(){
     helper();
 });
 </script>
+@if (url()->current() !== url('/'))
+<script async defer 
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&callback=initAllAutocomplete">
+</script>
+    <script>
+                $('.addto-cart').on('click', function() {
+            var modal = $(this).closest('.food-modal');
+            var complementry_id = modal.find('input[name="complementary_id"]').length 
+                ? modal.find('input[name="complementary_id"]').val() 
+                : null;
+                
+            var productId = $(this).closest('.food-modal').find('input[name="product_id"]').val();
+            var quantity = $(this).closest('.food-modal').find('input[name="quantity"]').val();
+            var isLocationChecked = $(this).closest('.food-modal').find('input[name="location"]:checked').length > 0;
+            var branchId = isLocationChecked ? $(this).closest('.food-modal').find('input[name="branch_id"]').val() : '';
+            var variantId = '';
+
+            var deliveryStatus = $(this).closest('.food-modal').find('input[name^="status_' + productId + '"]:checked').val();
+            var deliveryAddress = '';
+            // alert(deliveryStatus);
+            // return;
+            if (deliveryStatus == '2') {
+                deliveryAddress = $(this).closest('.food-modal').find('input[name="delivery_address_' + productId + '"]').val();
+                if (!deliveryAddress) {
+                    toastr.error('Please enter delivery address');
+                    return;
+                }
+            }
+
+            var lat = '';
+            var lng = '';
+            if (deliveryStatus == '2') {
+                lat = $(this).closest('.food-modal').find('input[name="lat_' + productId + '"]').val();
+                lng = $(this).closest('.food-modal').find('input[name="lng_' + productId + '"]').val();
+            }
+            if(lat == '' || lng == '') {
+                toastr.error('Please select a valid delivery address from suggestions');
+                return;
+            }
+
+            var variantSelect = $(this).closest('.food-modal').find('select[name="variant_id"]');
+            if (variantSelect.length > 0) {
+                variantId = variantSelect.val().split(' ')[0];
+            }
+
+            var selectedToppingsByCategory = {};
+
+            $(this).closest('.food-modal').find('input[name="toppings[]"]:checked').each(function() {
+                var categoryId = $(this).data('category-id');
+                var toppingId = $(this).val();
+
+                if (!selectedToppingsByCategory.hasOwnProperty(categoryId)) {
+                    selectedToppingsByCategory[categoryId] = [];
+                }
+
+                selectedToppingsByCategory[categoryId].push(toppingId);
+            });
+
+            var toppingsArray = Object.entries(selectedToppingsByCategory).map(([categoryId, toppings]) => {
+                return {
+                    category_id: categoryId,
+                    toppings: toppings
+                };
+            });
+
+            $.ajax({
+                type: 'POST',
+                url: '{{ route('add.to.cart') }}',
+                data: {
+                    '_token': '{{ csrf_token() }}',
+                    'product_id': productId,
+                    'quantity': quantity,
+                    'branch_id': branchId,
+                    'toppings_by_category': toppingsArray,
+                    'location': isLocationChecked,
+                    'variant_id': variantId,
+                    'delivery_status': deliveryStatus,
+                    'delivery_address': deliveryAddress,
+                    'lat': lat,
+                    'lng': lng,
+                    'complementary_id': complementry_id
+                },
+                success: function(data) {
+                    toastr.success('Product Added To Cart Successfully!');
+                    // location.reload();
+                    $('.cart-counter-1').text(Object.keys(data.cart).length);
+                    updateCartUI(data);
+                },
+                error: function(error) {
+                    console.error('Error adding product to cart:', error);
+                }
+            });
+        });
+        function toggleDelivery(productId, branchUnique) {
+            const pickupRadio = document.getElementById(`pickupStatus${productId}_${branchUnique}`);
+            const homeRadio = document.getElementById(`homeStatus${productId}_${branchUnique}`);
+            const pickupSection = document.getElementById(`storePickupSection${productId}_${branchUnique}`);
+            const deliveryField = document.getElementById(`deliveryAddressField${productId}_${branchUnique}`);
+
+            if (homeRadio.checked) {
+                pickupSection.style.display = 'none';
+                deliveryField.style.display = 'block';
+            } else if (pickupRadio.checked) {
+                pickupSection.style.display = 'block';
+                deliveryField.style.display = 'none';
+                deliveryField.querySelector('input').value = '';
+            }
+        }
+        window.initAllAutocomplete = function () {
+            console.log("Google Loaded ✅");
+            bindAutocomplete();
+
+            document.addEventListener('shown.bs.modal', function (event) {
+                bindAutocomplete(event.target);
+            });
+        };
+
+    function bindAutocomplete(container = document) {
+
+        container.querySelectorAll('.location-input').forEach(input => {
+
+            if (input.dataset.autocompleteInit === "1") return;
+            input.dataset.autocompleteInit = "1";
+
+            const productId = input.dataset.product;
+            const branchId = input.dataset.branch;
+
+            let isSelectedFromList = false;
+
+            const autocomplete = new google.maps.places.Autocomplete(input, {
+                fields: ["geometry", "name"],
+                types: ['geocode'],
+                componentRestrictions: { country: "gb" }
+            });
+
+            const latField = document.getElementById(`lat${productId}_${branchId}`);
+            const lngField = document.getElementById(`lng${productId}_${branchId}`);
+
+            // 👉 Reset when typing
+            input.addEventListener('input', function () {
+                isSelectedFromList = false;
+                latField.value = '';
+                lngField.value = '';
+            });
+
+            // 👉 Detect selection
+            autocomplete.addListener('place_changed', function () {
+                const place = autocomplete.getPlace();
+
+                if (!place.geometry) return;
+
+                isSelectedFromList = true;
+
+                latField.value = place.geometry.location.lat();
+                lngField.value = place.geometry.location.lng();
+            });
+
+            // 👉 FIXED BLUR LOGIC
+            input.addEventListener('blur', function () {
+                setTimeout(() => {
+
+                    // agar lat/lng aa chuki hai → valid hai
+                    if (latField.value && lngField.value) {
+                        return;
+                    }
+
+                    // warna invalid
+                    input.value = '';
+                    latField.value = '';
+                    lngField.value = '';
+
+                    alert("Please select a location from suggestions only.");
+
+                }, 300); // ⬅️ thoda zyada delay
+            });
+
+        });
+    }
+    </script>
+@endif

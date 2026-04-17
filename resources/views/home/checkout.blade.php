@@ -353,6 +353,10 @@
                                     <p class="text-muted">Delivery Charges</p>
                                     <p class="delivery-charge">£{{ number_format($deliveryCharge, 2) }}</p>
                                 </div>
+                                <div class="d-flex justify-content-between">
+                                    <p class="text-muted">Gateway Fee</p>
+                                    <p class="gateway-fee">£0.00</p>
+                                </div>
                                 <!-- Estimated order total -->
                                 <div class="d-flex justify-content-between">
                                     <p class="text-muted">Estimated order total</p>

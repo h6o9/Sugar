@@ -474,14 +474,29 @@ class OrderController extends Controller
         }
     }
 
-    public function stripePayment(Request $request)
+  public function stripePayment()
 {
     $products = session('cart', []);
+    $deliveryCharge = session('delivery_charge', 0);
+    $tip = session('tip_amount', 0);
+    $redeem = session('redeem_amount', 0);
+
     $total = 0;
+    $branchId = null;
 
     foreach ($products as $details) {
         $total += $details['price'] * $details['quantity'];
+        $branchId = $details['branch_id'];
     }
+
+    $branch = Branch::find($branchId);
+    $tax = $branch && $branch->status == 1 ? $branch->tax : 0;
+
+    // ✅ Final total
+    $finalTotal = $total + $tax + $tip + $deliveryCharge - $redeem;
+    $gatewayFee = ($finalTotal * 0.025) + 0.21;
+    $finalTotalWithFee = $finalTotal + $gatewayFee;
+    
 
     Stripe::setApiKey(config('services.stripe.secret'));
 
@@ -489,24 +504,37 @@ class OrderController extends Controller
         'payment_method_types' => ['card'],
         'line_items' => [[
             'price_data' => [
-                'currency' => 'usd',
+                'currency' => 'gbp',
                 'product_data' => [
                     'name' => 'Order Payment',
                 ],
-                'unit_amount' => $total * 100, // cents
+                'unit_amount' => round($finalTotalWithFee * 100), // cents
             ],
             'quantity' => 1,
         ]],
         'mode' => 'payment',
-        'success_url' => route('stripe.success'),
+        'success_url' => route('stripe.success') . '?session_id={CHECKOUT_SESSION_ID}',
         'cancel_url' => route('stripe.cancel'),
     ]);
 
     return redirect($session->url);
 }
-
 public function stripeSuccess()
 {
+    $sessionId = request()->get('session_id');
+
+    if (!$sessionId) {
+        return redirect()->route('checkout')->with('error', 'Invalid payment');
+    }
+
+    \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
+
+    $session = \Stripe\Checkout\Session::retrieve($sessionId);
+
+    // ❌ stop if not paid
+    if ($session->payment_status !== 'paid') {
+        return redirect()->route('checkout')->with('error', 'Payment not completed');
+    }
      DB::beginTransaction();
         try {
             $user = Auth::guard('user')->user();
@@ -520,6 +548,7 @@ public function stripeSuccess()
             $startTime = session('start_time', []);
             $tip_amount = session('tip_amount', []);
             $orderTotal = session('orderTotal', []);
+            $deliveryCharge = session('delivery_charge', 0);
             // return $redeemedAmount;
             $total = 0;
             foreach ($products as $id => $details) {
@@ -532,10 +561,10 @@ public function stripeSuccess()
             $order->user_id = $userId;
             $order->vehicle_color = $vehicle_color ?: 'NULL';
             $order->vehicle_number = $vehicle_number ?: 'NULL';
-            $order->redeemed = $redeemedAmount ?: 'NULL';
-            $order->redeemed_points = $redeemedPoints ?: 'NULL';
+            $order->redeemed = $redeemedAmount ?: 0;
+            $order->redeemed_points = $redeemedPoints ?: 0;
             $order->status = 'Pending';
-            $order->payment = 'offline'; // ✅ manual payment
+            $order->payment = 'stripe'; // ✅ manual payment
             $order->date = $dateTime['date'] ?? null;
             $order->time = $dateTime['time'] ?? $startTime;
 
@@ -546,6 +575,7 @@ public function stripeSuccess()
             $branch = Branch::find($branchId);
             $tax = $branch && $branch->status == 1 ? $branch->tax : 0;
             $order->total_amount = $total;
+            $order->delivery_charge = $deliveryCharge;
             $order->save();
 
             $orderId = $order->id;
@@ -586,7 +616,11 @@ public function stripeSuccess()
                 }
             }
 
-            $order->total_amount = $total + ($tip_amount ?: 0) + $tax - ($redeemedAmount ?: 0);
+            $finalTotal = $total + ($tip_amount ?: 0) + $tax + $deliveryCharge - ($redeemedAmount ?: 0);
+            $gatewayFee = ($finalTotal * 0.025) + 0.21;
+
+            $order->total_amount = $finalTotal;
+            $order->gateway_fee = $gatewayFee;
             // ✅ Extract delivery info from session cart
             $order->save();
 
@@ -619,17 +653,13 @@ public function stripeSuccess()
             session()->forget('vehicle_number');
             session()->forget('time');
             session()->forget('start_time'); 
+            session()->forget('delivery_charge');
             DB::commit();
             return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order placed successfully! Payment will be handled manually.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with(['status' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
-
-    $order->payment = 'stripe'; // ✅ mark paid
-
-    return redirect()->route('my-order')
-        ->with(['status' => true, 'message' => 'Payment successful & order placed!']);
 }
 
     private function getAccessToken($branchId)

@@ -301,5 +301,7 @@ Route::post('/update-branch-status', [BranchUpdateController::class, 'updateBran
 //stripe payment route
 Route::post('/stripe/payment', [OrderController::class, 'stripePayment'])->name('stripe.payment');
 Route::get('/stripe/success', [OrderController::class, 'stripeSuccess'])->name('stripe.success');
-Route::get('/stripe/cancel', [OrderController::class, 'stripeCancel'])->name('stripe.cancel');
+Route::get('/stripe/cancel', function () {
+    return redirect()->route('checkout')->with(['message' =>'Payment cancelled']);
+})->name('stripe.cancel');
 

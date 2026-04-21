@@ -128,6 +128,23 @@
                                                                     <h6 class="small">
                                                                         (£{{ $item->product->price ? $item->product->price : $item->product_price }})
                                                                     </h6>
+                                                                    {{-- 🏬 Pickup Info --}}
+                                                                    @if ($item->delivery_status == '1' && $item->branch)
+                                                                        <div class="mt-1 text-muted" style="font-size: 13px;">
+                                                                            <span class="ri-store-2-line"></span>
+                                                                            <strong>Pickup:</strong>
+                                                                            <p>{{ $item->branch->location ?? 'N/A' }}</p>
+                                                                        </div>
+                                                                    @endif
+
+                                                                    {{-- 🚚 Home Delivery Info --}}
+                                                                    @if ($item->delivery_status == '2' && !empty($item->delivery_address))
+                                                                        <div class="mt-1 text-muted" style="font-size: 13px;">
+                                                                            <span class="ri-home-line"></span>
+                                                                            <strong>Home Delivery:</strong>
+                                                                            <p>{{ $item->delivery_address }}</p>
+                                                                        </div>
+                                                                    @endif
                                                                     {{-- Toppings  --}}
                                                                     @if ($item->orderToppings->isEmpty() || $order->orderToppings->where('toppings', '!=', null)->isEmpty())
                                                                         <div
@@ -166,40 +183,80 @@
                                        <div class="part-2 mt-3 mt-lg-0">
                                             <div>
                                                 <div class="row justify-content-end">
-                                                    <div>
-                                                        <div class="border-bottom pb-2">
-                                                            <span class=""><span class="ri-map-pin-line"> </span>
-                                                                Pickup: {{ $order->branch->location }}</span><br>
-                                                            <span class=""><span class="ri-time-line"> </span>
+                                                    
+                                                        <div>
+                                                   {{-- 🏬 Pickup Section --}}
+                                                    @php
+                                                        // Fetch all items for this specific order
+                                                        $orderItems = \App\Models\OrderItem::where('order_id', $order->order->id)->get();
+
+                                                        $storePickupBranch = null;
+                                                        $homeDeliveryAddress = null;
+
+                                                        foreach ($orderItems as $item) {
+                                                            // If item has a delivery_status
+                                                            if (!empty($item->delivery_status)) {
+                                                                if ($item->delivery_status == '1' && $item->branch) {
+                                                                    // Store pickup branch location
+                                                                    $storePickupBranch = $item->branch->location ?? null;
+                                                                } elseif ($item->delivery_status == '2' && !empty($item->delivery_address)) {
+                                                                    // Home delivery address
+                                                                    $homeDeliveryAddress = $item->delivery_address;
+                                                                }
+                                                            }
+                                                        }
+
+                                                        $hasPickup = !empty($storePickupBranch);
+                                                        $hasHomeDelivery = !empty($homeDeliveryAddress);
+                                                    @endphp
+
+
+                                                    <div class="border-bottom pb-2">
+                                                        {{-- 🧾 Header --}}
+                                                        <div class="d-flex align-content-center justify-content-between">
+                                                            <p class="pb-0 text-dark fw-bold">HOW TO GET IT</p>
+                                                        </div>
+
+                                                        {{-- 🏬 Store Pickup --}}
+                                                        @if ($hasPickup)
+                                                            <div class="pickup-section mt-2">
+                                                                <span class="pb-2 d-block">
+                                                                    <span class="ri-store-2-line"></span>
+                                                                    <strong>Pickup:</strong>
+                                                                    {{ $storePickupBranch }}
+                                                                </span>
+
+                                                                {{-- 🕒 Date and Time --}}
                                                                 @if ($order->order->date)
+                                                                    <span class="ri-time-line"></span>
                                                                     {{ \Carbon\Carbon::parse($order->order->date)->format('d M, Y') }}
                                                                     at {{ $order->order->time }}
                                                                 @else
+                                                                    <span class="ri-time-line"></span>
                                                                     {{ \Carbon\Carbon::parse($order->order->created_at)->format('d M, Y') }}
                                                                     at {{ $order->order->time }}
                                                                 @endif
-                                                            </span>
+                                                            </div>
+                                                        @endif
 
-                                                            @php
-                                                                // Collect unique non-empty delivery addresses from order items
-                                                                $deliveryAddresses = $orderGroup->pluck('delivery_address')->filter()->unique();
-                                                            @endphp
-
-                                                            @if($deliveryAddresses->isNotEmpty())
-                                                                <div class="mt-3">
-                                                                    <span class=""><span class="ri-home-4-line"></span> Home Delivery:</span>
-                                                                    @foreach($deliveryAddresses as $addr)
-                                                                        <div class="text-muted">{{ $addr }}</div>
-                                                                    @endforeach
-                                                                </div>
-                                                            @endif
-                                                        </div>
-                                            </div>
+                                                        {{-- 🚚 Home Delivery --}}
+                                                        @if ($hasHomeDelivery)
+                                                            <div class="home-delivery-section mt-3">
+                                                                <span class="pb-2 d-block">
+                                                                    <span class="ri-home-line"></span>
+                                                                    <strong>Home Delivery:</strong>
+                                                                    {{ $homeDeliveryAddress }}
+                                                                </span>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            
                         <!-- Billing Start -->
                         <div class="mt-2">
                             <div class="d-flex justify-content-between">
                                 <p class="text-muted m-0">Total Amount</p>
-                                <p class="total-value m-0">£{{ $order->order->total_amount - $order->tip - $order->branch->tax }}
+                                <p class="total-value m-0">£{{ number_format($order->order->total_amount - $order->tip - $order->branch->tax - ($order->order->delivery_charge ?? 0) - $order->order->gateway_fee, 2) }}
                                 </p>
                             </div>
                             <div class="d-flex justify-content-between">
@@ -214,12 +271,18 @@
                                     <p class="tip-value mb-1">£0</p>
                                 @endif
                             </div>
-                            @php
-                                $total = $order->order->total_amount;
-                            @endphp
                             <div class="d-flex justify-content-between">
-                                <p class="text-muted m-0">Estimated item total</p>
-                                <p class="total-value m-0">£{{ $total }}</p>
+                                <p class="text-muted mb-1">Delivery Charges</p>
+                                <p class="delivery-charge mb-1">£{{ number_format($order->order->delivery_charge ?? 0, 2) }}</p>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <p class="text-muted mb-1">Stripe Fee</p>
+                                <p class="delivery-charge mb-1">£{{ number_format($order->order->gateway_fee ?? 0, 2) }}</p>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                    <p class="text-muted m-0">Estimated order total</p>
+                                    <p class="total-value m-0">£{{ number_format($order->order->total_amount ?? 0, 2) }}
+                                    </p>
                             </div>
                         </div>
                         <!-- Billing End -->
@@ -356,7 +419,7 @@
                                             <div class="row justify-content-end">
                                                 <div>
                                                    {{-- 🏬 Pickup Section --}}
-                                               @php
+                                                    @php
                                                         // Fetch all items for this specific order
                                                         $orderItems = \App\Models\OrderItem::where('order_id', $order->order->id)->get();
 
@@ -426,7 +489,7 @@
                                                     <div class="d-flex justify-content-between">
                                                         <p class="text-muted m-0">Sub Total</p>
                                                         <p class="total-value m-0">
-                                                            £{{ $order->order->total_amount - $order->tip - $order->branch->tax - ($order->order->delivery_charge ?? 0) }}
+                                                            £{{ number_format($order->order->total_amount - $order->tip - $order->branch->tax - ($order->order->delivery_charge ?? 0) - $order->order->gateway_fee, 2) }}
                                                         </p>
                                                     </div>
                                                     <div class="d-flex justify-content-between">
@@ -452,8 +515,12 @@
                                                         <p class="delivery-charge mb-1">£{{ number_format($order->order->delivery_charge ?? 0, 2) }}</p>
                                                     </div>
                                                     <div class="d-flex justify-content-between">
+                                                        <p class="text-muted mb-1">Stripe Fee</p>
+                                                        <p class="delivery-charge mb-1">£{{ number_format($order->order->gateway_fee ?? 0, 2) }}</p>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
                                                         <p class="text-muted m-0">Estimated order total</p>
-                                                        <p class="total-value m-0">£{{ $order->order->total_amount }}
+                                                        <p class="total-value m-0">£{{ number_format($order->order->total_amount ?? 0, 2) }}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -520,6 +587,23 @@
                                                                 <h6 class="small">
                                                                     (£{{ $item->product->price ? $item->product->price : $item->product_price }})
                                                                 </h6>
+                                                                {{-- 🏬 Pickup Info --}}
+                                                                    @if ($item->delivery_status == '1' && $item->branch)
+                                                                        <div class="mt-1 text-muted" style="font-size: 13px;">
+                                                                            <span class="ri-store-2-line"></span>
+                                                                            <strong>Pickup:</strong>
+                                                                            <p>{{ $item->branch->location ?? 'N/A' }}</p>
+                                                                        </div>
+                                                                    @endif
+
+                                                                    {{-- 🚚 Home Delivery Info --}}
+                                                                    @if ($item->delivery_status == '2' && !empty($item->delivery_address))
+                                                                        <div class="mt-1 text-muted" style="font-size: 13px;">
+                                                                            <span class="ri-home-line"></span>
+                                                                            <strong>Home Delivery:</strong>
+                                                                            <p>{{ $item->delivery_address }}</p>
+                                                                        </div>
+                                                                    @endif
                                                                 {{-- Toppings  --}}
                                                                 @if ($item->orderToppings->isEmpty() || $order->orderToppings->where('toppings', '!=', null)->isEmpty())
                                                                     <div
@@ -559,12 +643,69 @@
                                         <div>
                                             <div class="row justify-content-end">
                                                 <div>
+                                                   {{-- 🏬 Pickup Section --}}
+                                                    @php
+                                                        // Fetch all items for this specific order
+                                                        $orderItems = \App\Models\OrderItem::where('order_id', $order->order->id)->get();
+
+                                                        $storePickupBranch = null;
+                                                        $homeDeliveryAddress = null;
+
+                                                        foreach ($orderItems as $item) {
+                                                            // If item has a delivery_status
+                                                            if (!empty($item->delivery_status)) {
+                                                                if ($item->delivery_status == '1' && $item->branch) {
+                                                                    // Store pickup branch location
+                                                                    $storePickupBranch = $item->branch->location ?? null;
+                                                                } elseif ($item->delivery_status == '2' && !empty($item->delivery_address)) {
+                                                                    // Home delivery address
+                                                                    $homeDeliveryAddress = $item->delivery_address;
+                                                                }
+                                                            }
+                                                        }
+
+                                                        $hasPickup = !empty($storePickupBranch);
+                                                        $hasHomeDelivery = !empty($homeDeliveryAddress);
+                                                    @endphp
+
+
                                                     <div class="border-bottom pb-2">
-                                                        <span class=""><span class="ri-map-pin-line"> </span>
-                                                            Pickup: {{ $order->branch->location }}</span><br>
-                                                        @if ($order->order->date)
-                                                            {{ \Carbon\Carbon::parse($order->order->updated_at)->format('d M, Y') }}
-                                                            at {{ $order->order->time }}
+                                                        {{-- 🧾 Header --}}
+                                                        <div class="d-flex align-content-center justify-content-between">
+                                                            <p class="pb-0 text-dark fw-bold">HOW TO GET IT</p>
+                                                        </div>
+
+                                                        {{-- 🏬 Store Pickup --}}
+                                                        @if ($hasPickup)
+                                                            <div class="pickup-section mt-2">
+                                                                <span class="pb-2 d-block">
+                                                                    <span class="ri-store-2-line"></span>
+                                                                    <strong>Pickup:</strong>
+                                                                    {{ $storePickupBranch }}
+                                                                </span>
+
+                                                                {{-- 🕒 Date and Time --}}
+                                                                @if ($order->order->date)
+                                                                    <span class="ri-time-line"></span>
+                                                                    {{ \Carbon\Carbon::parse($order->order->date)->format('d M, Y') }}
+                                                                    at {{ $order->order->time }}
+                                                                @else
+                                                                    <span class="ri-time-line"></span>
+                                                                    {{ \Carbon\Carbon::parse($order->order->created_at)->format('d M, Y') }}
+                                                                    at {{ $order->order->time }}
+                                                                @endif
+                                                            </div>
+                                                        @endif
+
+                                                        {{-- 🚚 Home Delivery --}}
+                                                        @if ($hasHomeDelivery)
+                                                            <div class="home-delivery-section mt-3">
+                                                                <span class="pb-2 d-block">
+                                                                    <span class="ri-home-line"></span>
+                                                                    <strong>Home Delivery:</strong>
+                                                                    {{ $homeDeliveryAddress }}
+                                                                </span>
+                                                            </div>
                                                         @endif
                                                     </div>
                                                 </div>
@@ -573,7 +714,7 @@
                                                     <div class="d-flex justify-content-between">
                                                         <p class="text-muted m-0">Total Amount</p>
                                                         <p class="total-value m-0">
-                                                            £{{ $order->order->total_amount - $order->tip - $order->branch->tax }}
+                                                            £{{ number_format($order->order->total_amount - $order->tip - $order->branch->tax - ($order->order->delivery_charge ?? 0) - $order->order->gateway_fee, 2)}}
                                                         </p>
                                                     </div>
                                                     <div class="d-flex justify-content-between">
@@ -588,12 +729,18 @@
                                                             <p class="tip-value mb-1">£0</p>
                                                         @endif
                                                     </div>
-                                                    @php
-                                                        $total = $order->order->total_amount;
-                                                    @endphp
                                                     <div class="d-flex justify-content-between">
-                                                        <p class="text-muted m-0">Estimated item total</p>
-                                                        <p class="total-value m-0">£{{ $total }}</p>
+                                                        <p class="text-muted mb-1">Delivery Charges</p>
+                                                        <p class="delivery-charge mb-1">£{{ number_format($order->order->delivery_charge ?? 0, 2) }}</p>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <p class="text-muted mb-1">Stripe Fee</p>
+                                                        <p class="delivery-charge mb-1">£{{ number_format($order->order->gateway_fee ?? 0, 2) }}</p>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <p class="text-muted m-0">Estimated order total</p>
+                                                        <p class="total-value m-0">£{{ number_format($order->order->total_amount ?? 0, 2) }}
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <!-- Billing End -->

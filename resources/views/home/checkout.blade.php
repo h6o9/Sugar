@@ -324,6 +324,9 @@
                                 // $tip = is_array($tip_amount) ? 0 : $tip_amount;
                                 // $orderTotal = $subtotal + $tax + $tip;
                                 $orderTotal = $subtotal + $tax + $tip + $deliveryCharge - $redeem_amount;
+                                // ✅ UK Stripe Fee (2.5% + £0.25)
+                                $gatewayFee = ($orderTotal * 0.025) + 0.25;
+                                $finalTotalWithFee = $orderTotal + $gatewayFee;
                                 session(['orderTotal' => $orderTotal]);
                             @endphp
 
@@ -354,13 +357,13 @@
                                     <p class="delivery-charge">£{{ number_format($deliveryCharge, 2) }}</p>
                                 </div>
                                 <div class="d-flex justify-content-between">
-                                    <p class="text-muted">Gateway Fee</p>
-                                    <p class="gateway-fee">£0.00</p>
+                                    <p class="text-muted">Stripe Fee</p>
+                                    <p class="gateway-fee">£{{ number_format($gatewayFee, 2) }}</p>
                                 </div>
                                 <!-- Estimated order total -->
                                 <div class="d-flex justify-content-between">
                                     <p class="text-muted">Estimated order total</p>
-                                    <p class="total-value">£{{ number_format($orderTotal, 2) }}</p>
+                                    <p class="total-value">£{{ number_format($finalTotalWithFee, 2) }}</p>
                                 </div>
                             </div>
                             <p>Additional taxes and fees will be calculated at checkout</p>

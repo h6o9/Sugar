@@ -37,8 +37,9 @@ use App\Http\Controllers\Api\ProductDetailsController;
 
 Route::post('/register-user', [AuthController::class, 'register']);
 Route::post('/register-verify-otp', [AuthController::class, 'verifyOtp']);
-Route::post('/login-user', [AuthController::class, 'Login']);
 Route::post('/user-social-login', [AuthController::class, 'socialLogin']);
+Route::post('/place-order', [PlaceOrderController::class, 'placeOrder']);
+Route::post('/login-user', [AuthController::class, 'Login']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/user-forget-password', [AuthController::class, 'forgetPassword']);
 Route::post('/user-verify-forget-password', [AuthController::class, 'verifyForgetOtp']);
@@ -46,7 +47,7 @@ Route::post('/user-reset-password', [AuthController::class, 'resetPassword']);
 Route::middleware('auth:sanctum')->group(function () {
 Route::get('/user-get-profile', [AuthController::class, 'getProfile']);
 	Route::post('/user-update-profile', [AuthController::class, 'updateProfile']);
-	Route::post('/user-change-password', [AuthController::class, 'ChangePassword']);
+		Route::post('/user-change-password', [AuthController::class, 'ChangePassword']);
 	Route::post('/verify-update-profile-otp', [AuthController::class, 'verifyUpdateprofileOtp']);
 	Route::get('/user-login-info', [AuthController::class, 'getLoggedInUser']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -54,13 +55,16 @@ Route::get('/user-get-profile', [AuthController::class, 'getProfile']);
 	Route::get('/menu-items', [HomeController::class, 'Menueitems']);
 	Route::get('/toppings', [HomeController::class, 'toppings']);
 	Route::get('/my-orders-status', [OrderController::class, 'myOrders']);
+
 Route::get('/product-details/{id}', [ProductDetailsController::class, 'getProductDetails']);
 Route::post('/product-add-to-cart', [AddToCartController::class, 'addToCart']);
 Route::get('/get-user-cart-items', [AddToCartController::class, 'getUserCartItems']);
-Route::post('/delete-cart-item/{id}', [AddToCartController::class, 'deleteCartItem']);
 Route::post('/cart-update-quantity/{id}', [AddToCartController::class, 'updateCartItemQuantity']);
-Route::post('/continue-tRewardHistoryControllero-payments', [AddToCartController::class, 'proceedToPayment']);
+Route::post('/delete-cart-item/{id}', [AddToCartController::class, 'deleteCartItem']);
+Route::post('/continue-to-payments', [AddToCartController::class, 'proceedToPayment']);
 Route::post('/place-order', [PlaceOrderController::class, 'placeOrder']);
+Route::get('/get-branch-info', [AddToCartController::class, 'getBranchInfo']);
+
 // filter data 
 
 Route::get('/filter-data', [FilterController::class, 'filterData']);

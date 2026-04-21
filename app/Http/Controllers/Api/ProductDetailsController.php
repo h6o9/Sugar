@@ -71,6 +71,7 @@ public function getProductDetails($id) {
             'id' => $product->id,
 			'branch_id' => $branches->id,
 			'branches_name' => $branches->name,
+			'branche_location' => $branches->location,
             'name' => $product->name,
             'price' => $product->price,
 			'original_price' => $product->original_price,

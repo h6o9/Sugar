@@ -61,7 +61,19 @@ public function register(Request $request)
     }
 }
 
+public function getProfile()
+{
+    $user = auth()->user();
 
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'name'  => $user->name,
+            'email' => $user->email,
+			'image' => $user->image,
+        ]
+    ]);
+}
 
 // public function verifyOtp(Request $request)
 // {
@@ -235,6 +247,7 @@ public function register(Request $request)
 //         ], 500);
 //     }
 // }
+
 public function Login(Request $request)
 {
     $request->validate([
@@ -269,51 +282,75 @@ public function Login(Request $request)
 
 public function socialLogin(Request $request)
 {
-    $request->validate([
-        'social_id'  => 'required|string',
-        'login_type' => 'required|in:google,apple',
-        'email'      => 'required|email',
-        'name'       => 'nullable|string',
-        'image'      => 'nullable|url',
-        'fcm_token'  => 'nullable|string'
-    ]);
+    try {
+        $request->validate([
+            'social_id'  => 'required|string',
+            'login_type' => 'required|in:google,apple',
+            'email'      => 'required|email',
+            'name'       => 'nullable|string',
+            'image'      => 'nullable|url',
+            'fcm_token'  => 'nullable|string'
+        ]);
 
-    $socialColumn = $request->login_type === 'apple' 
-        ? 'apple_social_id' 
-        : 'google_social_id';
+        $socialColumn = $request->login_type === 'apple' 
+            ? 'apple_social_id' 
+            : 'google_social_id';
 
-    $user = User::where('email', $request->email)->first();
+        // Try to find user by email OR social_id
+        $user = User::where('email', $request->email)
+                    ->orWhere($socialColumn, $request->social_id)
+                    ->first();
 
-    if (!$user) {
+        if (!$user) {
+            // Auto-register new user
+            $user = User::create([
+                'email'           => $request->email,
+                'name'            => $request->name ?? explode('@', $request->email)[0],
+                $socialColumn     => $request->social_id,
+                'login_type'      => $request->login_type,
+                'image'           => $request->image ?? null,
+                'fcmtoken'        => $request->fcm_token ?? null,
+                'login_date'      => now(),
+                'availability'    => 1,
+                'is_active'       => '1',
+                'status'          => '1',
+                'password'        => bcrypt(uniqid()),
+            ]);
+        } 
+        else {
+            // Update existing user
+            if (empty($user->$socialColumn)) {
+                $user->$socialColumn = $request->social_id;
+            }
+            
+            $user->fcmtoken     = $request->fcm_token ?? $user->fcmtoken;
+            $user->login_type   = $request->login_type;
+            $user->name         = $request->name ?? $user->name;
+            $user->image        = $request->image ?? $user->image;
+            $user->login_date   = now();
+            $user->availability = 1;
+            $user->is_active    = '1';
+            $user->status       = '1';
+            $user->save();
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // 👇 ORIGINAL RESPONSE FORMAT (jo aapko chahiye)
+        return response()->json([
+            'status'       => true,
+            'access_token' => $token,
+            'message'      => 'Google login successful',
+            'user'         => $user
+        ], 200);
+        
+    } catch (\Exception $e) {
         return response()->json([
             'status'  => false,
-            'message' => 'This email does not exist. Please sign up first.'
-        ], 404);
+            'message' => $e->getMessage()
+        ], 500);
     }
-
-    // Agar social ID save nahi hai toh update karo
-    if (empty($user->$socialColumn)) {
-        $user->$socialColumn = $request->social_id;
-    }
-
-    $user->fcmtoken     = $request->fcm_token ?? $user->fcmtoken;
-    $user->login_type   = $request->login_type;
-    $user->name         = $request->name ?? $user->name;
-    $user->image        = $request->image ?? $user->image;
-    $user->login_date   = now();
-    $user->availability = 1;
-    $user->save();
-
-    $token = $user->createToken('auth_token')->plainTextToken;
-
-    return response()->json([
-        'status'       => true,
-        'access_token' => $token,
-        'message'      => 'Social login successful',
-        'user'         => $user
-    ], 200);
 }
-
 public function updateProfile(Request $request)
 {
     try {
@@ -392,7 +429,7 @@ public function updateProfile(Request $request)
         if ($request->hasFile('profile_picture')) {
             $fileName = time() . '.' . $request->profile_picture->extension();
             $request->profile_picture->move(public_path('admin/assets/images'), $fileName);
-            $user->image = 'admin/assets/images/' . $fileName;
+            $user->image = 'public/admin/assets/images/' . $fileName;
         }
 
         $user->save();
@@ -766,18 +803,6 @@ public function getLoggedInUser()
     ], 200);
 }
 
-public function getProfile()
-{
-    $user = auth()->user();
-
-    return response()->json([
-        'success' => true,
-        'data' => [
-            'name'  => $user->name,
-            'email' => $user->email,
-        ]
-    ]);
-}
 
     public function notification()
     {

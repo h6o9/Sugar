@@ -36,8 +36,8 @@ public function addToCart(Request $request)
         // =========================
         // FRONTEND PRICES
         // =========================
-        $price = (float) $request->price;                  // frontend se aayega
-        $originalPrice = (float) $request->original_price; // frontend se aayega
+        $price = (float) $request->price;
+        $originalPrice = (float) $request->original_price;
 
         // =========================
         // GET TIPS
@@ -89,19 +89,13 @@ public function addToCart(Request $request)
         // EXISTING ITEM
         // =========================
         if ($existingCartItem) {
-            // quantity add
             $existingCartItem->quantity += $quantity;
-
-            // FRONTEND PRICE ADD to EXISTING
             $existingCartItem->price += $price;
             $existingCartItem->original_price += $originalPrice;
-
             $existingCartItem->subtotal = $existingCartItem->price;
             $existingCartItem->tips = $tips;
-
             $existingCartItem->save();
             $cartItemId = $existingCartItem->id;
-
         } else {
             // =========================
             // NEW CART ITEM
@@ -126,9 +120,6 @@ public function addToCart(Request $request)
 
             $cartItemId = $cartItem->id;
 
-            // =========================
-            // SAVE TOPPINGS
-            // =========================
             $toppingsInsert = [];
             foreach ($toppingDetails as $topping) {
                 $toppingsInsert[] = [
@@ -143,16 +134,13 @@ public function addToCart(Request $request)
         }
 
         // =========================
-        // UPDATE CART TOTAL
+        // FIX: UPDATE ONLY THE SUBTOTAL AND ESTIMATED TOTAL FOR CURRENT ITEM
+        // NOT ALL ITEMS
         // =========================
-        $allCartItems = AddToCartItem::where('user_id', $userId)->get();
-        $totalSubtotal = $allCartItems->sum('subtotal');
-        $estimatedTotal = $totalSubtotal + $tips;
-
-        AddToCartItem::where('user_id', $userId)->update([
-            'subtotal'        => $totalSubtotal,
-            'estimated_total' => $estimatedTotal,
-        ]);
+        $cartItemToUpdate = AddToCartItem::find($cartItemId);
+        $cartItemToUpdate->subtotal = $cartItemToUpdate->price;
+        $cartItemToUpdate->estimated_total = $cartItemToUpdate->price + $tips;
+        $cartItemToUpdate->save();
 
         DB::commit();
 
@@ -239,8 +227,8 @@ public function getUserCartItems(Request $request)
     $userId = auth()->id();
 
     // Get delivery charges and tip from request
-    $deliveryCharges = $request->input('delivery_charges', 0);
-    $tip = $request->input('tip', 0);
+    $deliveryCharges = (float) $request->input('delivery_charges', 0);
+    $tip = (float) $request->input('tip', 0);
 
     $cartItems = AddToCartItem::with([
             'product:id,name,image',
@@ -257,56 +245,58 @@ public function getUserCartItems(Request $request)
     }
 
     // =========================
-    // LOOP EACH ITEM TO ADD BRANCH TAX ONLY IF TAX AMOUNT = 0
+    // SIRF CALCULATE KAREIN, UPDATE NA KAREIN
     // =========================
-    foreach ($cartItems as $item) {
-        if ($item->tax_amount == 0) {
-            $branchTax = (float) DB::table('branches')
-                ->where('id', $item->branch_id)
-                ->value('tax') ?? 0;
-
-            $item->tax_amount = $branchTax;
-            $item->save();
-        }
-    }
-
-    // =========================
-    // CALCULATE SUBTOTAL & ESTIMATED_TOTAL
-    // =========================
-    $subtotal = $cartItems->sum('original_price'); // original_price sum
-    $totalPrice = $cartItems->sum('price');        // price sum
-    $tips = $cartItems->sum('tips');
-    $tax = $cartItems->first()->tax_amount ?? 0;
-
-    // Use tip from request or from cart items
-    $finalTip = $tip > 0 ? $tip : $tips;
     
-    $estimatedTotal = $totalPrice + $finalTip + $tax + $deliveryCharges;
-
-    // =========================
-    // UPDATE TABLE
-    // =========================
-    AddToCartItem::where('user_id', $userId)->update([
-        'subtotal'           => $subtotal,
-        'estimated_total'    => $estimatedTotal,
-        'delivery_charges'   => $deliveryCharges,
-        'tips'               => $finalTip,
-    ]);
-
-    // =========================
-    // SUMMARY
-    // =========================
+    // Calculate subtotal (original prices sum)
+    $subtotal = $cartItems->sum('original_price');
+    
+    // Calculate total price (final prices sum)
+    $totalPrice = $cartItems->sum('price');
+    
+    // Get tax from first item (assuming same tax for all items)
+    $taxRate = $cartItems->first()->tax_amount ?? 0;
+    
+    // Calculate total tax amount
+    $taxAmount = 0;
+    if ($taxRate > 0 && $taxRate < 100) {
+        // Tax is percentage
+        $taxAmount = ($totalPrice * $taxRate) / 100;
+    } else {
+        // Tax is fixed amount
+        $taxAmount = $taxRate;
+    }
+    
+    // Calculate tips (use request tip or sum from items)
+    $tipsFromItems = $cartItems->sum('tips');
+    $finalTip = $tip > 0 ? $tip : $tipsFromItems;
+    
+    // Calculate estimated total
+    $estimatedTotal = $totalPrice + $finalTip + $taxAmount + $deliveryCharges;
+    
+    // Validate total is reasonable
+    if ($estimatedTotal > 99999999.99 || $estimatedTotal < 0) {
+        \Log::warning('Unusual cart total calculated', [
+            'user_id' => $userId,
+            'estimated_total' => $estimatedTotal,
+            'total_price' => $totalPrice,
+            'tips' => $finalTip,
+            'tax' => $taxAmount,
+            'delivery' => $deliveryCharges
+        ]);
+    }
+    
+    // Prepare summary
     $summary = [
-        'subtotal'          => round($subtotal, 2),
-        'tax_amount'        => round($tax, 2),
-        'tips'              => round($finalTip, 2),
-        'delivery_charges'  => round($deliveryCharges, 2),
-        'estimated_total'   => round($estimatedTotal, 2),
+        'subtotal' => round($subtotal, 2),
+        'total_price' => round($totalPrice, 2),
+        'tax_amount' => round($taxAmount, 2),
+        'tips' => round($finalTip, 2),
+        'delivery_charges' => round($deliveryCharges, 2),
+        'estimated_total' => round($estimatedTotal, 2),
     ];
 
-    // =========================
-    // ITEMS RESPONSE
-    // =========================
+    // Prepare items response
     $items = $cartItems->map(function ($item) {
         $variantSize = $item->toppings
             ->pluck('variant.size')
@@ -315,9 +305,7 @@ public function getUserCartItems(Request $request)
             ->values()
             ->first();
 
-        // =========================
-        // CHECK FOR COMPLEMENTARY PRODUCT
-        // =========================
+        // Check for complementary product
         $complement = DB::table('complementary_products')
             ->where('product_id', $item->product_id)
             ->first();
@@ -347,7 +335,7 @@ public function getUserCartItems(Request $request)
         }
 
         return [
-            'cart_item_id'       => $item->id,
+            'id'       => $item->id,
             'product_id'         => $item->product_id,
             'product_name'       => $item->product?->name,
             'product_image'      => $item->product?->image,
@@ -368,12 +356,15 @@ public function getUserCartItems(Request $request)
     });
 
     return response()->json([
-        'success' => 200,
+        'success' => true,
+        'status_code' => 200,
         'message' => "Cart items retrieved successfully",
         'summary' => $summary,
-        'items'   => $items
+        'items' => $items
     ], 200);
 }
+
+
 
 public function deleteCartItem($id)
 {
@@ -404,7 +395,7 @@ public function deleteCartItem($id)
     // item delete
     $cartItem->delete();
 
-    return response()->json([
+return response()->json([
         'success' => 200,
         'message' => 'Cart item removed successfully.'
     ],200);
@@ -544,6 +535,28 @@ public function updateCartItemQuantity(Request $request, $id)
             'success' => false,
             'message' => 'Something went wrong while updating quantity.',
             'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+
+public function getBranchInfo()
+{
+    try {
+        $branches = DB::table('branches')
+            ->select('email', 'phone_number', 'location')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $branches
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Something went wrong',
+            'error' => $e->getMessage()
         ], 500);
     }
 }

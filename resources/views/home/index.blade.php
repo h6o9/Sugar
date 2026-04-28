@@ -20,7 +20,6 @@
             object-fit: cover;
         }
 
-
         .about-us-az-2 {
             height: 205px;
             object-fit: cover;
@@ -226,6 +225,16 @@
         .pac-container {
             z-index: 9999999 !important;
         }
+
+        .prodPrice {
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .price-display {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
     </style>
 
     <div class="mt-4 container-fluid banner-container">
@@ -233,7 +242,6 @@
             <div class="container-fluid">
                 <div class="container-fluid position-relative">
                     <img src="{{ asset('public/img/pic-top.jpg') }}" alt="" class="banner-img w-100">
-                    <!-- Profile image -->
                     <div class="position-absolute banner-prof-img">
                         <img src="{{ asset('public/img/profile-top.png') }}" alt="Profile">
                     </div>
@@ -272,21 +280,15 @@
                                 <p class="mb-0 small">Aldow Industrial Estate, Pod 10, Unit D, Jacuna Kitchen,
                                     Ardwick,, Manchester, EMEA M12 6AE</p>
                                 <p class="small text-dark">Sugar Pappi in Chorltonne upon Medlock, Manchester, is a dessert
-                                    spot that
-                                    enjoys a high
-                                    customer rating of 4.8. The menu features an array of hot desserts such as Sticky Toffee
+                                    spot that enjoys a high customer rating of 4.8. The menu features an array of hot desserts such as Sticky Toffee
                                     Pudding and Apple Crumble, alongside creative options like the ‘Make Your Own Waffle’
-                                    and
-                                    ‘Kinderlicious Cookie Dough’. For those seeking a unique treat, the ‘Mixed Tango Ice
-                                    Blast’
-                                    is a popular choice among patrons. This restaurant is particularly favoured for
-                                    late-night
-                                    dessert cravings, offering a diverse range of sweets that also includes a variety of
+                                    and ‘Kinderlicious Cookie Dough’. For those seeking a unique treat, the ‘Mixed Tango Ice
+                                    Blast’ is a popular choice among patrons. This restaurant is particularly favoured for
+                                    late-night dessert cravings, offering a diverse range of sweets that also includes a variety of
                                     mocktails and specialty teas.</p>
                             </div>
                             <div class="col-lg-4">
                                 <div class="d-flex justify-content-end del-pickup-container">
-                                    <!-- Pills -->
                                     <ul class="nav nav-pills mb-0 d-flex align-items-center custom-pills" id="pillsDelPickup"
                                         role="tablist">
                                         <li class="nav-item flex-fill" role="presentation">
@@ -310,7 +312,6 @@
                                                 <p class="title">Delivery Fee</p>
                                                 <a href="#">Other Fees</a>
                                             </div>
-
                                             <div class="delivery-col">
                                                 <p class="title">Delivery Unavailable</p>
                                                 <p>Delivery Time</p>
@@ -324,7 +325,6 @@
                                                 <p class="title">£0.00</p>
                                                 <a href="#">Other Fees</a>
                                             </div>
-
                                             <div class="delivery-col">
                                                 <p class="title">Closed</p>
                                                 <p>Pick-up time</p>
@@ -334,23 +334,18 @@
                                 </div>
                             </div>
                         </div>
+                        
                         <!-- Cibo Express Modal Start -->
                         <section class="cibo-express-section py-5">
                             <div class="container">
                                 @foreach ($ciboExpressItems as $item)
                                 <div class="row align-items-center mb-5">
-                                    <!-- Left Side Content -->
                                     <div class="col-lg-6 col-md-6">
                                         <h2 class="mb-3">{{ $item->title ?? 'Cibo Express' }}</h2>
-                                        <p class="text-muted">
-                                            {{ $item->description }}
-                                        </p>
+                                        <p class="text-muted">{{ $item->description }}</p>
                                     </div>
-
-                                    <!-- Right Side Image -->
                                     <div class="col-lg-6 col-md-6 text-center">
-                                        <img src="{{ asset($item->image) }}" 
-                                             class="img-fluid rounded shadow">
+                                        <img src="{{ asset($item->image) }}" class="img-fluid rounded shadow">
                                     </div>
                                 </div>
                                 @endforeach
@@ -361,7 +356,7 @@
             </div>
         </div>
 
-        <!--Food Modal Start -->
+        <!-- Food Modal Start -->
         @foreach ($products as $product)
         @php
             $originalPrice = $product->original_price ?? $product->price;
@@ -375,8 +370,14 @@
                     $discountPercent = (int) $product->featured_amount;
                 }
             }
-             $comp = optional($product->complementaryProduct);
-
+            $comp = optional($product->complementaryProduct);
+            
+            // Get first variant price for display
+            $firstVariantPrice = 0;
+            if ($product->variants && $product->variants->count() > 0) {
+                $firstVariant = $product->variants->where('price', '>', 0)->first();
+                $firstVariantPrice = $firstVariant ? $firstVariant->price : 0;
+            }
         @endphp
         <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
             <div class="modal fade menu-modal" id="menuModal-{{ $product->id }}" tabindex="-1"
@@ -395,19 +396,18 @@
                                 <h3>{{ $product->name }}</h3>
                                 @if(optional($comp)->complementary)
                                 <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
-                                {{-- <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span> --}}
                                 <div class="mt-3 text-center">
                                     <img class="img-fluid rounded-circle" 
                                             src="{{ asset($comp->complementary->image) }}" 
                                             alt="{{ $comp->complementary->name }}"
                                             style="width:100px;height:100px;object-fit:cover;">
-                                            <br>
-                                            <span class="badge bg-success m-2">BUY 1 GET 1 FREE
-                                    </span>
-                                    
+                                    <br>
+                                    <span class="badge bg-success m-2">BUY 1 GET 1 FREE</span>
                                     <p class="mb-0 small fw-medium text-dark">{{ $comp->complementary->name }}</p>
                                 </div>
                                 @endif
+                                
+                                <!-- Price Section with Variant Support -->
                                 @if (count($product->variants) > 0)
                                     @if($hasDiscount)
                                         <p>
@@ -416,14 +416,15 @@
                                             <span class="text-danger fw-bold prodPrice">£{{ number_format($finalPrice, 2) }}</span>
                                         </p>
                                     @else
-                                        <p>£ <span class="prodPrice">{{ $product->variants->first()->price }}</span></p>
+                                        <p class="price-display">
+                                            £ <span class="prodPrice">{{ number_format($firstVariantPrice, 2) }}</span>
+                                        </p>
                                     @endif
 
-                                    <select class="form-control bg-white ps-1 select-size" name="variant_id"
-                                        id="sizeSelect" style="appearance: auto">
+                                    <select class="form-control bg-white ps-1 select-size" name="variant_id" style="appearance: auto">
                                         @foreach ($product->variants as $variant)
-                                            <option value="{{ $variant->id }} {{ $variant->price }}">
-                                                {{ $variant->size }}
+                                            <option value="{{ $variant->id }} {{ $variant->price }}" {{ $loop->first ? 'selected' : '' }}>
+                                                {{ $variant->size }} - £{{ number_format($variant->price, 2) }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -436,11 +437,10 @@
                                             <span class="text-danger fw-bold prodPrice">£{{ number_format($finalPrice, 2) }}</span>
                                         </p>
                                     @else
-                                        <p>£ <span class="prodPrice">{{ $product->price }}</span></p>
+                                        <p>£ <span class="prodPrice">{{ number_format($product->price, 2) }}</span></p>
                                     @endif
                                 @endif
 
-                                {{-- <p class="small">{!! $product->description !!}</p> --}}
                                 <div class="d-flex cart-btn">
                                     <button class="btn p-0 decrement" type="button">-</button>
                                     <input type="text" class="cart_input increment-input text-center"
@@ -461,7 +461,6 @@
                                         <div class="branch-option mb-3">
                                             <input type="hidden" name="branch_id" value="{{ $branch->id }}">
 
-                                            {{-- Store Pickup Option --}}
                                             <div class="form-check">
                                                 <input class="form-check-input" 
                                                     type="radio" 
@@ -475,7 +474,6 @@
                                                 </label>
                                             </div>
 
-                                            {{-- Store Pickup Address --}}
                                             <p class="small fw-bold m-0 sel-location mt-1" id="storePickupSection{{ $product->id }}_{{ $branch->id }}">
                                                 <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($branch->location) }}" 
                                                 target="_blank" 
@@ -484,7 +482,6 @@
                                                 </a>
                                             </p>
 
-                                            {{-- Home Delivery Option --}}
                                             <div class="form-check mt-3">
                                                 <input class="form-check-input" 
                                                     type="radio" 
@@ -497,7 +494,6 @@
                                                 </label>
                                             </div>
 
-                                            {{-- Delivery Address Input --}}
                                             <div id="deliveryAddressField{{ $product->id }}_{{ $branch->id }}" class="mt-2" style="display: none;">
                                                 <input 
                                                     type="text" 
@@ -509,8 +505,6 @@
                                                     placeholder="Enter your delivery address"
                                                     autocomplete="off"
                                                 />
-
-                                                <!-- Hidden lat/lng -->
                                                 <input type="hidden" name="lat_{{ $product->id }}" id="lat{{ $product->id }}_{{ $branch->id }}">
                                                 <input type="hidden" name="lng_{{ $product->id }}" id="lng{{ $product->id }}_{{ $branch->id }}">
                                             </div>
@@ -572,8 +566,7 @@
                                 class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
                                 data-bs-dismiss="modal"></button>
                             <div class="text-center mx-auto">
-                                <button class="btn btn-danger addto-cart px-sm-5 px-4" data-bs-dismiss="modal">Add To
-                                    Order</button>
+                                <button class="btn btn-danger addto-cart px-sm-5 px-4" data-bs-dismiss="modal">Add To Order</button>
                             </div>
                         </div>
                     </div>
@@ -583,688 +576,543 @@
         @endforeach
         <!-- Food Modal End -->
 
-        <!-- Location Modal Start -->
-        <div class="container-fluid cart wow fadeIn" data-wow-delay="0.1s">
-            <div class="modal fade" id="locationModal" tabindex="-1" aria-labelledby="exampleModalLabel"
-                aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="exampleModalLabel">Select Location</h5>
-                            <button type="button" class="btn-close location-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body py-0 my-0 scrollable">
-                            <!-- Location's Parent  Start-->
-                            <div class="">
-                                @php
-                                    $locationImages = [
-                                        asset('public/img/location-img1.png'),
-                                        asset('public/img/location-img2.png'),
-                                        asset('public/img/location-img3.png'),
-                                        asset('public/img/location-img4.png'),
-                                    ];
-                                @endphp
-
-                                @foreach ($branches as $index => $branch)
-                                    <div class="d-flex justify-content-between location-card border-bottom py-3">
-                                        <div class="d-flex align-items-start">
-                                            <input class="form-check-input me-2" type="radio"
-                                                id="location-{{ $branch->id }}" name="choosen_location"
-                                                data-branch-id="{{ $branch->id }}"
-                                                {{ $branch->status == 1 ? 'checked' : '' }}>
-                                            <label for="location-{{ $branch->id }}" class="ms-1">
-                                                <h6 class="small fw-bold m-0">{{ $branch->name }}</h6>
-                                                <p class="small fw-bold m-0 branch-location">{{ $branch->location }}</p>
-                                                <b class="text-success m-0">Item Available</b>
-                                            </label>
-                                        </div>
-                                        @if (isset($locationImages[$index]))
-                                            <a class="location-description" data-bs-toggle="modal"
-                                                data-bs-target="#locationDescription" style="cursor: pointer">
-                                                <img class="location-img" src="{{ $locationImages[$index] }}"
-                                                    alt="location-img{{ $index + 1 }}">
-                                                <p class="small m-0">+100 miles</p>
-                                                <p class="text-danger">Store Info</p>
-                                            </a>
-                                        @else
-                                            <p class="text-danger">No Image Available</p>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                            <!-- Location's Parent End -->
-                        </div>
-                        <div class="modal-footer">
-                            <div class="text-center  mx-auto">
-                                <button class="btn btn-danger px-5 updateLocationBtn" data-bs-dismiss="modal">Update
-                                    Location</button>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Most Popular Start -->
+        <div class="container-xxl pt-5 pb-3">
+            <div class="container">
+                <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
+                    <h5 class="section-title ff-secondary text-center fw-normal">Our Menu's</h5>
+                    <h3 class="mb-5 col-sm-8 mx-auto">Featured Items</h3>
                 </div>
-            </div>
-        </div>
-        <!--Location Modal End -->
+                <div class="owl-carousel popular-carousel gallery-carousel">
+                    @foreach ($products as $product)
+                        @php
+                            $originalPrice = $product->original_price ?? $product->price;
+                            $finalPrice = $product->price;
+                            $discountPercent = 0;
+                            $hasDiscount = false;
 
-        <!-- Location Description Modal Start -->
-        <div class="container-fluid cart wow fadeIn" data-wow-delay="0.1s">
-            <div class="modal fade" id="locationDescription" tabindex="-1" aria-labelledby="exampleModalLabel"
-                aria-hidden="true">
-                <div class="modal-dialog border-0 modal-dialog-centered modal-dialog-scrollable">
-                    <div class="modal-content border-0">
-                        <div class="modal-body p-0">
-                            <iframe class="w-100" height="300"
-                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d24143.571414161433!2d-73.88015888916016!3d40.85110000000003!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c2f4ab1d311eaf%3A0x3ffe46c5ab0f82ad!2sStarbucks!5e0!3m2!1sen!2sus!4v1761317780273!5m2!1sen!2sus"
-                                style="border:0;" allowfullscreen="" loading="lazy"
-                                referrerpolicy="no-referrer-when-downgrade"></iframe>
-                            <div class="p-3">
-                                <h6 class="mb-3 locationHeading">Sugar Pappi</h6>
-                                <p class="m-0 address1"></p>
-                                <ul>
-                                    @if ($userTimeSlots)
-                                        <li>Pickup:
-                                            {{ \Carbon\Carbon::parse($userTimeSlots->date)->format('d M, Y') }} at
-                                            {{ $userTimeSlots->time }}</li>
-                                    @else
-                                        @foreach ($timeSlots as $timeSlot)
-                                            <li>
-                                                Today Pickup:
-                                                {{ $timeSlot->start_pickup_time }}
-                                            </li>
-                                        @break
-                                    @endforeach
-                                @endif
-                                <li>
-                                    Estimated prep time: Available Immediately
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" style="font-size:30px"
-                            class="btn location-description-btn ri-close-circle-line btn-danger px-2 py-0 me-auto"
-                            data-bs-dismiss="modal"></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Location Description Modal End -->
-
-    <div class="modal fade" id="videoModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content rounded-0">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">See it in Action</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- 16:9 aspect ratio -->
-                    <div class="ratio ratio-16x9">
-                        <iframe class="embed-responsive-item" src="" id="video" allowfullscreen
-                            allowscriptaccess="always" allow="autoplay"></iframe>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Reservation End -->
-
-    <!-- Most Popular Start -->
-    <div class="container-xxl pt-5 pb-3">
-        <div class="container">
-            <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
-                <h5 class="section-title ff-secondary text-center fw-normal">Our Menu's</h5>
-                <h3 class="mb-5 col-sm-8 mx-auto">Featured Items</h3>
-            </div>
-            <div class="owl-carousel popular-carousel gallery-carousel">
-                @foreach ($products as $product)
-                    @php
-                        $originalPrice = $product->original_price ?? $product->price;
-                        $finalPrice = $product->price;
-                        $discountPercent = 0;
-
-                        if ($product->featured_action == 'decrease' && $product->original_price) {
-                            if ($product->featured_method == 'percentage') {
-                                $discountPercent = (int) $product->featured_amount;
-                            } elseif ($product->featured_method == 'amount') {
-                                $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
+                            if ($product->featured_action == 'decrease' && $product->original_price && $product->original_price > $product->price) {
+                                $hasDiscount = true;
+                                if ($product->featured_method == 'percentage') {
+                                    $discountPercent = (int) $product->featured_amount;
+                                }
                             }
-                        }
 
-                        // Complementary Product
-                        $comp = optional($product->complementaryProduct);
-                    @endphp
-
-                    <div class="item">
-                        <a class="popular-item bg-transparent border rounded p-4 d-block text-center h-100 position-relative"
-                            href="#" data-bs-toggle="modal" data-bs-target="#menuModal-{{ $product->id }}">
-
-                            @if($product->featured_action == 'decrease' && $discountPercent > 0)
-                                <span class="badge bg-danger position-absolute top-0 end-0 m-2">
-                                    {{ $discountPercent }}% OFF
-                                </span>
-                            @endif
-
-                            {{-- Product + Complementary Section --}}
-                            <div class="mb-3 d-flex justify-content-center align-items-center gap-2 flex-column">
-                                @if(optional($comp)->complementary)
-                                    {{-- Main Product --}}
-                                    <img class="img-fluid" src="{{ asset($product->image) }}" style="width:150px;height:150px;object-fit:cover;border-radius:10px">
-                                    
-                                    <span style="font-size:22px;font-weight:bold;">+</span>
-                                    
-                                    <img class="img-fluid" src="{{ asset($comp->complementary->image) }}" style="width:120px;height:120px;object-fit:cover;border-radius:10px">
-                                    <span class="badge bg-success m-2">
-                                        BUY 1 GET 1 FREE
-                                    </span>
-                                @else
-                                    <img class="img-fluid" src="{{ asset($product->image) }}" style="width:150px;height:150px;object-fit:cover;border-radius:10px">
-                                @endif
-                            </div>
-
-                            <div class="mb-2">
-                                <h5 class="mb-2 main-heading">{{ $product->name }}</h5>    
-                                @if(optional($comp)->complementary)
-                                    <h6 class="mt-2">{{ $comp->complementary->name }}</h6>        
-                                @endif
-                                <p class="mb-2">
-                                    @if ($product->variants && $product->variants->isNotEmpty())
-                                        @if($product->featured_action == 'decrease' && $product->original_price)
-                                            <span class="text-muted text-decoration-line-through small d-block">
-                                                £{{ number_format($originalPrice, 2) }}
-                                            </span>
-                                            <span class="badge bg-primary fs-6 py-2 px-3">
-                                                From £{{ number_format($finalPrice, 2) }}
-                                            </span>
-                                        @else
-                                            <span class="badge bg-primary fs-6 py-2 px-3">
-                                                From £{{ $product->variants->first()->price }}
-                                            </span>
-                                        @endif
-                                    @else
-                                        @if($product->featured_action == 'decrease' && $product->original_price)
-                                            <span class="text-muted text-decoration-line-through small d-block">
-                                                £{{ number_format($originalPrice, 2) }}
-                                            </span>
-                                            <span class="badge bg-primary fs-6 py-2 px-3">
-                                                £{{ number_format($finalPrice, 2) }}
-                                            </span>
-                                        @else
-                                            <span class="badge bg-primary fs-6 py-2 px-3">
-                                                £{{ $product->price }}
-                                            </span>
-                                        @endif
-                                    @endif
-                                </p>
-                            </div>
-                        </a>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
-    <!-- Menu End -->
-
-    <!-- Full Menu Start -->
-    <div class="container-xxl py-5">
-        <div class="container">
-            <div class="wow fadeInUp mb-2" data-wow-delay="0.1s">
-                <div id="menuContainer"
-                    class="d-flex flex-column align-items-center justify-content-center flex-wrap">
-                    <div class="text-center">
-                        @if ($timeSlots->isNotEmpty())
-                            <h5 class="section-title ff-secondary fw-normal m-0">
-                                {{ \Carbon\Carbon::parse($timeSlots->first()->start_pickup_time)->format('g:i A') }} –
-                                {{ \Carbon\Carbon::parse($timeSlots->first()->end_pickup_time)->format('g:i A') }}
-                            </h5>
-                        @endif
-                        <h3 class="m-0">Explore Our Complete Menu</h3>
-                    </div>
-                    <div class="w-100 d-flex align-items-center justify-content-end gap-2">
-                        <button class="tab-scroll-btn left" onclick="scrollTabs('left')">
-                            <span class="ri-arrow-left-line"></span>
-                        </button>
-                        <button class="tab-scroll-btn right" onclick="scrollTabs('right')">
-                            <span class="ri-arrow-right-line"></span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            @if ($menuCategories && $menuCategories->isNotEmpty())
-                <!-- Menu Tabs -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="menu-tabs-wrapper">
-                            <div class="menu-tabs-container">
-                                <ul class="nav nav-tabs nav-justified menu-category-tabs" id="menuTabs"
-                                    role="tablist">
-                                    @foreach ($menuCategories as $index => $menuCat)
-                                        <li class="nav-item" role="presentation">
-                                            <button class="nav-link @if ($index == 0) active @endif"
-                                                id="tab{{ $menuCat->id }}" data-bs-toggle="tab"
-                                                data-bs-target="#menuTab{{ $menuCat->id }}" type="button"
-                                                role="tab" aria-controls="menuTab{{ $menuCat->id }}"
-                                                aria-selected="@if ($index == 0) true @else false @endif">
-                                                {{ $menuCat->name }}
-                                            </button>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Menu Content -->
-                <div class="tab-content" id="menuContent">
-                    @foreach ($menuCategories as $index => $menuCat)
-                        <div class="tab-pane fade @if ($index == 0) show active @endif"
-                            id="menuTab{{ $menuCat->id }}" role="tabpanel"
-                            aria-labelledby="tab{{ $menuCat->id }}">
+                            $comp = optional($product->complementaryProduct);
                             
-                            @if ($menuCat->product && $menuCat->product->isNotEmpty())
-                                <div class="row g-4">
-                                    @foreach ($menuCat->product as $prod)
-                                        @php
-                                            $originalPrice = $prod->original_price ?? $prod->price;
-                                            $finalPrice = $prod->price;
-                                            $discountPercent = 0;
+                            // Get first variant price
+                            $minVariantPrice = 0;
+                            if ($product->variants && $product->variants->count() > 0) {
+                                $firstVariant = $product->variants->where('price', '>', 0)->first();
+                                $minVariantPrice = $firstVariant ? $firstVariant->price : 0;
+                            }
+                        @endphp
 
-                                            if ($prod->featured_action == 'decrease' && $prod->original_price) {
-                                                if ($prod->featured_method == 'percentage') {
-                                                    $discountPercent = (int) $prod->featured_amount;
-                                                } elseif ($prod->featured_method == 'amount') {
-                                                    $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
-                                                }
-                                            }
-                                            
-                                            $comp = optional($prod->complementaryProduct);
-                                        @endphp
-                                        
-                                        <div class="col-xl-3 col-lg-4 col-md-6">
-                                            <a class="popular-item bg-transparent border rounded p-4 d-block text-center h-100 position-relative"
-                                                href="#" data-bs-toggle="modal"
-                                                data-bs-target="#menuModalFull-{{ $prod->id }}">
-                                                
-                                                @if($prod->featured_action == 'decrease' && $discountPercent > 0)
-                                                    <span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ $discountPercent }}% OFF</span>
-                                                @endif
-                                                
-                                                <div class="text-center mb-3">
-                                                    {{-- Main Product --}}
-                                                    <div class="d-flex flex-column align-items-center">
-                                                        <div class="position-relative">
-                                                            <img class="img-fluid rounded" 
-                                                                 src="{{ asset($prod->image) }}" 
-                                                                 alt="{{ $prod->name }}"
-                                                                 style="width:130px;height:130px;object-fit:cover;">
-                                                        </div>
+                        <div class="item">
+                            <a class="popular-item bg-transparent border rounded p-4 d-block text-center h-100 position-relative"
+                                href="#" data-bs-toggle="modal" data-bs-target="#menuModal-{{ $product->id }}">
 
-                                                        @if(optional($comp)->complementary)
-                                                            {{-- Plus Sign with "BUY 1 GET 1 FREE" text --}}
-                                                            <div class="my-2">
-                                                            </div>
-															 <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
-                                                            {{-- Complementary Product --}}
-                                                            <div class="text-center">
-                                                                <img class="img-fluid rounded" 
-                                                                     src="{{ asset($comp->complementary->image) }}" 
-                                                                     alt="{{ $comp->complementary->name }}"
-                                                                     style="width:100px;height:100px;object-fit:cover;">
-																	 <br>
-																	 <span class="badge bg-success m-2">BUY 1 GET 1 FREE
-                                                                </span>
-                                                                
-                                                                <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
-                                                            </div>
+                                @if($hasDiscount)
+                                    <span class="badge bg-danger position-absolute top-0 end-0 m-2">
+                                        {{ $discountPercent }}% OFF
+                                    </span>
+                                @endif
 
-                                                    
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="mb-2">
-                                                    <h5 class="mb-1 main-heading text-center">{{ $prod->name }}</h5>
-                                                    <p class="text-center mb-2">
-                                                        @if ($prod->variants && $prod->variants->isNotEmpty())
-                                                            @if($prod->featured_action == 'decrease' && $prod->original_price)
-                                                                <span class="text-muted text-decoration-line-through small d-block">£{{ number_format($originalPrice, 2) }}</span>
-                                                                <span class="badge bg-primary">From £{{ number_format($finalPrice, 2) }}</span>
-                                                            @else
-                                                                <span class="badge bg-primary">From £{{ $prod->variants->first()->price }}</span>
-                                                            @endif
-                                                        @else
-                                                            @if($prod->featured_action == 'decrease' && $prod->original_price)
-                                                                <span class="text-muted text-decoration-line-through small d-block">£{{ number_format($originalPrice, 2) }}</span>
-                                                                <span class="badge bg-primary">£{{ number_format($finalPrice, 2) }}</span>
-                                                            @else
-                                                                <span class="badge bg-primary">£{{ $prod->price }}</span>
-                                                            @endif
-                                                        @endif
-                                                    </p>
-                                                </div>
-                                            </a>
-                                        </div>
-                                    @endforeach
+                                <div class="mb-3 d-flex justify-content-center align-items-center gap-2 flex-column">
+                                    @if(optional($comp)->complementary)
+                                        <img class="img-fluid" src="{{ asset($product->image) }}" style="width:150px;height:150px;object-fit:cover;border-radius:10px">
+                                        <span style="font-size:22px;font-weight:bold;">+</span>
+                                        <img class="img-fluid" src="{{ asset($comp->complementary->image) }}" style="width:120px;height:120px;object-fit:cover;border-radius:10px">
+                                        <span class="badge bg-success m-2">BUY 1 GET 1 FREE</span>
+                                        <p class="mb-0 small text-center">{{ $comp->complementary->name }}</p>
+                                    @else
+                                        <img class="img-fluid" src="{{ asset($product->image) }}" style="width:150px;height:150px;object-fit:cover;border-radius:10px">
+                                    @endif
                                 </div>
-                            @else
-                                <div class="alert alert-warning text-center">
-                                    <h5>No products found in {{ $menuCat->name }}!</h5>
-                                    <p class="mb-0">We're currently updating this section. Please check back soon!</p>
+
+                                <div class="mb-2">
+                                    <h5 class="mb-2 main-heading">{{ $product->name }}</h5>    
+                                    @if(optional($comp)->complementary)
+                                        <h6 class="mt-2">{{ $comp->complementary->name }}</h6>        
+                                    @endif
+                                    <p class="mb-2">
+                                        @if ($product->variants && $product->variants->isNotEmpty())
+                                            @if($hasDiscount)
+                                                <span class="text-muted text-decoration-line-through small d-block">
+                                                    £{{ number_format($originalPrice, 2) }}
+                                                </span>
+                                                <span class="badge bg-primary fs-6 py-2 px-3">
+                                                    From £{{ number_format($finalPrice, 2) }}
+                                                </span>
+                                            @else
+                                                <span class="badge bg-primary fs-6 py-2 px-3">
+                                                    From £{{ number_format($minVariantPrice, 2) }}
+                                                </span>
+                                            @endif
+                                        @else
+                                            @if($hasDiscount)
+                                                <span class="text-muted text-decoration-line-through small d-block">
+                                                    £{{ number_format($originalPrice, 2) }}
+                                                </span>
+                                                <span class="badge bg-primary fs-6 py-2 px-3">
+                                                    £{{ number_format($finalPrice, 2) }}
+                                                </span>
+                                            @else
+                                                <span class="badge bg-primary fs-6 py-2 px-3">
+                                                    £{{ number_format($product->price, 2) }}
+                                                </span>
+                                            @endif
+                                        @endif
+                                    </p>
                                 </div>
-                            @endif
+                            </a>
                         </div>
                     @endforeach
                 </div>
-            @else
-                <div class="alert alert-warning text-center">
-                    <h5>No menu categories found!</h5>
-                    <p class="mb-0">We're currently updating the menu. Please check back soon!</p>
-                </div>
-            @endif
-        </div>
-    </div>
-    <!-- Full Menu End -->
-
-    <!-- FAQs Section Start -->
-    <div class="container-xxl py-5">
-        <div class="container">
-            <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
-                <h5 class="section-title ff-secondary text-center fw-normal">FAQ's</h5>
-                <h1 class="mb-5">Frequently Asked Questions</h1>
             </div>
+        </div>
 
-            <div class="row justify-content-center">
-                <div class="col-lg-12">
-                    <div class="accordion" id="faqAccordion">
-                        @foreach ($faqs as $index => $faq)
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="heading{{ $faq->id }}">
-                                    <button
-                                        class="accordion-button @if ($index != 0) collapsed @endif"
-                                        type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse{{ $faq->id }}"
-                                        aria-expanded="@if ($index == 0) true @else false @endif"
-                                        aria-controls="collapse{{ $faq->id }}">
-                                        <span class="badge bg-primary me-3">{{ $loop->iteration }}</span>
-                                        {!! $faq->question !!}
-                                    </button>
-                                </h2>
-                                <div id="collapse{{ $faq->id }}"
-                                    class="accordion-collapse collapse @if ($index == 0) show @endif"
-                                    aria-labelledby="heading{{ $faq->id }}" data-bs-parent="#faqAccordion">
-                                    <div class="accordion-body">
-                                        {!! $faq->answer !!}
-                                    </div>
+        <!-- Full Menu Start -->
+        <div class="container-xxl py-5">
+            <div class="container">
+                <div class="wow fadeInUp mb-2" data-wow-delay="0.1s">
+                    <div id="menuContainer" class="d-flex flex-column align-items-center justify-content-center flex-wrap">
+                        <div class="text-center">
+                            @if ($timeSlots->isNotEmpty())
+                                <h5 class="section-title ff-secondary fw-normal m-0">
+                                    {{ \Carbon\Carbon::parse($timeSlots->first()->start_pickup_time)->format('g:i A') }} –
+                                    {{ \Carbon\Carbon::parse($timeSlots->first()->end_pickup_time)->format('g:i A') }}
+                                </h5>
+                            @endif
+                            <h3 class="m-0">Explore Our Complete Menu</h3>
+                        </div>
+                        <div class="w-100 d-flex align-items-center justify-content-end gap-2">
+                            <button class="tab-scroll-btn left" onclick="scrollTabs('left')">
+                                <span class="ri-arrow-left-line"></span>
+                            </button>
+                            <button class="tab-scroll-btn right" onclick="scrollTabs('right')">
+                                <span class="ri-arrow-right-line"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                @if ($menuCategories && $menuCategories->isNotEmpty())
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="menu-tabs-wrapper">
+                                <div class="menu-tabs-container">
+                                    <ul class="nav nav-tabs nav-justified menu-category-tabs" id="menuTabs" role="tablist">
+                                        @foreach ($menuCategories as $index => $menuCat)
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link @if ($index == 0) active @endif"
+                                                    id="tab{{ $menuCat->id }}" data-bs-toggle="tab"
+                                                    data-bs-target="#menuTab{{ $menuCat->id }}" type="button"
+                                                    role="tab" aria-controls="menuTab{{ $menuCat->id }}"
+                                                    aria-selected="@if ($index == 0) true @else false @endif">
+                                                    {{ $menuCat->name }}
+                                                </button>
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="menuContent">
+                        @foreach ($menuCategories as $index => $menuCat)
+                            <div class="tab-pane fade @if ($index == 0) show active @endif"
+                                id="menuTab{{ $menuCat->id }}" role="tabpanel"
+                                aria-labelledby="tab{{ $menuCat->id }}">
+                                
+                                @if ($menuCat->product && $menuCat->product->isNotEmpty())
+                                    <div class="row g-4">
+                                        @foreach ($menuCat->product as $prod)
+                                            @php
+                                                $originalPrice = $prod->original_price ?? $prod->price;
+                                                $finalPrice = $prod->price;
+                                                $discountPercent = 0;
+                                                $hasDiscount = false;
+
+                                                if ($prod->featured_action == 'decrease' && $prod->original_price && $prod->original_price > $prod->price) {
+                                                    $hasDiscount = true;
+                                                    if ($prod->featured_method == 'percentage') {
+                                                        $discountPercent = (int) $prod->featured_amount;
+                                                    }
+                                                }
+                                                
+                                                $comp = optional($prod->complementaryProduct);
+                                                
+                                                // Get first variant price
+                                                $minVariantPrice = 0;
+                                                if ($prod->variants && $prod->variants->count() > 0) {
+                                                    $firstVariant = $prod->variants->where('price', '>', 0)->first();
+                                                    $minVariantPrice = $firstVariant ? $firstVariant->price : 0;
+                                                }
+                                            @endphp
+                                            
+                                            <div class="col-xl-3 col-lg-4 col-md-6">
+                                                <a class="popular-item bg-transparent border rounded p-4 d-block text-center h-100 position-relative"
+                                                    href="#" data-bs-toggle="modal"
+                                                    data-bs-target="#menuModalFull-{{ $prod->id }}">
+                                                    
+                                                    @if($hasDiscount)
+                                                        <span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ $discountPercent }}% OFF</span>
+                                                    @endif
+                                                    
+                                                    <div class="text-center mb-3">
+                                                        <div class="d-flex flex-column align-items-center">
+                                                            <div class="position-relative">
+                                                                <img class="img-fluid rounded" 
+                                                                     src="{{ asset($prod->image) }}" 
+                                                                     alt="{{ $prod->name }}"
+                                                                     style="width:130px;height:130px;object-fit:cover;">
+                                                            </div>
+
+                                                            @if(optional($comp)->complementary)
+                                                                <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span>
+                                                                <div class="text-center">
+                                                                    <img class="img-fluid rounded" 
+                                                                         src="{{ asset($comp->complementary->image) }}" 
+                                                                         alt="{{ $comp->complementary->name }}"
+                                                                         style="width:100px;height:100px;object-fit:cover;">
+                                                                    <br>
+                                                                    <span class="badge bg-success m-2">BUY 1 GET 1 FREE</span>
+                                                                    <p class="mb-0 small mt-2 fw-medium text-dark">{{ $comp->complementary->name }}</p>
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mb-2">
+                                                        <h5 class="mb-1 main-heading text-center">{{ $prod->name }}</h5>
+                                                        <p class="text-center mb-2">
+                                                            @if ($prod->variants && $prod->variants->isNotEmpty())
+                                                                @if($hasDiscount)
+                                                                    <span class="text-muted text-decoration-line-through small d-block">
+                                                                        £{{ number_format($originalPrice, 2) }}
+                                                                    </span>
+                                                                    <span class="badge bg-primary">
+                                                                        From £{{ number_format($finalPrice, 2) }}
+                                                                    </span>
+                                                                @else
+                                                                    <span class="badge bg-primary">
+                                                                        From £{{ number_format($minVariantPrice, 2) }}
+                                                                    </span>
+                                                                @endif
+                                                            @else
+                                                                @if($hasDiscount)
+                                                                    <span class="text-muted text-decoration-line-through small d-block">
+                                                                        £{{ number_format($originalPrice, 2) }}
+                                                                    </span>
+                                                                    <span class="badge bg-primary">
+                                                                        £{{ number_format($finalPrice, 2) }}
+                                                                    </span>
+                                                                @else
+                                                                    <span class="badge bg-primary">
+                                                                        £{{ number_format($prod->price, 2) }}
+                                                                    </span>
+                                                                @endif
+                                                            @endif
+                                                        </p>
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="alert alert-warning text-center">
+                                        <h5>No products found in {{ $menuCat->name }}!</h5>
+                                        <p class="mb-0">We're currently updating this section. Please check back soon!</p>
+                                    </div>
+                                @endif
+                            </div>
                         @endforeach
+                    </div>
+                @else
+                    <div class="alert alert-warning text-center">
+                        <h5>No menu categories found!</h5>
+                        <p class="mb-0">We're currently updating the menu. Please check back soon!</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- FAQs Section Start -->
+        <div class="container-xxl py-5">
+            <div class="container">
+                <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
+                    <h5 class="section-title ff-secondary text-center fw-normal">FAQ's</h5>
+                    <h1 class="mb-5">Frequently Asked Questions</h1>
+                </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-lg-12">
+                        <div class="accordion" id="faqAccordion">
+                            @foreach ($faqs as $index => $faq)
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading{{ $faq->id }}">
+                                        <button
+                                            class="accordion-button @if ($index != 0) collapsed @endif"
+                                            type="button" data-bs-toggle="collapse"
+                                            data-bs-target="#collapse{{ $faq->id }}"
+                                            aria-expanded="@if ($index == 0) true @else false @endif"
+                                            aria-controls="collapse{{ $faq->id }}">
+                                            <span class="badge bg-primary me-3">{{ $loop->iteration }}</span>
+                                            {!! $faq->question !!}
+                                        </button>
+                                    </h2>
+                                    <div id="collapse{{ $faq->id }}"
+                                        class="accordion-collapse collapse @if ($index == 0) show @endif"
+                                        aria-labelledby="heading{{ $faq->id }}" data-bs-parent="#faqAccordion">
+                                        <div class="accordion-body">
+                                            {!! $faq->answer !!}
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    <!-- FAQs Section End -->
+        <!-- FAQs Section End -->
 
-    <!-- Food Modals for Full Menu Start -->
-    @if ($menuCategories && $menuCategories->isNotEmpty())
-        @foreach ($menuCategories as $menuCat)
-            @if ($menuCat->product && $menuCat->product->isNotEmpty())
-                @foreach ($menuCat->product as $prod)
-                
-                @php
-                    $originalPrice = $prod->original_price ?? $prod->price;
-                    $finalPrice = $prod->price;
-                    $discountPercent = 0;
+        <!-- Food Modals for Full Menu Start -->
+        @if ($menuCategories && $menuCategories->isNotEmpty())
+            @foreach ($menuCategories as $menuCat)
+                @if ($menuCat->product && $menuCat->product->isNotEmpty())
+                    @foreach ($menuCat->product as $prod)
+                    @php
+                        $originalPrice = $prod->original_price ?? $prod->price;
+                        $finalPrice = $prod->price;
+                        $discountPercent = 0;
+                        $hasDiscount = false;
 
-                    if ($prod->featured_action == 'decrease' && $prod->original_price) {
-                        if ($prod->featured_method == 'percentage') {
-                            $discountPercent = (int) $prod->featured_amount;
-                        } elseif ($prod->featured_method == 'amount') {
-                            $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
+                        if ($prod->featured_action == 'decrease' && $prod->original_price && $prod->original_price > $prod->price) {
+                            $hasDiscount = true;
+                            if ($prod->featured_method == 'percentage') {
+                                $discountPercent = (int) $prod->featured_amount;
+                            }
                         }
-                    }
-                    $comp = optional($prod->complementaryProduct);
+                        $comp = optional($prod->complementaryProduct);
+                        
+                        // Get first variant price
+                        $firstVariantPrice = 0;
+                        if ($prod->variants && $prod->variants->count() > 0) {
+                            $firstVariant = $prod->variants->where('price', '>', 0)->first();
+                            $firstVariantPrice = $firstVariant ? $firstVariant->price : 0;
+                        }
+                    @endphp
 
-                @endphp
-
-                <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
-                    <div class="modal fade menu-modal" id="menuModalFull-{{ $prod->id }}" tabindex="-1"
-                        aria-labelledby="exampleModalLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                            <div class="modal-content">
-                                <div class="modal-body p-0 scrollable">
-                                    <input type="hidden" name="product_id" value="{{ $prod->id }}">
-                                    
-                                    <!-- IMAGE with Discount Badge -->
-                                    <div class="position-relative">
-                                        <img class="w-100" src="{{ asset($prod->image) }}" alt="product-img">
+                    <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
+                        <div class="modal fade menu-modal" id="menuModalFull-{{ $prod->id }}" tabindex="-1"
+                            aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                                <div class="modal-content">
+                                    <div class="modal-body p-0 scrollable">
+                                        <input type="hidden" name="product_id" value="{{ $prod->id }}">
                                         
-                                        @if($prod->featured_action == 'decrease' && $discountPercent > 0)
-                                            <span class="badge bg-danger position-absolute top-0 end-0 m-2">
-                                                {{ $discountPercent }}% OFF
-                                            </span>
-                                        @endif
-                                    </div>
-
-                                    <div class="p-3 description">
-                                        <h3>{{ $prod->name }}</h3>
-                                        @if(optional($comp)->complementary)
-                                        <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
-                                        {{-- <span class="mx-2" style="font-size:24px;font-weight:bold; color:#000;">+</span> --}}
-                                        <div class="mt-3 text-center">
-                                            <img class="img-fluid rounded-circle" 
-                                                    src="{{ asset($comp->complementary->image) }}" 
-                                                    alt="{{ $comp->complementary->name }}"
-                                                    style="width:100px;height:100px;object-fit:cover;">
-                                                    <br>
-                                                    <span class="badge bg-success m-2">BUY 1 GET 1 FREE
-                                            </span>
-                                            <p class="mb-0 small fw-medium text-dark">{{ $comp->complementary->name }}</p>
-                                        </div>
-                                        @endif
-                                        <!-- PRICE SECTION with Discount Logic -->
-                                        @if (count($prod->variants) > 0)
-                                            @if($prod->featured_action == 'decrease' && $prod->original_price)
-                                                <p>
-                                                    <span class="text-muted text-decoration-line-through">
-                                                        £{{ number_format($originalPrice,2) }}
-                                                    </span>
-                                                    <br>
-                                                    <span class="text-danger fw-bold prodPrice">
-                                                        £{{ number_format($finalPrice,2) }}
-                                                    </span>
-                                                </p>
-                                            @else
-                                                <p>£ <span class="prodPrice">{{ $prod->variants->first()->price }}</span></p>
+                                        <div class="position-relative">
+                                            <img class="w-100" src="{{ asset($prod->image) }}" alt="product-img">
+                                            @if($hasDiscount)
+                                                <span class="badge bg-danger position-absolute top-0 end-0 m-2">{{ $discountPercent }}% OFF</span>
                                             @endif
+                                        </div>
 
-                                            <select class="form-control bg-white ps-1 select-size"
-                                                name="variant_id" id="sizeSelect" style="appearance: auto">
-                                                @foreach ($prod->variants as $variant)
-                                                    <option value="{{ $variant->id }} {{ $variant->price }}">
-                                                        {{ $variant->size }}</option>
-                                                @endforeach
-                                            </select>
-                                            <h6 class="small mt-1 mb-3">Note: Prices vary depending on the selected
-                                                size</h6>
-                                                
-                                        @else
-                                            @if($prod->featured_action == 'decrease' && $prod->original_price)
-                                                <p>
-                                                    <span class="text-muted text-decoration-line-through">
-                                                        £{{ number_format($originalPrice,2) }}
-                                                    </span>
-                                                    <br>
-                                                    <span class="text-danger fw-bold prodPrice">
-                                                        £{{ number_format($finalPrice,2) }}
-                                                    </span>
-                                                </p>
-                                            @else
-                                                <p>£ <span class="prodPrice">{{ $prod->price }}</span></p>
+                                        <div class="p-3 description">
+                                            <h3>{{ $prod->name }}</h3>
+                                            @if(optional($comp)->complementary)
+                                            <input type="hidden" value="{{optional($comp)->complementary->id}}" name="complementary_id">
+                                            <div class="mt-3 text-center">
+                                                <img class="img-fluid rounded-circle" 
+                                                        src="{{ asset($comp->complementary->image) }}" 
+                                                        alt="{{ $comp->complementary->name }}"
+                                                        style="width:100px;height:100px;object-fit:cover;">
+                                                <br>
+                                                <span class="badge bg-success m-2">BUY 1 GET 1 FREE</span>
+                                                <p class="mb-0 small fw-medium text-dark">{{ $comp->complementary->name }}</p>
+                                            </div>
                                             @endif
-                                        @endif
-
-                                        {{-- <p class="small">{!! $prod->description !!}</p> --}}
-                                        <div class="d-flex cart-btn">
-                                            <button class="btn p-0 decrement" type="button">-</button>
-                                            <input type="text" class="cart_input increment-input text-center"
-                                                value="1" name="quantity"
-                                                id="quantity_{{ $prod->id }}">
-                                            <button class="btn p-0 increment" type="button">+</button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Location Start -->
-                                    <div class="description p-3">
-                                        <div class="d-flex justify-content-between">
-                                            <h6 class="">How to get it</h6>
-                                            <h6 class="text-danger">Required</h6>
-                                        </div>
-                                        
-                                        @foreach ($branches as $index => $branch)
-                                            @if ($branch->status == 1)
-                                                <div class="branch-option mb-3">
-                                                    <input type="hidden" name="branch_id" value="{{ $branch->id }}">
-
-                                                    {{-- Store Pickup --}}
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" 
-                                                            type="radio" 
-                                                            name="status_{{ $prod->id }}" 
-                                                            id="pickupStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}" 
-                                                            value="1"
-                                                            checked
-                                                            onchange="toggleDelivery('{{ $prod->id }}', '{{ $branch->id }}_{{ $index }}')">
-
-                                                        <label class="form-check-label fw-bold small" 
-                                                            for="pickupStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}">
-                                                            Store Pickup
-                                                        </label>
-                                                    </div>
-
-                                                    {{-- Pickup Address --}}
-                                                    <p class="small fw-bold m-0 sel-location mt-1" 
-                                                    id="storePickupSection{{ $prod->id }}_{{ $branch->id }}_{{ $index }}">
-                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($branch->location) }}" 
-                                                        target="_blank" 
-                                                        style="text-decoration: none; color: inherit;">
-                                                            {{ $branch->location }}
-                                                        </a>
+                                            
+                                            <!-- Price Section -->
+                                            @if (count($prod->variants) > 0)
+                                                @if($hasDiscount)
+                                                    <p>
+                                                        <span class="text-muted text-decoration-line-through">£{{ number_format($originalPrice, 2) }}</span>
+                                                        <br>
+                                                        <span class="text-danger fw-bold prodPrice">£{{ number_format($finalPrice, 2) }}</span>
                                                     </p>
+                                                @else
+                                                    <p class="price-display">
+                                                        £ <span class="prodPrice">{{ number_format($firstVariantPrice, 2) }}</span>
+                                                    </p>
+                                                @endif
 
-                                                    {{-- Home Delivery --}}
-                                                    <div class="form-check mt-3">
-                                                        <input class="form-check-input" 
-                                                            type="radio" 
-                                                            name="status_{{ $prod->id }}" 
-                                                            id="homeStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}" 
-                                                            value="2" 
-                                                            onchange="toggleDelivery('{{ $prod->id }}', '{{ $branch->id }}_{{ $index }}')">
+                                                <select class="form-control bg-white ps-1 select-size" name="variant_id" style="appearance: auto">
+                                                    @foreach ($prod->variants as $variant)
+                                                        <option value="{{ $variant->id }} {{ $variant->price }}" {{ $loop->first ? 'selected' : '' }}>
+                                                            {{ $variant->size }} - £{{ number_format($variant->price, 2) }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <h6 class="small mt-1 mb-3">Note: Prices vary depending on the selected size</h6>
+                                            @else
+                                                @if($hasDiscount)
+                                                    <p>
+                                                        <span class="text-muted text-decoration-line-through">£{{ number_format($originalPrice, 2) }}</span>
+                                                        <br>
+                                                        <span class="text-danger fw-bold prodPrice">£{{ number_format($finalPrice, 2) }}</span>
+                                                    </p>
+                                                @else
+                                                    <p>£ <span class="prodPrice">{{ number_format($prod->price, 2) }}</span></p>
+                                                @endif
+                                            @endif
 
-                                                        <label class="form-check-label fw-bold small" 
-                                                            for="homeStatus{{ $prod->id }}_{{ $branch->id }}_{{ $index }}">
-                                                            Home Delivery
-                                                        </label>
-                                                    </div>
+                                            <div class="d-flex cart-btn">
+                                                <button class="btn p-0 decrement" type="button">-</button>
+                                                <input type="text" class="cart_input increment-input text-center"
+                                                    value="1" name="quantity" id="quantity_{{ $prod->id }}">
+                                                <button class="btn p-0 increment" type="button">+</button>
+                                            </div>
+                                        </div>
 
-                                                    {{-- Delivery Address Input --}}
-                                                    <div id="deliveryAddressField{{ $prod->id }}_{{ $branch->id }}_{{ $index }}" 
-                                                        class="mt-2" style="display: none;">
-                                                        <input 
-                                                                type="text" 
+                                        <!-- Location Start -->
+                                        <div class="description p-3">
+                                            <div class="d-flex justify-content-between">
+                                                <h6 class="">How to get it</h6>
+                                                <h6 class="text-danger">Required</h6>
+                                            </div>
+                                            
+                                            @foreach ($branches as $branchIndex => $branch)
+                                                @if ($branch->status == 1)
+                                                    <div class="branch-option mb-3">
+                                                        <input type="hidden" name="branch_id" value="{{ $branch->id }}">
+
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" 
+                                                                type="radio" 
+                                                                name="status_{{ $prod->id }}" 
+                                                                id="pickupStatus{{ $prod->id }}_{{ $branch->id }}_{{ $branchIndex }}" 
+                                                                value="1"
+                                                                checked
+                                                                onchange="toggleDelivery('{{ $prod->id }}', '{{ $branch->id }}_{{ $branchIndex }}')">
+                                                            <label class="form-check-label fw-bold small" 
+                                                                for="pickupStatus{{ $prod->id }}_{{ $branch->id }}_{{ $branchIndex }}">
+                                                                Store Pickup
+                                                            </label>
+                                                        </div>
+
+                                                        <p class="small fw-bold m-0 sel-location mt-1" 
+                                                        id="storePickupSection{{ $prod->id }}_{{ $branch->id }}_{{ $branchIndex }}">
+                                                            <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($branch->location) }}" 
+                                                            target="_blank" 
+                                                            style="text-decoration: none; color: inherit;">
+                                                                {{ $branch->location }}
+                                                            </a>
+                                                        </p>
+
+                                                        <div class="form-check mt-3">
+                                                            <input class="form-check-input" 
+                                                                type="radio" 
+                                                                name="status_{{ $prod->id }}" 
+                                                                id="homeStatus{{ $prod->id }}_{{ $branch->id }}_{{ $branchIndex }}" 
+                                                                value="2" 
+                                                                onchange="toggleDelivery('{{ $prod->id }}', '{{ $branch->id }}_{{ $branchIndex }}')">
+                                                            <label class="form-check-label fw-bold small" 
+                                                                for="homeStatus{{ $prod->id }}_{{ $branch->id }}_{{ $branchIndex }}">
+                                                                Home Delivery
+                                                            </label>
+                                                        </div>
+
+                                                        <div id="deliveryAddressField{{ $prod->id }}_{{ $branch->id }}_{{ $branchIndex }}" 
+                                                            class="mt-2" style="display: none;">
+                                                            <input type="text" 
                                                                 id="deliveryInput{{ $prod->id }}_{{ $branch->id }}"
                                                                 name="delivery_address_{{ $prod->id }}" 
                                                                 class="form-control location-input"
                                                                 data-product="{{ $prod->id }}"
                                                                 data-branch="{{ $branch->id }}"
                                                                 placeholder="Enter your delivery address"
-                                                                autocomplete="off"
-                                                            />
-
-                                                            <!-- Hidden lat/lng -->
+                                                                autocomplete="off" />
                                                             <input type="hidden" name="lat_{{ $prod->id }}" id="lat{{ $prod->id }}_{{ $branch->id }}">
                                                             <input type="hidden" name="lng_{{ $prod->id }}" id="lng{{ $prod->id }}_{{ $branch->id }}">
-                                                    </div>
-                                                </div>
-                                            @endif
-                                        @endforeach
-                                    </div>
-                                    <!-- Location End -->
-
-                                    <!-- Toppings Start-->
-                                    @if ($prod->category && $prod->category->isNotEmpty())
-                                        @foreach ($prod->category as $index => $category)
-                                            <div class="description p-3">
-                                                <div class="arrow" style="cursor: pointer"
-                                                    data-bs-toggle="collapse"
-                                                    data-bs-target="#toppingFull{{ $index }}{{ $category->id }}">
-                                                    <div class="d-flex justify-content-between">
-                                                        <h6 class="m-0">{{ $category->getCategory->name }}</h6>
-                                                        <h6 class="fw-normal m-0 d-flex align-items-center">
-                                                            Optional
-                                                            <span class="h5 m-0 p-0 ri-arrow-up-s-line"></span>
-                                                        </h6>
-                                                    </div>
-                                                </div>
-                                                <div class="collapse show"
-                                                    id="toppingFull{{ $index }}{{ $category->id }}">
-                                                    @php
-                                                        $categoryToppings = App\Models\CategoryTopping::where(
-                                                            'category_id',
-                                                            $category->getCategory->id,
-                                                        )->get();
-                                                    @endphp
-                                                    @foreach ($categoryToppings as $categoryTopping)
-                                                        <div class="d-flex justify-content-between">
-                                                            <div class="form-check">
-                                                                <input class="form-check-input" type="checkbox"
-                                                                    name="toppings[]"
-                                                                    id="toppingchekFull{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}"
-                                                                    value="{{ $categoryTopping->topping->id }}"
-                                                                    data-category-id="{{ $category->getCategory->id }}">
-                                                                <label class="form-check-label m-0"
-                                                                    for="toppingchekFull{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}">
-                                                                    {{ $categoryTopping->topping->name }}
-                                                                </label>
-                                                            </div>
-                                                            <p class="m-0">
-                                                                {{ isset($categoryTopping->topping->price) ? '£' . $categoryTopping->topping->price : '' }}
-                                                            </p>
                                                         </div>
-                                                    @endforeach
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                        <!-- Location End -->
+
+                                        <!-- Toppings Start-->
+                                        @if ($prod->category && $prod->category->isNotEmpty())
+                                            @foreach ($prod->category as $toppingIndex => $category)
+                                                <div class="description p-3">
+                                                    <div class="arrow" style="cursor: pointer"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#toppingFull{{ $toppingIndex }}{{ $category->id }}">
+                                                        <div class="d-flex justify-content-between">
+                                                            <h6 class="m-0">{{ $category->getCategory->name }}</h6>
+                                                            <h6 class="fw-normal m-0 d-flex align-items-center">
+                                                                Optional
+                                                                <span class="h5 m-0 p-0 ri-arrow-up-s-line"></span>
+                                                            </h6>
+                                                        </div>
+                                                    </div>
+                                                    <div class="collapse show"
+                                                        id="toppingFull{{ $toppingIndex }}{{ $category->id }}">
+                                                        @php
+                                                            $categoryToppings = App\Models\CategoryTopping::where(
+                                                                'category_id',
+                                                                $category->getCategory->id,
+                                                            )->get();
+                                                        @endphp
+                                                        @foreach ($categoryToppings as $categoryTopping)
+                                                            <div class="d-flex justify-content-between">
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                        name="toppings[]"
+                                                                        id="toppingchekFull{{ $toppingIndex }}{{ $category->id }}{{ $categoryTopping->topping->id }}"
+                                                                        value="{{ $categoryTopping->topping->id }}"
+                                                                        data-category-id="{{ $category->getCategory->id }}">
+                                                                    <label class="form-check-label m-0"
+                                                                        for="toppingchekFull{{ $toppingIndex }}{{ $category->id }}{{ $categoryTopping->topping->id }}">
+                                                                        {{ $categoryTopping->topping->name }}
+                                                                    </label>
+                                                                </div>
+                                                                <p class="m-0">
+                                                                    {{ isset($categoryTopping->topping->price) ? '£' . $categoryTopping->topping->price : '' }}
+                                                                </p>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        @endforeach
-                                    @endif
-                                    <!-- Toppings End -->
-                                </div>
-                                <div class="modal-footer position-relative px-2">
-                                    <button type="button"
-                                        style="font-size: 24px;position: absolute;left: 0;width: 30px;height: 30px;display: flex;justify-content: center;align-items: center"
-                                        class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
-                                        data-bs-dismiss="modal"></button>
-                                    <div class="text-center mx-auto">
-                                        <button class="btn btn-danger addto-cart px-sm-5 px-4"
-                                            data-bs-dismiss="modal">Add To Order</button>
+                                            @endforeach
+                                        @endif
+                                        <!-- Toppings End -->
+                                    </div>
+                                    <div class="modal-footer position-relative px-2">
+                                        <button type="button"
+                                            style="font-size: 24px;position: absolute;left: 0;width: 30px;height: 30px;display: flex;justify-content: center;align-items: center"
+                                            class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
+                                            data-bs-dismiss="modal"></button>
+                                        <div class="text-center mx-auto">
+                                            <button class="btn btn-danger addto-cart px-sm-5 px-4" data-bs-dismiss="modal">Add To Order</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                @endforeach
-            @endif
-        @endforeach
-    @endif
-    <!-- Food Modals for Full Menu End -->
-
+                    @endforeach
+                @endif
+            @endforeach
+        @endif
+    </div>
 @endsection
-@section('js')
 
+@section('js')
     @if (\Illuminate\Support\Facades\Session::has('message'))
         <script>
             toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
@@ -1272,10 +1120,26 @@
     @endif
     <script>
         $(function() {
+            // When variant is selected, update price display
             $(document).on('change', '.select-size', function() {
-                let a = $(this).val().split(' ')[1];
-                $(this).closest('.description').find('.prodPrice').text(a);
-            })
+                let selectedValue = $(this).val();
+                let price = selectedValue.split(' ')[1];
+                
+                if (price) {
+                    $(this).closest('.description').find('.prodPrice').text(parseFloat(price).toFixed(2));
+                }
+            });
+
+            // Initialize first variant price on modal open
+            $(document).on('shown.bs.modal', '.menu-modal', function() {
+                let sizeSelect = $(this).find('.select-size');
+                if (sizeSelect.length > 0) {
+                    let initialPrice = sizeSelect.val().split(' ')[1];
+                    if (initialPrice) {
+                        $(this).find('.prodPrice').text(parseFloat(initialPrice).toFixed(2));
+                    }
+                }
+            });
 
             $(document).on('click', 'input:radio', function() {
                 var chooseLocation = $('input[name="choosen_location"]:checked').siblings('label').find(
@@ -1291,7 +1155,6 @@
                 }, 200);
             })
 
-            //Description Dealing
             $(document).on('click', '.arrow', function() {
                 let a = $(this).find('span');
                 if (a.hasClass('ri-arrow-up-s-line')) {
@@ -1302,38 +1165,7 @@
                     a.removeClass('ri-arrow-down-s-line');
                 }
             });
-
-            //array to store the Google Map Location
-            let arr = [{
-                source: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3018.0477543418483!2d-73.84479512475968!3d40.84887532922607!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c2f4ab4f07396d%3A0xe6c4ae3a2866d1b8!2sA%20Z%20Nutrition!5e0!3m2!1sen!2s!4v1700484957680!5m2!1sen!2s",
-                locationHeading: 'Sugar Pappi',
-                address1: '1578 Main Avenue Clifton, NJ 07011'
-            }, {
-                source: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3011.8769358092172!2d-73.82903412475196!3d40.98417552090991!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c2933bd5635a09%3A0x502bc89c049525ac!2s2562%20Central%20Park%20Ave%2C%20Yonkers%2C%20NY%2010710%2C%20USA!5e0!3m2!1sen!2s!4v1700483134249!5m2!1sen!2s",
-                locationHeading: 'Sugar Pappi',
-                address1: '2562 Central Park Av yonkers, NY 10710'
-            }, {
-                source: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3016.25629501146!2d-74.15504762475744!3d40.888192526811835!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c2fe99dc1b2ba9%3A0x84d65884be972356!2sA-Z%20Nutrition%26Smoothies!5e0!3m2!1sen!2s!4v1700485074231!5m2!1sen!2s",
-                locationHeading: 'Sugar Pappi',
-                address1: '1776 Eastchester Road Bronx, NY 10461'
-            }, {
-                source: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d96659.29314183394!2d-74.34112495664061!3d40.79274319999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c25566ba35d8cb%3A0x2cb13edad59b0cbc!2sAmazon%20Hub%20Counter%20-%20A-Z%20Nutrition%20%26%20Smoothies!5e0!3m2!1sen!2s!4v1700485211429!5m2!1sen!2s",
-                locationHeading: 'Sugar Pappi',
-                address1: '549 Bloomfield Avenue Bloomfield, NJ 07003'
-            }, ];
-
-            $('.location-description').each(function(index) {
-                $(this).click(function() {
-                    let i = index;
-                    let a = arr[i];
-                    $('.locationHeading').text(a.locationHeading);
-                    $('.address1').text(a.address1);
-                    $('.address2').text(a.address2);
-                    $('iframe').attr('src', a.source);
-                });
-            });
         });
-
 
         document.addEventListener('DOMContentLoaded', function() {
             const incrementButtons = document.querySelectorAll('.increment');
@@ -1369,8 +1201,7 @@
 
             var deliveryStatus = $(this).closest('.food-modal').find('input[name^="status_' + productId + '"]:checked').val();
             var deliveryAddress = '';
-            // alert(deliveryStatus);
-            // return;
+            
             if (deliveryStatus == '2') {
                 deliveryAddress = $(this).closest('.food-modal').find('input[name="delivery_address_' + productId + '"]').val();
                 if (!deliveryAddress) {
@@ -1389,7 +1220,6 @@
                     return;
                 }
             }
-
 
             var variantSelect = $(this).closest('.food-modal').find('select[name="variant_id"]');
             if (variantSelect.length > 0) {
@@ -1445,7 +1275,6 @@
             });
         });
 
-
         function updateCartUI(data) {
             var cartItemCount = 0;
             var html = '';
@@ -1496,16 +1325,6 @@
 
             if (cartItemCount > 0) {
                 $('.button-disable').removeClass('disabled');
-            }
-
-            function updateQuantity(productId, change) {
-                var product = data['cart'].find(p => p.product_id === productId);
-                if (product) {
-                    product.quantity += change;
-                    var totalElement = $('.total-price[data-product-id="' + productId + '"]');
-                    var newTotalPrice = '£' + ((parseFloat(product.price) * product.quantity).toFixed(2));
-                    totalElement.text(newTotalPrice);
-                }
             }
         }
 
@@ -1570,8 +1389,7 @@
                         rightBtn.style.display = 'none';
                     } else {
                         const isAtStart = tabsContainer.scrollLeft === 0;
-                        const isAtEnd = tabsContainer.scrollLeft + tabsContainer.clientWidth >= tabsContainer
-                            .scrollWidth - 10;
+                        const isAtEnd = tabsContainer.scrollLeft + tabsContainer.clientWidth >= tabsContainer.scrollWidth - 10;
 
                         leftBtn.classList.toggle('disabled', isAtStart);
                         rightBtn.classList.toggle('disabled', isAtEnd);
@@ -1582,26 +1400,29 @@
                 updateButtons();
             }
         });
-    </script>
-<script async defer 
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&callback=initAllAutocomplete">
-</script>
-    <script>
+
         function toggleDelivery(productId, branchUnique) {
             const pickupRadio = document.getElementById(`pickupStatus${productId}_${branchUnique}`);
             const homeRadio = document.getElementById(`homeStatus${productId}_${branchUnique}`);
             const pickupSection = document.getElementById(`storePickupSection${productId}_${branchUnique}`);
             const deliveryField = document.getElementById(`deliveryAddressField${productId}_${branchUnique}`);
 
-            if (homeRadio.checked) {
-                pickupSection.style.display = 'none';
-                deliveryField.style.display = 'block';
-            } else if (pickupRadio.checked) {
-                pickupSection.style.display = 'block';
-                deliveryField.style.display = 'none';
-                deliveryField.querySelector('input').value = '';
+            if (homeRadio && homeRadio.checked) {
+                if (pickupSection) pickupSection.style.display = 'none';
+                if (deliveryField) deliveryField.style.display = 'block';
+            } else if (pickupRadio && pickupRadio.checked) {
+                if (pickupSection) pickupSection.style.display = 'block';
+                if (deliveryField) {
+                    deliveryField.style.display = 'none';
+                    deliveryField.querySelector('input').value = '';
+                }
             }
         }
+    </script>
+    <script async defer 
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&callback=initAllAutocomplete">
+    </script>
+    <script>
         window.initAllAutocomplete = function () {
             console.log("Google Loaded ✅");
             bindAutocomplete();
@@ -1611,66 +1432,51 @@ src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4R
             });
         };
 
-    function bindAutocomplete(container = document) {
+        function bindAutocomplete(container = document) {
+            container.querySelectorAll('.location-input').forEach(input => {
+                if (input.dataset.autocompleteInit === "1") return;
+                input.dataset.autocompleteInit = "1";
 
-        container.querySelectorAll('.location-input').forEach(input => {
+                const productId = input.dataset.product;
+                const branchId = input.dataset.branch;
 
-            if (input.dataset.autocompleteInit === "1") return;
-            input.dataset.autocompleteInit = "1";
+                let isSelectedFromList = false;
 
-            const productId = input.dataset.product;
-            const branchId = input.dataset.branch;
+                const autocomplete = new google.maps.places.Autocomplete(input, {
+                    fields: ["geometry", "name"],
+                    types: ['geocode'],
+                    componentRestrictions: { country: "gb" }
+                });
 
-            let isSelectedFromList = false;
+                const latField = document.getElementById(`lat${productId}_${branchId}`);
+                const lngField = document.getElementById(`lng${productId}_${branchId}`);
 
-            const autocomplete = new google.maps.places.Autocomplete(input, {
-                fields: ["geometry", "name"],
-                types: ['geocode'],
-                componentRestrictions: { country: "gb" }
+                input.addEventListener('input', function () {
+                    isSelectedFromList = false;
+                    if (latField) latField.value = '';
+                    if (lngField) lngField.value = '';
+                });
+
+                autocomplete.addListener('place_changed', function () {
+                    const place = autocomplete.getPlace();
+                    if (!place.geometry) return;
+                    isSelectedFromList = true;
+                    if (latField) latField.value = place.geometry.location.lat();
+                    if (lngField) lngField.value = place.geometry.location.lng();
+                });
+
+                input.addEventListener('blur', function () {
+                    setTimeout(() => {
+                        if (latField && latField.value && lngField && lngField.value) {
+                            return;
+                        }
+                        input.value = '';
+                        if (latField) latField.value = '';
+                        if (lngField) lngField.value = '';
+                        alert("Please select a location from suggestions only.");
+                    }, 300);
+                });
             });
-
-            const latField = document.getElementById(`lat${productId}_${branchId}`);
-            const lngField = document.getElementById(`lng${productId}_${branchId}`);
-
-            // 👉 Reset when typing
-            input.addEventListener('input', function () {
-                isSelectedFromList = false;
-                latField.value = '';
-                lngField.value = '';
-            });
-
-            // 👉 Detect selection
-            autocomplete.addListener('place_changed', function () {
-                const place = autocomplete.getPlace();
-
-                if (!place.geometry) return;
-
-                isSelectedFromList = true;
-
-                latField.value = place.geometry.location.lat();
-                lngField.value = place.geometry.location.lng();
-            });
-
-            // 👉 FIXED BLUR LOGIC
-            input.addEventListener('blur', function () {
-                setTimeout(() => {
-
-                    // agar lat/lng aa chuki hai → valid hai
-                    if (latField.value && lngField.value) {
-                        return;
-                    }
-
-                    // warna invalid
-                    input.value = '';
-                    latField.value = '';
-                    lngField.value = '';
-
-                    alert("Please select a location from suggestions only.");
-
-                }, 300); // ⬅️ thoda zyada delay
-            });
-
-        });
-    }
+        }
     </script>
 @endsection

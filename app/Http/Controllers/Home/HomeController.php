@@ -33,6 +33,25 @@ class HomeController extends Controller
         ->orderBy('id', 'DESC')
         ->get();
 
+    // Set default price for products with variants
+    foreach ($products as $product) {
+        if ($product->variants && $product->variants->count() > 0) {
+            // Try to find 'regular' variant first, otherwise use first variant with price
+            $regularVariant = $product->variants->where('size', 'regular')->first();
+            $firstVariantWithPrice = $product->variants->where('price', '>', 0)->first();
+            
+            if ($regularVariant && $regularVariant->price > 0) {
+                $product->default_price = $regularVariant->price;
+            } elseif ($firstVariantWithPrice) {
+                $product->default_price = $firstVariantWithPrice->price;
+            } else {
+                $product->default_price = $product->variants->first()->price ?? 0;
+            }
+        } else {
+            $product->default_price = $product->price ?? 0;
+        }
+    }
+
 		$ciboExpressItems = \App\Models\CiboExpress::all();
 
     $menuCategories = Menu::with(['products' => function ($query) {
@@ -45,6 +64,25 @@ class HomeController extends Controller
             ->where('status', 1)
             ->with(['variants','complementaryProduct.complementary'])
             ->get();
+
+        // Set default price for menu products with variants
+        foreach ($menuproduct as $product) {
+            if ($product->variants && $product->variants->count() > 0) {
+                // Try to find 'regular' variant first, otherwise use first variant with price
+                $regularVariant = $product->variants->where('size', 'regular')->first();
+                $firstVariantWithPrice = $product->variants->where('price', '>', 0)->first();
+                
+                if ($regularVariant && $regularVariant->price > 0) {
+                    $product->default_price = $regularVariant->price;
+                } elseif ($firstVariantWithPrice) {
+                    $product->default_price = $firstVariantWithPrice->price;
+                } else {
+                    $product->default_price = $product->variants->first()->price ?? 0;
+                }
+            } else {
+                $product->default_price = $product->price ?? 0;
+            }
+        }
 
         $menu->product = $menuproduct;
     }
@@ -93,6 +131,26 @@ class HomeController extends Controller
         ->get();
         foreach ($products as $product) {
             $menuproduct = Product::where('menu_id', $product->id)->get();
+            
+            // Set default price for menu products with variants
+            foreach ($menuproduct as $prod) {
+                if ($prod->variants && $prod->variants->count() > 0) {
+                    // Try to find 'regular' variant first, otherwise use first variant with price
+                    $regularVariant = $prod->variants->where('size', 'regular')->first();
+                    $firstVariantWithPrice = $prod->variants->where('price', '>', 0)->first();
+                    
+                    if ($regularVariant && $regularVariant->price > 0) {
+                        $prod->default_price = $regularVariant->price;
+                    } elseif ($firstVariantWithPrice) {
+                        $prod->default_price = $firstVariantWithPrice->price;
+                    } else {
+                        $prod->default_price = $prod->variants->first()->price ?? 0;
+                    }
+                } else {
+                    $prod->default_price = $prod->price ?? 0;
+                }
+            }
+            
             $product->product = $menuproduct;
         }
         return view('home.our-menu', compact('products', 'branches', 'timeSlots', 'userTimeSlots'));
@@ -130,6 +188,25 @@ class HomeController extends Controller
         // Eager load products with variants for better performance
         foreach ($menuCategories as $menu) {
             $menu->product = $menu->products->load('variants');
+            
+            // Set default price for menu products with variants
+            foreach ($menu->product as $product) {
+                if ($product->variants && $product->variants->count() > 0) {
+                    // Try to find 'regular' variant first, otherwise use first variant with price
+                    $regularVariant = $product->variants->where('size', 'regular')->first();
+                    $firstVariantWithPrice = $product->variants->where('price', '>', 0)->first();
+                    
+                    if ($regularVariant && $regularVariant->price > 0) {
+                        $product->default_price = $regularVariant->price;
+                    } elseif ($firstVariantWithPrice) {
+                        $product->default_price = $firstVariantWithPrice->price;
+                    } else {
+                        $product->default_price = $product->variants->first()->price ?? 0;
+                    }
+                } else {
+                    $product->default_price = $product->price ?? 0;
+                }
+            }
         }
 
         // Menu galleries for top display

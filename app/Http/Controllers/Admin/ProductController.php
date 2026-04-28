@@ -197,19 +197,19 @@ public function store(Request $request)
     |--------------------------------------------------------------------------
     | CREATE PRODUCT
     |--------------------------------------------------------------------------
-    | If variant product → price will remain 0
+    | If variant product → price will be set to 0
     |--------------------------------------------------------------------------
     */
     $product = Product::create([
         'menu_id' => $request->menu_id,
         'name' => $request->name,
         'image' => $image,
-        'price' => round(max(0, $finalPrice), 2),
-        'original_price' => round(max(0, $originalPrice), 2),
-        'rule' => $rule,
-        'featured_action' => $rule ? $action : null,
-        'featured_method' => $rule ? $method : null,
-        'featured_amount' => $rule ? $amount : null,
+        'price' => $hasVariants ? 0 : round(max(0, $finalPrice), 2),
+        'original_price' => $hasVariants ? 0 : round(max(0, $originalPrice), 2),
+        'rule' => $hasVariants ? null : $rule,
+        'featured_action' => ($hasVariants || !$rule) ? null : $action,
+        'featured_method' => ($hasVariants || !$rule) ? null : $method,
+        'featured_amount' => ($hasVariants || !$rule) ? null : $amount,
     ]);
 
     // -------------------------
@@ -393,7 +393,14 @@ public function update(Request $request, $id)
     // CASE 2: VARIANT PRODUCT
     // -------------------------
     if ($hasVariants) {
-        // Keep products.price untouched
+        // Set product price to 0 when variants exist
+        $product->price = 0;
+        $product->original_price = 0;
+        $product->rule = null;
+        $product->featured_action = null;
+        $product->featured_method = null;
+        $product->featured_amount = null;
+        
         $submittedVariantIds = $request->variant_ids ?? [];
         $variantsToDelete = $product->variants->pluck('id')->diff($submittedVariantIds);
         ProductVariants::destroy($variantsToDelete);

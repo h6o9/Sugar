@@ -334,7 +334,7 @@
                                     <p class="text-center mb-2">
                                         @if ($prod->variants && $prod->variants->isNotEmpty())
                                             <span class="badge bg-primary">
-                                                From £{{ $prod->variants->first()->price }}
+                                                From £{{ $prod->default_price }}
                                             </span>
                                         @else
                                             <span class="badge bg-primary">
@@ -399,7 +399,7 @@
                                                     <p class="text-center mb-2">
                                                         @if ($prod->variants && $prod->variants->isNotEmpty())
                                                             <span class="badge bg-primary">From
-                                                                £{{ $prod->variants->first()->price }}</span>
+                                                                £{{ $prod->default_price }}</span>
                                                         @else
                                                             <span class="badge bg-primary">£{{ $prod->price }}</span>
                                                         @endif
@@ -444,7 +444,7 @@
 
                                         @if (count($prod->variants) > 0)
                                             <p>£ <span
-                                                    class="prodPrice">{{ $prod->variants->first()->price }}</span>
+                                                    class="prodPrice">{{ $prod->default_price }}</span>
                                             </p>
 
                                             <select class="form-control bg-white ps-1 select-size"

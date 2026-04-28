@@ -4,6 +4,7 @@ use App\Models\Notification;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Product;
 use App\Models\Branch;
+
 $notifications = collect();
 $notificationCount = 0;
 $latestNotifications = collect();
@@ -15,28 +16,29 @@ if (Auth::guard('user')->check()) {
         ->latest()
         ->get();
     $notificationCount = $notifications->count();
-    
-    // Get only 3 latest notifications for dropdown
     $latestNotifications = $notifications->take(3);
 }
+
+// Initialize product with default values
 $product = Product::where('on_top', true)->first();
+$discountPercent = 0;
+$originalPrice = 0;
+$finalPrice = 0;
+
 if ($product) {
-    if ($product->featured_method == 'percentage') {
-        $discountPercent = (int) $product->featured_amount;
+    $originalPrice = $product->original_price ?? $product->price ?? 0;
+    $finalPrice = $product->price ?? 0;
+    
+    if ($product->featured_action == 'decrease' && ($product->original_price ?? false)) {
+        if ($product->featured_method == 'percentage') {
+            $discountPercent = (int) ($product->featured_amount ?? 0);
+        } elseif ($product->featured_method == 'amount') {
+            if ($originalPrice > 0) {
+                $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
+            }
+        }
     }
 }
-$originalPrice = $product->original_price ?? $product->price;
-$finalPrice = $product->price;
-$discountPercent = 0;
-
-if ($product->featured_action == 'decrease' && $product->original_price) {
-
-     if ($product->featured_method == 'percentage') {
-       $discountPercent = (int) $product->featured_amount;
-        } elseif ($product->featured_method == 'amount') {
-        $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
-      }
-        }
 @endphp
 
 <style>
@@ -75,12 +77,13 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
 @media(max-width:768px){.mobile-notify-block{width:92%; left:4%;}}
 @media(max-width:480px){.mobile-notify-block{width:96%; left:2%;}}
 </style>
+
 @if (url()->current() !== url('/'))
-  <style>
+<style>
     .pac-container {
-            z-index: 9999999 !important;
-        }
-  </style>
+        z-index: 9999999 !important;
+    }
+</style>
 @endif
 
 <div id="spinner" class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
@@ -103,9 +106,20 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
 <!-- Disclaimer Modal End -->
 
 <!-- Navbar Start -->
+@if($product)
 <div class="promo-bar">
-    <a href="#" style="text-decoration: none;" data-bs-toggle="modal" data-bs-target="#menuModalFull-{{ $product->id }}">🔥 {{ $discountPercent }}% OFF on {{ $product->name }} – Order Now</a>
-</div>   
+    <a href="#" style="text-decoration: none;" data-bs-toggle="modal" data-bs-target="#menuModalFull-{{ $product->id }}">
+        🔥 {{ $discountPercent }}% OFF on {{ $product->name }} – Order Now
+    </a>
+</div>  
+@else
+<div class="promo-bar">
+    <a href="#" style="text-decoration: none;">
+        🔥 Get 20% OFF on your first order – Order Now
+    </a>
+</div>
+@endif
+
 <div class="app-download-banner">
     <p>🍕 Craving your favorites? Get the Sugar Pappi App for exclusive offers!</p>
     <div>
@@ -117,6 +131,7 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
         </a>
     </div>
 </div>
+
 <nav class="navbar navbar-expand-lg navbar-dark px-4 px-lg-5 py-lg-0 py-2">
     <div>
         <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
@@ -159,7 +174,6 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
                     </div>
                     @endforelse
                 </div>
-                <!-- UPDATED: Disable View All Notifications if no notifications -->
                 <div class="pt-3 border-top mt-1 text-center">
                     <a href="{{ route('web.notifications.index') }}" class="btn btn-danger px-5 {{ $notificationCount == 0 ? 'disabled' : '' }}">
                         View All Notifications
@@ -211,7 +225,6 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
                     </div>
                     @endforelse
                 </div>
-                <!-- UPDATED: Disable View All Notifications if no notifications -->
                 <div class="pt-3 border-top mt-1 text-center">
                     <a href="{{ route('web.notifications.index') }}" class="btn btn-danger px-5 {{ $notificationCount == 0 ? 'disabled' : '' }}">
                         View All Notifications
@@ -252,7 +265,6 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
                     <p class="text-danger text-center">Your cart is empty!</p>
                     @endforelse
                 </div>
-                <!-- UPDATED: Disable Continue To Cart if cart empty -->
                 <div class="pt-3 border-top mt-1 text-center">
                     <a href="{{ route('my-cart') }}" class="btn btn-danger px-5 {{ count(session('cart', [])) == 0 ? 'disabled' : '' }}">
                         Continue To Cart
@@ -268,6 +280,7 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
         @endif
     </div>
 </nav>
+
 <!-- Overlay Search -->
 <div id="myOverlay" class="overlay">
     <span class="close-btn" title="Close Overlay">×</span>
@@ -279,220 +292,224 @@ if ($product->featured_action == 'decrease' && $product->original_price) {
     </div>
 </div>
 
+<!-- Modal - Only show if product exists -->
+@if($product)
 <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
-                    <div class="modal fade menu-modal" id="menuModalFull-{{ $product->id }}" tabindex="-1"
-                        aria-labelledby="exampleModalLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                            <div class="modal-content">
-                                <div class="modal-body p-0 scrollable">
-                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                    
-                                    <!-- IMAGE with Discount Badge -->
-                                    <div class="position-relative">
-                                        <img class="w-100" src="{{ asset($product->image) }}" alt="product-img">
-                                        
-                                        @if($product->featured_action == 'decrease' && $discountPercent > 0)
-                                            <span class="badge bg-danger position-absolute top-0 end-0 m-2">
-                                                {{ $discountPercent }}% OFF
-                                            </span>
-                                        @endif
-                                    </div>
+    <div class="modal fade menu-modal" id="menuModalFull-{{ $product->id }}" tabindex="-1"
+        aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-body p-0 scrollable">
+                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                    
+                    <!-- IMAGE with Discount Badge -->
+                    <div class="position-relative">
+                        <img class="w-100" src="{{ asset($product->image ?? 'public/img/default.jpg') }}" alt="product-img">
+                        
+                        @if(isset($product->featured_action) && $product->featured_action == 'decrease' && $discountPercent > 0)
+                            <span class="badge bg-danger position-absolute top-0 end-0 m-2">
+                                {{ $discountPercent }}% OFF
+                            </span>
+                        @endif
+                    </div>
 
-                                    <div class="p-3 description">
-                                        <h3>{{ $product->name }}</h3>
+                    <div class="p-3 description">
+                        <h3>{{ $product->name ?? 'Product' }}</h3>
 
-                                        <!-- PRICE SECTION with Discount Logic -->
-                                        @if (count($product->variants) > 0)
-                                            @if($product->featured_action == 'decrease' && $product->original_price)
-                                                <p>
-                                                    <span class="text-muted text-decoration-line-through">
-                                                        £{{ number_format($originalPrice,2) }}
-                                                    </span>
-                                                    <br>
-                                                    <span class="text-danger fw-bold prodPrice">
-                                                        {{ number_format($finalPrice,2) }}
-                                                    </span>
-                                                </p>
-                                            @else
-                                                <p>£ <span class="prodPrice">{{ $product->variants->first()->price }}</span></p>
-                                            @endif
+                        <!-- PRICE SECTION with Discount Logic -->
+                        @if(isset($product->variants) && count($product->variants) > 0)
+                            @if(isset($product->featured_action) && $product->featured_action == 'decrease' && ($product->original_price ?? false))
+                                <p>
+                                    <span class="text-muted text-decoration-line-through">
+                                        £{{ number_format($originalPrice,2) }}
+                                    </span>
+                                    <br>
+                                    <span class="text-danger fw-bold prodPrice">
+                                        {{ number_format($finalPrice,2) }}
+                                    </span>
+                                </p>
+                            @else
+                                <p>£ <span class="prodPrice">{{ $product->default_price ?? 0 }}</span></p>
+                            @endif
 
-                                            <select class="form-control bg-white ps-1 select-size"
-                                                name="variant_id" id="sizeSelect" style="appearance: auto">
-                                                @foreach ($product->variants as $variant)
-                                                    <option value="{{ $variant->id }} {{ $variant->price }}">
-                                                        {{ $variant->size }}</option>
-                                                @endforeach
-                                            </select>
-                                            <h6 class="small mt-1 mb-3">Note: Prices vary depending on the selected
-                                                size</h6>
-                                                
-                                        @else
-                                            @if($product->featured_action == 'decrease' && $product->original_price)
-                                                <p>
-                                                    <span class="text-muted text-decoration-line-through">
-                                                        £{{ number_format($originalPrice,2) }}
-                                                    </span>
-                                                    <br>
-                                                    <span class="text-danger fw-bold prodPrice">
-                                                        {{ number_format($finalPrice,2) }}
-                                                    </span>
-                                                </p>
-                                            @else
-                                                <p>£ <span class="prodPrice">{{ $product->price }}</span></p>
-                                            @endif
-                                        @endif
+                            <select class="form-control bg-white ps-1 select-size"
+                                name="variant_id" id="sizeSelect" style="appearance: auto">
+                                @foreach ($product->variants as $variant)
+                                    <option value="{{ $variant->id }} {{ $variant->price ?? 0 }}">
+                                        {{ $variant->size ?? 'Regular' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <h6 class="small mt-1 mb-3">Note: Prices vary depending on the selected size</h6>
+                                
+                        @else
+                            @if(isset($product->featured_action) && $product->featured_action == 'decrease' && ($product->original_price ?? false))
+                                <p>
+                                    <span class="text-muted text-decoration-line-through">
+                                        £{{ number_format($originalPrice,2) }}
+                                    </span>
+                                    <br>
+                                    <span class="text-danger fw-bold prodPrice">
+                                        {{ number_format($finalPrice,2) }}
+                                    </span>
+                                </p>
+                            @else
+                                <p>£ <span class="prodPrice">{{ $product->price ?? 0 }}</span></p>
+                            @endif
+                        @endif
 
-                                        {{-- <p class="small">{!! $product->description !!}</p> --}}
-                                        <div class="d-flex cart-btn">
-                                            <button class="btn p-0 decrement" type="button">-</button>
-                                            <input type="text" class="cart_input increment-input text-center"
-                                                value="1" name="quantity"
-                                                id="quantity_{{ $product->id }}">
-                                            <button class="btn p-0 increment" type="button">+</button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Location Start -->
-                                    <div class="description p-3">
-                                        <div class="d-flex justify-content-between">
-                                            <h6 class="">How to get it</h6>
-                                            <h6 class="text-danger">Required</h6>
-                                        </div>
-                                        
-                                        @foreach ($branches as $index => $branch)
-                                            @if ($branch->status == 1)
-                                                <div class="branch-option mb-3">
-                                                    <input type="hidden" name="branch_id" value="{{ $branch->id }}">
-
-                                                    {{-- Store Pickup --}}
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" 
-                                                            type="radio" 
-                                                            name="status_{{ $product->id }}" 
-                                                            id="pickupStatus{{ $product->id }}_{{ $branch->id }}_{{ $index }}" 
-                                                            value="1"
-                                                            checked
-                                                            onchange="toggleDelivery('{{ $product->id }}', '{{ $branch->id }}_{{ $index }}')">
-
-                                                        <label class="form-check-label fw-bold small" 
-                                                            for="pickupStatus{{ $product->id }}_{{ $branch->id }}_{{ $index }}">
-                                                            Store Pickup
-                                                        </label>
-                                                    </div>
-
-                                                    {{-- Pickup Address --}}
-                                                    <p class="small fw-bold m-0 sel-location mt-1" 
-                                                    id="storePickupSection{{ $product->id }}_{{ $branch->id }}_{{ $index }}">
-                                                        <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($branch->location) }}" 
-                                                        target="_blank" 
-                                                        style="text-decoration: none; color: inherit;">
-                                                            {{ $branch->location }}
-                                                        </a>
-                                                    </p>
-
-                                                    {{-- Home Delivery --}}
-                                                    <div class="form-check mt-3">
-                                                        <input class="form-check-input" 
-                                                            type="radio" 
-                                                            name="status_{{ $product->id }}" 
-                                                            id="homeStatus{{ $product->id }}_{{ $branch->id }}_{{ $index }}" 
-                                                            value="2" 
-                                                            onchange="toggleDelivery('{{ $product->id }}', '{{ $branch->id }}_{{ $index }}')">
-
-                                                        <label class="form-check-label fw-bold small" 
-                                                            for="homeStatus{{ $product->id }}_{{ $branch->id }}_{{ $index }}">
-                                                            Home Delivery
-                                                        </label>
-                                                    </div>
-
-                                                    {{-- Delivery Address Input --}}
-                                                    <div id="deliveryAddressField{{ $product->id }}_{{ $branch->id }}_{{ $index }}" 
-                                                        class="mt-2" style="display: none;">
-                                                        <input 
-                                                                type="text" 
-                                                                id="deliveryInput{{ $product->id }}_{{ $branch->id }}"
-                                                                name="delivery_address_{{ $product->id }}" 
-                                                                class="form-control location-input"
-                                                                data-product="{{ $product->id }}"
-                                                                data-branch="{{ $branch->id }}"
-                                                                placeholder="Enter your delivery address"
-                                                                autocomplete="off"
-                                                            />
-
-                                                            <!-- Hidden lat/lng -->
-                                                            <input type="hidden" name="lat_{{ $product->id }}" id="lat{{ $product->id }}_{{ $branch->id }}">
-                                                            <input type="hidden" name="lng_{{ $product->id }}" id="lng{{ $product->id }}_{{ $branch->id }}">
-                                                    </div>
-                                                </div>
-                                            @endif
-                                        @endforeach
-
-                                        
-                                    </div>
-                                    <!-- Location End -->
-
-                                    <!-- Toppings Start-->
-                                    @if ($product->category && $product->category->isNotEmpty())
-                                        @foreach ($product->category as $index => $category)
-                                            <div class="description p-3">
-                                                <div class="arrow" style="cursor: pointer"
-                                                    data-bs-toggle="collapse"
-                                                    data-bs-target="#toppingFull{{ $index }}{{ $category->id }}">
-                                                    <div class="d-flex justify-content-between">
-                                                        <h6 class="m-0">{{ $category->getCategory->name }}</h6>
-                                                        <h6 class="fw-normal m-0 d-flex align-items-center">
-                                                            Optional
-                                                            <span class="h5 m-0 p-0 ri-arrow-up-s-line"></span>
-                                                        </h6>
-                                                    </div>
-                                                </div>
-                                                <div class="collapse show"
-                                                    id="toppingFull{{ $index }}{{ $category->id }}">
-                                                    @php
-                                                        $categoryToppings = App\Models\CategoryTopping::where(
-                                                            'category_id',
-                                                            $category->getCategory->id,
-                                                        )->get();
-                                                    @endphp
-                                                    @foreach ($categoryToppings as $categoryTopping)
-                                                        <div class="d-flex justify-content-between">
-                                                            <div class="form-check">
-                                                                <input class="form-check-input" type="checkbox"
-                                                                    name="toppings[]"
-                                                                    id="toppingchekFull{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}"
-                                                                    value="{{ $categoryTopping->topping->id }}"
-                                                                    data-category-id="{{ $category->getCategory->id }}">
-                                                                <label class="form-check-label m-0"
-                                                                    for="toppingchekFull{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}">
-                                                                    {{ $categoryTopping->topping->name }}
-                                                                </label>
-                                                            </div>
-                                                            <p class="m-0">
-                                                                {{ isset($categoryTopping->topping->price) ? '£' . $categoryTopping->topping->price : '' }}
-                                                            </p>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    @endif
-                                    <!-- Toppings End -->
-                                </div>
-                                <div class="modal-footer position-relative px-2">
-                                    <button type="button"
-                                        style="font-size: 24px;position: absolute;left: 0;width: 30px;height: 30px;display: flex;justify-content: center;align-items: center"
-                                        class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
-                                        data-bs-dismiss="modal"></button>
-                                    <div class="text-center mx-auto">
-                                        <button class="btn btn-danger addto-cart px-sm-5 px-4"
-                                            data-bs-dismiss="modal">Add To Order</button>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="d-flex cart-btn">
+                            <button class="btn p-0 decrement" type="button">-</button>
+                            <input type="text" class="cart_input increment-input text-center"
+                                value="1" name="quantity"
+                                id="quantity_{{ $product->id }}">
+                            <button class="btn p-0 increment" type="button">+</button>
                         </div>
                     </div>
+
+                    <!-- Location Start -->
+                    <div class="description p-3">
+                        <div class="d-flex justify-content-between">
+                            <h6 class="">How to get it</h6>
+                            <h6 class="text-danger">Required</h6>
+                        </div>
+                        
+                        @foreach ($branches as $index => $branch)
+                            @if ($branch->status == 1)
+                                <div class="branch-option mb-3">
+                                    <input type="hidden" name="branch_id" value="{{ $branch->id }}">
+
+                                    {{-- Store Pickup --}}
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                            type="radio" 
+                                            name="status_{{ $product->id }}" 
+                                            id="pickupStatus{{ $product->id }}_{{ $branch->id }}_{{ $index }}" 
+                                            value="1"
+                                            {{ $loop->first ? 'checked' : '' }}
+                                            onchange="toggleDelivery('{{ $product->id }}', '{{ $branch->id }}_{{ $index }}')">
+
+                                        <label class="form-check-label fw-bold small" 
+                                            for="pickupStatus{{ $product->id }}_{{ $branch->id }}_{{ $index }}">
+                                            Store Pickup
+                                        </label>
+                                    </div>
+
+                                    {{-- Pickup Address --}}
+                                    <p class="small fw-bold m-0 sel-location mt-1" 
+                                    id="storePickupSection{{ $product->id }}_{{ $branch->id }}_{{ $index }}">
+                                        <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($branch->location) }}" 
+                                        target="_blank" 
+                                        style="text-decoration: none; color: inherit;">
+                                            {{ $branch->location }}
+                                        </a>
+                                    </p>
+
+                                    {{-- Home Delivery --}}
+                                    <div class="form-check mt-3">
+                                        <input class="form-check-input" 
+                                            type="radio" 
+                                            name="status_{{ $product->id }}" 
+                                            id="homeStatus{{ $product->id }}_{{ $branch->id }}_{{ $index }}" 
+                                            value="2" 
+                                            onchange="toggleDelivery('{{ $product->id }}', '{{ $branch->id }}_{{ $index }}')">
+
+                                        <label class="form-check-label fw-bold small" 
+                                            for="homeStatus{{ $product->id }}_{{ $branch->id }}_{{ $index }}">
+                                            Home Delivery
+                                        </label>
+                                    </div>
+
+                                    {{-- Delivery Address Input --}}
+                                    <div id="deliveryAddressField{{ $product->id }}_{{ $branch->id }}_{{ $index }}" 
+                                        class="mt-2" style="display: none;">
+                                        <input type="text" 
+                                            id="deliveryInput{{ $product->id }}_{{ $branch->id }}"
+                                            name="delivery_address_{{ $product->id }}" 
+                                            class="form-control location-input"
+                                            data-product="{{ $product->id }}"
+                                            data-branch="{{ $branch->id }}"
+                                            placeholder="Enter your delivery address"
+                                            autocomplete="off"
+                                            value=""/>
+
+                                        <!-- Hidden lat/lng -->
+                                        <input type="hidden" name="lat_{{ $product->id }}" id="lat{{ $product->id }}_{{ $branch->id }}">
+                                        <input type="hidden" name="lng_{{ $product->id }}" id="lng{{ $product->id }}_{{ $branch->id }}">
+                                    </div>
+                                </div>
+                            @endif
+                        @endforeach
+                    </div>
+                    <!-- Location End -->
+
+                    <!-- Toppings Start-->
+                    @if(isset($product->category) && $product->category && $product->category->isNotEmpty())
+                        @foreach ($product->category as $index => $category)
+                            @if(isset($category->getCategory))
+                            <div class="description p-3">
+                                <div class="arrow" style="cursor: pointer"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#toppingFull{{ $index }}{{ $category->id }}">
+                                    <div class="d-flex justify-content-between">
+                                        <h6 class="m-0">{{ $category->getCategory->name ?? '' }}</h6>
+                                        <h6 class="fw-normal m-0 d-flex align-items-center">
+                                            Optional
+                                            <span class="h5 m-0 p-0 ri-arrow-up-s-line"></span>
+                                        </h6>
+                                    </div>
+                                </div>
+                                <div class="collapse show"
+                                    id="toppingFull{{ $index }}{{ $category->id }}">
+                                    @php
+                                        $categoryToppings = App\Models\CategoryTopping::where(
+                                            'category_id',
+                                            $category->getCategory->id ?? 0,
+                                        )->get();
+                                    @endphp
+                                    @foreach ($categoryToppings as $categoryTopping)
+                                        @if(isset($categoryTopping->topping))
+                                        <div class="d-flex justify-content-between">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox"
+                                                    name="toppings[]"
+                                                    id="toppingchekFull{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}"
+                                                    value="{{ $categoryTopping->topping->id }}"
+                                                    data-category-id="{{ $category->getCategory->id ?? 0 }}">
+                                                <label class="form-check-label m-0"
+                                                    for="toppingchekFull{{ $index }}{{ $category->id }}{{ $categoryTopping->topping->id }}">
+                                                    {{ $categoryTopping->topping->name ?? '' }}
+                                                </label>
+                                            </div>
+                                            <p class="m-0">
+                                                {{ isset($categoryTopping->topping->price) ? '£' . $categoryTopping->topping->price : '' }}
+                                            </p>
+                                        </div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
+                        @endforeach
+                    @endif
+                    <!-- Toppings End -->
                 </div>
+                <div class="modal-footer position-relative px-2">
+                    <button type="button"
+                        style="font-size: 24px;position: absolute;left: 0;width: 30px;height: 30px;display: flex;justify-content: center;align-items: center"
+                        class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
+                        data-bs-dismiss="modal"></button>
+                    <div class="text-center mx-auto">
+                        <button class="btn btn-danger addto-cart px-sm-5 px-4"
+                            data-bs-dismiss="modal">Add To Order</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 <script>
@@ -519,7 +536,7 @@ $(document).ready(function(){
         input.val(qty);
 
         let data = $(this).data('product-id').split(',');
-        updateServerCart(data[0].trim(), data[1]?.trim(), qty);
+        if(data[0]) updateServerCart(data[0].trim(), data[1]?.trim(), qty);
         let price = parseFloat($(this).closest('.carting-child').find('.product-price').text());
         $(this).closest('.carting-child').find('.total-price').text('£'+(price*qty).toFixed(2));
         helper();
@@ -531,7 +548,7 @@ $(document).ready(function(){
         if(qty>1){ 
             qty--; input.val(qty);
             let data = $(this).data('product-id').split(',');
-            updateServerCart(data[0].trim(), data[1]?.trim(), qty);
+            if(data[0]) updateServerCart(data[0].trim(), data[1]?.trim(), qty);
             let price = parseFloat($(this).closest('.carting-child').find('.product-price').text());
             $(this).closest('.carting-child').find('.total-price').text('£'+(price*qty).toFixed(2));
             helper();
@@ -541,132 +558,144 @@ $(document).ready(function(){
     helper();
 });
 </script>
+
 @if (url()->current() !== url('/'))
 <script async defer 
 src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&callback=initAllAutocomplete">
 </script>
-    <script>
-                $('.addto-cart').on('click', function() {
-            var modal = $(this).closest('.food-modal');
-            var complementry_id = modal.find('input[name="complementary_id"]').length 
-                ? modal.find('input[name="complementary_id"]').val() 
-                : null;
-                
-            var productId = $(this).closest('.food-modal').find('input[name="product_id"]').val();
-            var quantity = $(this).closest('.food-modal').find('input[name="quantity"]').val();
-            var isLocationChecked = $(this).closest('.food-modal').find('input[name="location"]:checked').length > 0;
-            var branchId = isLocationChecked ? $(this).closest('.food-modal').find('input[name="branch_id"]').val() : '';
-            var variantId = '';
+<script>
+    $('.addto-cart').on('click', function() {
+        var modal = $(this).closest('.food-modal');
+        var complementry_id = modal.find('input[name="complementary_id"]').length 
+            ? modal.find('input[name="complementary_id"]').val() 
+            : null;
+            
+        var productId = $(this).closest('.food-modal').find('input[name="product_id"]').val();
+        if(!productId) {
+            toastr.error('Product not found');
+            return;
+        }
+        
+        var quantity = $(this).closest('.food-modal').find('input[name="quantity"]').val();
+        var isLocationChecked = $(this).closest('.food-modal').find('input[name="location"]:checked').length > 0;
+        var branchId = isLocationChecked ? $(this).closest('.food-modal').find('input[name="branch_id"]').val() : '';
+        var variantId = '';
 
-            var deliveryStatus = $(this).closest('.food-modal').find('input[name^="status_' + productId + '"]:checked').val();
-            var deliveryAddress = '';
-            // alert(deliveryStatus);
-            // return;
-            if (deliveryStatus == '2') {
-                deliveryAddress = $(this).closest('.food-modal').find('input[name="delivery_address_' + productId + '"]').val();
-                if (!deliveryAddress) {
-                    toastr.error('Please enter delivery address');
-                    return;
-                }
-            }
-
-            var lat = '';
-            var lng = '';
-            if (deliveryStatus == '2') {
-                lat = $(this).closest('.food-modal').find('input[name="lat_' + productId + '"]').val();
-                lng = $(this).closest('.food-modal').find('input[name="lng_' + productId + '"]').val();
-            }
-            if(lat == '' || lng == '') {
-                toastr.error('Please select a valid delivery address from suggestions');
+        var deliveryStatus = $(this).closest('.food-modal').find('input[name^="status_' + productId + '"]:checked').val();
+        var deliveryAddress = '';
+        
+        if (deliveryStatus == '2') {
+            deliveryAddress = $(this).closest('.food-modal').find('input[name="delivery_address_' + productId + '"]').val();
+            if (!deliveryAddress) {
+                toastr.error('Please enter delivery address');
                 return;
             }
+        }
 
-            var variantSelect = $(this).closest('.food-modal').find('select[name="variant_id"]');
-            if (variantSelect.length > 0) {
-                variantId = variantSelect.val().split(' ')[0];
+        var lat = '';
+        var lng = '';
+        if (deliveryStatus == '2') {
+            lat = $(this).closest('.food-modal').find('input[name="lat_' + productId + '"]').val();
+            lng = $(this).closest('.food-modal').find('input[name="lng_' + productId + '"]').val();
+        }
+        if(deliveryStatus == '2' && (lat == '' || lng == '')) {
+            toastr.error('Please select a valid delivery address from suggestions');
+            return;
+        }
+
+        var variantSelect = $(this).closest('.food-modal').find('select[name="variant_id"]');
+        if (variantSelect.length > 0) {
+            var variantValue = variantSelect.val();
+            if(variantValue) variantId = variantValue.split(' ')[0];
+        }
+
+        var selectedToppingsByCategory = {};
+
+        $(this).closest('.food-modal').find('input[name="toppings[]"]:checked').each(function() {
+            var categoryId = $(this).data('category-id');
+            var toppingId = $(this).val();
+
+            if (!selectedToppingsByCategory.hasOwnProperty(categoryId)) {
+                selectedToppingsByCategory[categoryId] = [];
             }
 
-            var selectedToppingsByCategory = {};
-
-            $(this).closest('.food-modal').find('input[name="toppings[]"]:checked').each(function() {
-                var categoryId = $(this).data('category-id');
-                var toppingId = $(this).val();
-
-                if (!selectedToppingsByCategory.hasOwnProperty(categoryId)) {
-                    selectedToppingsByCategory[categoryId] = [];
-                }
-
-                selectedToppingsByCategory[categoryId].push(toppingId);
-            });
-
-            var toppingsArray = Object.entries(selectedToppingsByCategory).map(([categoryId, toppings]) => {
-                return {
-                    category_id: categoryId,
-                    toppings: toppings
-                };
-            });
-
-            $.ajax({
-                type: 'POST',
-                url: '{{ route('add.to.cart') }}',
-                data: {
-                    '_token': '{{ csrf_token() }}',
-                    'product_id': productId,
-                    'quantity': quantity,
-                    'branch_id': branchId,
-                    'toppings_by_category': toppingsArray,
-                    'location': isLocationChecked,
-                    'variant_id': variantId,
-                    'delivery_status': deliveryStatus,
-                    'delivery_address': deliveryAddress,
-                    'lat': lat,
-                    'lng': lng,
-                    'complementary_id': complementry_id
-                },
-                success: function(data) {
-                    toastr.success('Product Added To Cart Successfully!');
-                    // location.reload();
-                    $('.cart-counter-1').text(Object.keys(data.cart).length);
-                    updateCartUI(data);
-                },
-                error: function(error) {
-                    console.error('Error adding product to cart:', error);
-                }
-            });
+            selectedToppingsByCategory[categoryId].push(toppingId);
         });
-        function toggleDelivery(productId, branchUnique) {
-            const pickupRadio = document.getElementById(`pickupStatus${productId}_${branchUnique}`);
-            const homeRadio = document.getElementById(`homeStatus${productId}_${branchUnique}`);
-            const pickupSection = document.getElementById(`storePickupSection${productId}_${branchUnique}`);
-            const deliveryField = document.getElementById(`deliveryAddressField${productId}_${branchUnique}`);
 
-            if (homeRadio.checked) {
-                pickupSection.style.display = 'none';
-                deliveryField.style.display = 'block';
-            } else if (pickupRadio.checked) {
-                pickupSection.style.display = 'block';
+        var toppingsArray = Object.entries(selectedToppingsByCategory).map(([categoryId, toppings]) => {
+            return {
+                category_id: categoryId,
+                toppings: toppings
+            };
+        });
+
+        $.ajax({
+            type: 'POST',
+            url: '{{ route("add.to.cart") }}',
+            data: {
+                '_token': '{{ csrf_token() }}',
+                'product_id': productId,
+                'quantity': quantity,
+                'branch_id': branchId,
+                'toppings_by_category': toppingsArray,
+                'location': isLocationChecked,
+                'variant_id': variantId,
+                'delivery_status': deliveryStatus,
+                'delivery_address': deliveryAddress,
+                'lat': lat,
+                'lng': lng,
+                'complementary_id': complementry_id
+            },
+            success: function(data) {
+                toastr.success('Product Added To Cart Successfully!');
+                $('.cart-counter-1').text(Object.keys(data.cart).length);
+                if(typeof updateCartUI === 'function') updateCartUI(data);
+            },
+            error: function(error) {
+                console.error('Error adding product to cart:', error);
+                toastr.error('Error adding product to cart');
+            }
+        });
+    });
+    
+    function toggleDelivery(productId, branchUnique) {
+        const pickupRadio = document.getElementById(`pickupStatus${productId}_${branchUnique}`);
+        const homeRadio = document.getElementById(`homeStatus${productId}_${branchUnique}`);
+        const pickupSection = document.getElementById(`storePickupSection${productId}_${branchUnique}`);
+        const deliveryField = document.getElementById(`deliveryAddressField${productId}_${branchUnique}`);
+
+        if (homeRadio && homeRadio.checked) {
+            if(pickupSection) pickupSection.style.display = 'none';
+            if(deliveryField) deliveryField.style.display = 'block';
+        } else if (pickupRadio && pickupRadio.checked) {
+            if(pickupSection) pickupSection.style.display = 'block';
+            if(deliveryField) {
                 deliveryField.style.display = 'none';
-                deliveryField.querySelector('input').value = '';
+                var input = deliveryField.querySelector('input');
+                if(input) input.value = '';
             }
         }
-        window.initAllAutocomplete = function () {
-            console.log("Google Loaded ✅");
-            bindAutocomplete();
+    }
+    
+    window.initAllAutocomplete = function () {
+        console.log("Google Loaded ✅");
+        bindAutocomplete();
 
-            document.addEventListener('shown.bs.modal', function (event) {
-                bindAutocomplete(event.target);
-            });
-        };
+        document.addEventListener('shown.bs.modal', function (event) {
+            bindAutocomplete(event.target);
+        });
+    };
 
     function bindAutocomplete(container = document) {
-
+        if(!container.querySelectorAll) return;
+        
         container.querySelectorAll('.location-input').forEach(input => {
-
             if (input.dataset.autocompleteInit === "1") return;
             input.dataset.autocompleteInit = "1";
 
             const productId = input.dataset.product;
             const branchId = input.dataset.branch;
+            if(!productId || !branchId) return;
 
             let isSelectedFromList = false;
 
@@ -678,46 +707,34 @@ src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4R
 
             const latField = document.getElementById(`lat${productId}_${branchId}`);
             const lngField = document.getElementById(`lng${productId}_${branchId}`);
+            if(!latField || !lngField) return;
 
-            // 👉 Reset when typing
             input.addEventListener('input', function () {
                 isSelectedFromList = false;
-                latField.value = '';
-                lngField.value = '';
+                if(latField) latField.value = '';
+                if(lngField) lngField.value = '';
             });
 
-            // 👉 Detect selection
             autocomplete.addListener('place_changed', function () {
                 const place = autocomplete.getPlace();
-
                 if (!place.geometry) return;
-
                 isSelectedFromList = true;
-
-                latField.value = place.geometry.location.lat();
-                lngField.value = place.geometry.location.lng();
+                if(latField) latField.value = place.geometry.location.lat();
+                if(lngField) lngField.value = place.geometry.location.lng();
             });
 
-            // 👉 FIXED BLUR LOGIC
             input.addEventListener('blur', function () {
                 setTimeout(() => {
-
-                    // agar lat/lng aa chuki hai → valid hai
-                    if (latField.value && lngField.value) {
+                    if (latField && latField.value && lngField && lngField.value) {
                         return;
                     }
-
-                    // warna invalid
                     input.value = '';
-                    latField.value = '';
-                    lngField.value = '';
-
+                    if(latField) latField.value = '';
+                    if(lngField) lngField.value = '';
                     alert("Please select a location from suggestions only.");
-
-                }, 300); // ⬅️ thoda zyada delay
+                }, 300);
             });
-
         });
     }
-    </script>
+</script>
 @endif

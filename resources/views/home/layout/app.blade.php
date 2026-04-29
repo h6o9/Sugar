@@ -57,21 +57,23 @@
         </div>
     </div>
 
+    <!-- CSS Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    
     <!-- JavaScript Libraries -->
-    <script src="{{ asset('https://code.jquery.com/jquery-3.4.1.min.js') }}"></script>
-    <script src="{{ asset('https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.34/moment-timezone-with-data.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.39.0/js/tempusdominus-bootstrap-4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/1.6.14/js/lightgallery-all.min.js"></script>
+    <script src='https://www.google.com/recaptcha/api.js'></script>
     {{-- <script src="{{ asset('public/lib/wow/wow.min.js') }}"></script> --}}
     <script src="{{ asset('public/lib/easing/easing.min.js') }}"></script>
     <script src="{{ asset('public/lib/waypoints/waypoints.min.js') }}"></script>
     <script src="{{ asset('public/lib/counterup/counterup.min.js') }}"></script>
     <script src="{{ asset('public/lib/owlcarousel/owl.carousel.min.js') }}"></script>
-    <script src="{{ asset('public/lib/tempusdominus/js/moment.min.js') }}"></script>
-    <script src="{{ asset('public/lib/tempusdominus/js/moment-timezone.min.js') }}"></script>
-    <script src="{{ asset('public/lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js') }}"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightgallery/1.6.14/js/lightgallery-all.min.js"></script>
-    <script src="{{ asset('public/admin/assets/toastr/js/toastr.min.js') }}"></script>
-    <script src='https://www.google.com/recaptcha/api.js'></script>
-	<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
 
 

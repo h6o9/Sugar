@@ -23,11 +23,11 @@ use Illuminate\Support\Facades\Session;
 
 class HomeController extends Controller
 {
-   public function index()
+public function index()
 {
     $user = Auth::user();
 
-    $products = Product::with(['variants','category','complementaryProduct.complementary'])
+    $products = Product::with(['variants', 'category', 'complementaryProductSingle.complementary'])
         ->where('status', 1)
         ->where('is_featured', 1)
         ->orderBy('id', 'DESC')
@@ -36,10 +36,9 @@ class HomeController extends Controller
     // Set default price for products with variants
     foreach ($products as $product) {
         if ($product->variants && $product->variants->count() > 0) {
-            // Try to find 'regular' variant first, otherwise use first variant with price
             $regularVariant = $product->variants->where('size', 'regular')->first();
             $firstVariantWithPrice = $product->variants->where('price', '>', 0)->first();
-            
+
             if ($regularVariant && $regularVariant->price > 0) {
                 $product->default_price = $regularVariant->price;
             } elseif ($firstVariantWithPrice) {
@@ -52,7 +51,7 @@ class HomeController extends Controller
         }
     }
 
-		$ciboExpressItems = \App\Models\CiboExpress::all();
+    $ciboExpressItems = \App\Models\CiboExpress::all();
 
     $menuCategories = Menu::with(['products' => function ($query) {
         $query->where('status', 1);
@@ -62,16 +61,15 @@ class HomeController extends Controller
 
         $menuproduct = Product::where('menu_id', $menu->id)
             ->where('status', 1)
-            ->with(['variants','complementaryProduct.complementary'])
+            ->with(['variants', 'complementaryProductSingle.complementary'])
             ->get();
 
         // Set default price for menu products with variants
         foreach ($menuproduct as $product) {
             if ($product->variants && $product->variants->count() > 0) {
-                // Try to find 'regular' variant first, otherwise use first variant with price
                 $regularVariant = $product->variants->where('size', 'regular')->first();
                 $firstVariantWithPrice = $product->variants->where('price', '>', 0)->first();
-                
+
                 if ($regularVariant && $regularVariant->price > 0) {
                     $product->default_price = $regularVariant->price;
                 } elseif ($firstVariantWithPrice) {
@@ -97,7 +95,7 @@ class HomeController extends Controller
     $timeSlots = TimeSlot::all();
 
     $menuGalleries = MenuGallery::orderBy('id', 'DESC')->take(4)->get();
-    // return $products;
+
     return view('home.index', compact(
         'products',
         'branches',
@@ -109,7 +107,6 @@ class HomeController extends Controller
         'ciboExpressItems'
     ));
 }
-
     public function getmenuPicture()
     {
         $menuGalleries = MenuGallery::orderBy('id', 'DESC')->get();

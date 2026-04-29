@@ -401,7 +401,7 @@ class OrderController extends Controller
                 $orderItem = new OrderItem();
                 $orderItem->order_id = $orderId;
                 $orderItem->product_id = $details['product_id'];
-                $orderItem->product_complementary_id = $details['complementary']['product_id'] ?? null;
+                $orderItem->product_complementary_id = $details['complementary']['id'] ?? null;
                 $orderItem->product_size = $details['size'] ?? 'NULL';
                 $orderItem->product_price = $details['price'];
                 $orderItem->branch_id = $details['branch_id'];
@@ -571,7 +571,7 @@ public function stripeSuccess()
                 $orderItem = new OrderItem();
                 $orderItem->order_id = $orderId;
                 $orderItem->product_id = $details['product_id'];
-                $orderItem->product_complementary_id = $details['complementary']['product_id'] ?? null;
+                $orderItem->product_complementary_id = $details['complementary']['id'] ?? null;
                 $orderItem->product_size = $details['size'] ?? 'NULL';
                 $orderItem->product_price = $details['price'];
                 $orderItem->branch_id = $details['branch_id'];

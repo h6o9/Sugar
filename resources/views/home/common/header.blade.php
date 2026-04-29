@@ -650,6 +650,12 @@ src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4R
                 toastr.success('Product Added To Cart Successfully!');
                 $('.cart-counter-1').text(Object.keys(data.cart).length);
                 if(typeof updateCartUI === 'function') updateCartUI(data);
+                // Enable/disable Continue To Cart button based on cart items
+                if (Object.keys(data.cart).length > 0) {
+                    $('.btn[href*="my-cart"]').removeClass('disabled').prop('disabled', false);
+                } else {
+                    $('.btn[href*="my-cart"]').addClass('disabled').prop('disabled', true);
+                }
             },
             error: function(error) {
                 console.error('Error adding product to cart:', error);

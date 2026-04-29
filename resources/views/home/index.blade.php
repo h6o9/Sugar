@@ -281,9 +281,9 @@
                                     Ardwick,, Manchester, EMEA M12 6AE</p>
                                 <p class="small text-dark">Sugar Pappi in Chorltonne upon Medlock, Manchester, is a dessert
                                     spot that enjoys a high customer rating of 4.8. The menu features an array of hot desserts such as Sticky Toffee
-                                    Pudding and Apple Crumble, alongside creative options like the ‘Make Your Own Waffle’
-                                    and ‘Kinderlicious Cookie Dough’. For those seeking a unique treat, the ‘Mixed Tango Ice
-                                    Blast’ is a popular choice among patrons. This restaurant is particularly favoured for
+                                    Pudding and Apple Crumble, alongside creative options like the 'Make Your Own Waffle'
+                                    and 'Kinderlicious Cookie Dough'. For those seeking a unique treat, the 'Mixed Tango Ice
+                                    Blast' is a popular choice among patrons. This restaurant is particularly favoured for
                                     late-night dessert cravings, offering a diverse range of sweets that also includes a variety of
                                     mocktails and specialty teas.</p>
                             </div>
@@ -359,25 +359,52 @@
         <!-- Food Modal Start -->
         @foreach ($products as $product)
         @php
-            $originalPrice = $product->original_price ?? $product->price;
-            $finalPrice = $product->price;
+            $hasVariants = $product->variants && $product->variants->count() > 0;
+
+            // Get first variant price (regular variant preferred)
+            $firstVariantPrice = 0;
+            $firstVariantOriginalPrice = 0;
+            if ($hasVariants) {
+                // Try to find regular variant first
+                $regularVariant = $product->variants->where('size', 'regular')->first();
+                if ($regularVariant && $regularVariant->price > 0) {
+                    $firstVariantPrice = $regularVariant->price;
+                    $firstVariantOriginalPrice = $regularVariant->original_price ?? $regularVariant->price;
+                } else {
+                    // Fallback to first variant with price > 0
+                    $firstVariant = $product->variants->where('price', '>', 0)->first();
+                    $firstVariantPrice = $firstVariant ? $firstVariant->price : 0;
+                    $firstVariantOriginalPrice = $firstVariant ? ($firstVariant->original_price ?? $firstVariant->price) : 0;
+                }
+            }
+
             $discountPercent = 0;
             $hasDiscount = false;
 
-            if ($product->featured_action == 'decrease' && $product->original_price && $product->original_price > $product->price) {
-                $hasDiscount = true;
-                if ($product->featured_method == 'percentage') {
-                    $discountPercent = (int) $product->featured_amount;
+            if ($product->featured_action == 'decrease') {
+                if ($hasVariants) {
+                    if ($firstVariantOriginalPrice > 0 && $firstVariantOriginalPrice > $firstVariantPrice) {
+                        $hasDiscount = true;
+                        if ($product->featured_method == 'percentage' && $product->featured_amount) {
+                            $discountPercent = (int) $product->featured_amount;
+                        } else {
+                            $discountPercent = (int) round((($firstVariantOriginalPrice - $firstVariantPrice) / $firstVariantOriginalPrice) * 100);
+                        }
+                    }
+                } else {
+                    if ($product->original_price && $product->original_price > $product->price) {
+                        $hasDiscount = true;
+                        if ($product->featured_method == 'percentage') {
+                            $discountPercent = (int) $product->featured_amount;
+                        }
+                    }
                 }
             }
-            $comp = optional($product->complementaryProduct);
-            
-            // Get first variant price for display
-            $firstVariantPrice = 0;
-            if ($product->variants && $product->variants->count() > 0) {
-                $firstVariant = $product->variants->where('price', '>', 0)->first();
-                $firstVariantPrice = $firstVariant ? $firstVariant->price : 0;
-            }
+
+            $originalPrice = $hasVariants ? $firstVariantOriginalPrice : ($product->original_price ?? $product->price);
+            $finalPrice    = $hasVariants ? $firstVariantPrice : $product->price;
+
+            $comp = optional($product->complementaryProductSingle);
         @endphp
         <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
             <div class="modal fade menu-modal" id="menuModal-{{ $product->id }}" tabindex="-1"
@@ -417,13 +444,20 @@
                                         </p>
                                     @else
                                         <p class="price-display">
+                                            {{-- FIX: variant original price strikethrough --}}
+                                            <span class="text-muted text-decoration-line-through d-block variant-original-price"
+                                                @if(!($firstVariantOriginalPrice > 0 && $firstVariantOriginalPrice > $firstVariantPrice)) style="display:none!important" @endif>
+                                                £{{ number_format($firstVariantOriginalPrice, 2) }}
+                                            </span>
                                             £ <span class="prodPrice">{{ number_format($firstVariantPrice, 2) }}</span>
                                         </p>
                                     @endif
 
                                     <select class="form-control bg-white ps-1 select-size" name="variant_id" style="appearance: auto">
                                         @foreach ($product->variants as $variant)
-                                            <option value="{{ $variant->id }} {{ $variant->price }}" {{ $loop->first ? 'selected' : '' }}>
+                                            <option value="{{ $variant->id }} {{ $variant->price }}"
+                                                data-original="{{ $variant->original_price ?? 0 }}"
+                                                {{ $loop->first ? 'selected' : '' }}>
                                                 {{ $variant->size }} - £{{ number_format($variant->price, 2) }}
                                             </option>
                                         @endforeach
@@ -566,7 +600,7 @@
                                 class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
                                 data-bs-dismiss="modal"></button>
                             <div class="text-center mx-auto">
-                                <button class="btn btn-danger addto-cart px-sm-5 px-4" data-bs-dismiss="modal">Add To Order</button>
+                                <button class="btn btn-danger addto-cart px-sm-5 px-4">Add To Order</button>
                             </div>
                         </div>
                     </div>
@@ -586,26 +620,52 @@
                 <div class="owl-carousel popular-carousel gallery-carousel">
                     @foreach ($products as $product)
                         @php
-                            $originalPrice = $product->original_price ?? $product->price;
-                            $finalPrice = $product->price;
-                            $discountPercent = 0;
-                            $hasDiscount = false;
+                            $hasVariants = $product->variants && $product->variants->count() > 0;
 
-                            if ($product->featured_action == 'decrease' && $product->original_price && $product->original_price > $product->price) {
-                                $hasDiscount = true;
-                                if ($product->featured_method == 'percentage') {
-                                    $discountPercent = (int) $product->featured_amount;
+                            // Get first variant price (regular variant preferred)
+                            $minVariantPrice = 0;
+                            $minVariantOriginalPrice = 0;
+                            if ($hasVariants) {
+                                // Try to find regular variant first
+                                $regularVariant = $product->variants->where('size', 'regular')->first();
+                                if ($regularVariant && $regularVariant->price > 0) {
+                                    $minVariantPrice = $regularVariant->price;
+                                    $minVariantOriginalPrice = $regularVariant->original_price ?? $regularVariant->price;
+                                } else {
+                                    // Fallback to first variant with price > 0
+                                    $firstVariant = $product->variants->where('price', '>', 0)->first();
+                                    $minVariantPrice = $firstVariant ? $firstVariant->price : 0;
+                                    $minVariantOriginalPrice = $firstVariant ? ($firstVariant->original_price ?? $firstVariant->price) : 0;
                                 }
                             }
 
-                            $comp = optional($product->complementaryProduct);
-                            
-                            // Get first variant price
-                            $minVariantPrice = 0;
-                            if ($product->variants && $product->variants->count() > 0) {
-                                $firstVariant = $product->variants->where('price', '>', 0)->first();
-                                $minVariantPrice = $firstVariant ? $firstVariant->price : 0;
+                            $discountPercent = 0;
+                            $hasDiscount = false;
+
+                            if ($product->featured_action == 'decrease') {
+                                if ($hasVariants) {
+                                    if ($minVariantOriginalPrice > 0 && $minVariantOriginalPrice > $minVariantPrice) {
+                                        $hasDiscount = true;
+                                        if ($product->featured_method == 'percentage' && $product->featured_amount) {
+                                            $discountPercent = (int) $product->featured_amount;
+                                        } else {
+                                            $discountPercent = (int) round((($minVariantOriginalPrice - $minVariantPrice) / $minVariantOriginalPrice) * 100);
+                                        }
+                                    }
+                                } else {
+                                    if ($product->original_price && $product->original_price > $product->price) {
+                                        $hasDiscount = true;
+                                        if ($product->featured_method == 'percentage') {
+                                            $discountPercent = (int) $product->featured_amount;
+                                        }
+                                    }
+                                }
                             }
+
+                            $originalPrice = $hasVariants ? $minVariantOriginalPrice : ($product->original_price ?? $product->price);
+                            $finalPrice    = $hasVariants ? $minVariantPrice : $product->price;
+
+                            $comp = optional($product->complementaryProductSingle);
                         @endphp
 
                         <div class="item">
@@ -730,26 +790,52 @@
                                     <div class="row g-4">
                                         @foreach ($menuCat->product as $prod)
                                             @php
-                                                $originalPrice = $prod->original_price ?? $prod->price;
-                                                $finalPrice = $prod->price;
+                                                $hasVariants = $prod->variants && $prod->variants->count() > 0;
+
+                                                // Get first variant price (regular variant preferred)
+                                                $minVariantPrice = 0;
+                                                $minVariantOriginalPrice = 0;
+                                                if ($hasVariants) {
+                                                    // Try to find regular variant first
+                                                    $regularVariant = $prod->variants->where('size', 'regular')->first();
+                                                    if ($regularVariant && $regularVariant->price > 0) {
+                                                        $minVariantPrice = $regularVariant->price;
+                                                        $minVariantOriginalPrice = $regularVariant->original_price ?? $regularVariant->price;
+                                                    } else {
+                                                        // Fallback to first variant with price > 0
+                                                        $firstVariant = $prod->variants->where('price', '>', 0)->first();
+                                                        $minVariantPrice = $firstVariant ? $firstVariant->price : 0;
+                                                        $minVariantOriginalPrice = $firstVariant ? ($firstVariant->original_price ?? $firstVariant->price) : 0;
+                                                    }
+                                                }
+
                                                 $discountPercent = 0;
                                                 $hasDiscount = false;
 
-                                                if ($prod->featured_action == 'decrease' && $prod->original_price && $prod->original_price > $prod->price) {
-                                                    $hasDiscount = true;
-                                                    if ($prod->featured_method == 'percentage') {
-                                                        $discountPercent = (int) $prod->featured_amount;
+                                                if ($prod->featured_action == 'decrease') {
+                                                    if ($hasVariants) {
+                                                        if ($minVariantOriginalPrice > 0 && $minVariantOriginalPrice > $minVariantPrice) {
+                                                            $hasDiscount = true;
+                                                            if ($prod->featured_method == 'percentage' && $prod->featured_amount) {
+                                                                $discountPercent = (int) $prod->featured_amount;
+                                                            } else {
+                                                                $discountPercent = (int) round((($minVariantOriginalPrice - $minVariantPrice) / $minVariantOriginalPrice) * 100);
+                                                            }
+                                                        }
+                                                    } else {
+                                                        if ($prod->original_price && $prod->original_price > $prod->price) {
+                                                            $hasDiscount = true;
+                                                            if ($prod->featured_method == 'percentage') {
+                                                                $discountPercent = (int) $prod->featured_amount;
+                                                            }
+                                                        }
                                                     }
                                                 }
-                                                
-                                                $comp = optional($prod->complementaryProduct);
-                                                
-                                                // Get first variant price
-                                                $minVariantPrice = 0;
-                                                if ($prod->variants && $prod->variants->count() > 0) {
-                                                    $firstVariant = $prod->variants->where('price', '>', 0)->first();
-                                                    $minVariantPrice = $firstVariant ? $firstVariant->price : 0;
-                                                }
+
+                                                $originalPrice = $hasVariants ? $minVariantOriginalPrice : ($prod->original_price ?? $prod->price);
+                                                $finalPrice    = $hasVariants ? $minVariantPrice : $prod->price;
+
+                                                $comp = optional($prod->complementaryProductSingle);
                                             @endphp
                                             
                                             <div class="col-xl-3 col-lg-4 col-md-6">
@@ -885,25 +971,52 @@
                 @if ($menuCat->product && $menuCat->product->isNotEmpty())
                     @foreach ($menuCat->product as $prod)
                     @php
-                        $originalPrice = $prod->original_price ?? $prod->price;
-                        $finalPrice = $prod->price;
+                        $hasVariants = $prod->variants && $prod->variants->count() > 0;
+
+                        // Get first variant price (regular variant preferred)
+                        $firstVariantPrice = 0;
+                        $firstVariantOriginalPrice = 0;
+                        if ($hasVariants) {
+                            // Try to find regular variant first
+                            $regularVariant = $prod->variants->where('size', 'regular')->first();
+                            if ($regularVariant && $regularVariant->price > 0) {
+                                $firstVariantPrice = $regularVariant->price;
+                                $firstVariantOriginalPrice = $regularVariant->original_price ?? $regularVariant->price;
+                            } else {
+                                // Fallback to first variant with price > 0
+                                $firstVariant = $prod->variants->where('price', '>', 0)->first();
+                                $firstVariantPrice = $firstVariant ? $firstVariant->price : 0;
+                                $firstVariantOriginalPrice = $firstVariant ? ($firstVariant->original_price ?? $firstVariant->price) : 0;
+                            }
+                        }
+
                         $discountPercent = 0;
                         $hasDiscount = false;
 
-                        if ($prod->featured_action == 'decrease' && $prod->original_price && $prod->original_price > $prod->price) {
-                            $hasDiscount = true;
-                            if ($prod->featured_method == 'percentage') {
-                                $discountPercent = (int) $prod->featured_amount;
+                        if ($prod->featured_action == 'decrease') {
+                            if ($hasVariants) {
+                                if ($firstVariantOriginalPrice > 0 && $firstVariantOriginalPrice > $firstVariantPrice) {
+                                    $hasDiscount = true;
+                                    if ($prod->featured_method == 'percentage' && $prod->featured_amount) {
+                                        $discountPercent = (int) $prod->featured_amount;
+                                    } else {
+                                        $discountPercent = (int) round((($firstVariantOriginalPrice - $firstVariantPrice) / $firstVariantOriginalPrice) * 100);
+                                    }
+                                }
+                            } else {
+                                if ($prod->original_price && $prod->original_price > $prod->price) {
+                                    $hasDiscount = true;
+                                    if ($prod->featured_method == 'percentage') {
+                                        $discountPercent = (int) $prod->featured_amount;
+                                    }
+                                }
                             }
                         }
-                        $comp = optional($prod->complementaryProduct);
-                        
-                        // Get first variant price
-                        $firstVariantPrice = 0;
-                        if ($prod->variants && $prod->variants->count() > 0) {
-                            $firstVariant = $prod->variants->where('price', '>', 0)->first();
-                            $firstVariantPrice = $firstVariant ? $firstVariant->price : 0;
-                        }
+
+                        $originalPrice = $hasVariants ? $firstVariantOriginalPrice : ($prod->original_price ?? $prod->price);
+                        $finalPrice    = $hasVariants ? $firstVariantPrice : $prod->price;
+
+                        $comp = optional($prod->complementaryProductSingle);
                     @endphp
 
                     <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
@@ -946,13 +1059,20 @@
                                                     </p>
                                                 @else
                                                     <p class="price-display">
+                                                        {{-- FIX: variant original price strikethrough --}}
+                                                        <span class="text-muted text-decoration-line-through d-block variant-original-price"
+                                                            @if(!($firstVariantOriginalPrice > 0 && $firstVariantOriginalPrice > $firstVariantPrice)) style="display:none!important" @endif>
+                                                            £{{ number_format($firstVariantOriginalPrice, 2) }}
+                                                        </span>
                                                         £ <span class="prodPrice">{{ number_format($firstVariantPrice, 2) }}</span>
                                                     </p>
                                                 @endif
 
                                                 <select class="form-control bg-white ps-1 select-size" name="variant_id" style="appearance: auto">
                                                     @foreach ($prod->variants as $variant)
-                                                        <option value="{{ $variant->id }} {{ $variant->price }}" {{ $loop->first ? 'selected' : '' }}>
+                                                        <option value="{{ $variant->id }} {{ $variant->price }}"
+                                                            data-original="{{ $variant->original_price ?? 0 }}"
+                                                            {{ $loop->first ? 'selected' : '' }}>
                                                             {{ $variant->size }} - £{{ number_format($variant->price, 2) }}
                                                         </option>
                                                     @endforeach
@@ -1098,7 +1218,7 @@
                                             class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
                                             data-bs-dismiss="modal"></button>
                                         <div class="text-center mx-auto">
-                                            <button class="btn btn-danger addto-cart px-sm-5 px-4" data-bs-dismiss="modal">Add To Order</button>
+                                            <button class="btn btn-danger addto-cart px-sm-5 px-4">Add To Order</button>
                                         </div>
                                     </div>
                                 </div>
@@ -1113,370 +1233,322 @@
 @endsection
 
 @section('js')
-    @if (\Illuminate\Support\Facades\Session::has('message'))
-        <script>
-            toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
-        </script>
-    @endif
-    <script>
-        $(function() {
-            // When variant is selected, update price display
-            $(document).on('change', '.select-size', function() {
-                let selectedValue = $(this).val();
-                let price = selectedValue.split(' ')[1];
-                
-                if (price) {
-                    $(this).closest('.description').find('.prodPrice').text(parseFloat(price).toFixed(2));
-                }
-            });
+@if (\Illuminate\Support\Facades\Session::has('message'))
+<script>
+    toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
+</script>
+@endif
 
-            // Initialize first variant price on modal open
-            $(document).on('shown.bs.modal', '.menu-modal', function() {
-                let sizeSelect = $(this).find('.select-size');
-                if (sizeSelect.length > 0) {
-                    let initialPrice = sizeSelect.val().split(' ')[1];
-                    if (initialPrice) {
-                        $(this).find('.prodPrice').text(parseFloat(initialPrice).toFixed(2));
-                    }
-                }
-            });
+<script>
+$(function() {
 
-            $(document).on('click', 'input:radio', function() {
-                var chooseLocation = $('input[name="choosen_location"]:checked').siblings('label').find(
-                    '.branch-location').text();
-                $('.sel-location').text(chooseLocation);
-                var dataBranchId = $(this).attr('data-branch-id');
-                $('input[name="branch_id"]').val(dataBranchId);
-            });
+    // =========================================
+    // 1. VARIANT SELECT → PRICE UPDATE
+    // =========================================
+    $(document).on('change', '.select-size', function() {
+        var selectedOption = $(this).find('option:selected');
+        var parts          = $(this).val().trim().split(' ');
+        var price          = parseFloat(parts[parts.length - 1]);
+        var originalPrice  = parseFloat(selectedOption.data('original')) || 0;
+        var modalBody      = $(this).closest('.modal-body');
 
-            $(document).on('click', 'a[data-bs-toggle="modal"]', function() {
-                setTimeout(() => {
-                    $('.modal.show .loc-input').prop('checked', true);
-                }, 200);
-            })
+        // Update displayed price
+        modalBody.find('.prodPrice').text(price.toFixed(2));
 
-            $(document).on('click', '.arrow', function() {
-                let a = $(this).find('span');
-                if (a.hasClass('ri-arrow-up-s-line')) {
-                    a.removeClass('ri-arrow-up-s-line')
-                    a.addClass('ri-arrow-down-s-line');
-                } else {
-                    a.addClass('ri-arrow-up-s-line')
-                    a.removeClass('ri-arrow-down-s-line');
-                }
-            });
-        });
+        // Update strikethrough
+        var strikeEl = modalBody.find('.variant-original-price');
+        if (originalPrice > 0 && originalPrice > price) {
+            strikeEl.text('£' + originalPrice.toFixed(2)).removeAttr('style').show();
+        } else {
+            strikeEl.text('').hide();
+        }
+    });
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const incrementButtons = document.querySelectorAll('.increment');
-            const decrementButtons = document.querySelectorAll('.decrement');
+    // =========================================
+    // 2. MODAL OPEN → INIT PRICE
+    // =========================================
+    $(document).on('shown.bs.modal', '.menu-modal', function() {
+        var sizeSelect = $(this).find('.select-size');
+        if (!sizeSelect.length) return;
 
-            incrementButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const input = this.parentElement.querySelector('.cart_input');
-                    input.value = parseInt(input.value) + 1;
-                });
-            });
+        var initialOption = sizeSelect.find('option:selected');
+        var parts         = initialOption.val().trim().split(' ');
+        var price         = parseFloat(parts[parts.length - 1]);
+        var originalPrice = parseFloat(initialOption.data('original')) || 0;
 
-            decrementButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const input = this.parentElement.querySelector('.cart_input');
-                    const value = parseInt(input.value) - 1;
-                    input.value = value >= 1 ? value : 1;
-                });
-            });
-        });
+        $(this).find('.prodPrice').text(price.toFixed(2));
 
-        $('.addto-cart').on('click', function() {
-            var modal = $(this).closest('.food-modal');
-            var complementry_id = modal.find('input[name="complementary_id"]').length 
-                ? modal.find('input[name="complementary_id"]').val() 
-                : null;
-                
-            var productId = $(this).closest('.food-modal').find('input[name="product_id"]').val();
-            var quantity = $(this).closest('.food-modal').find('input[name="quantity"]').val();
-            var isLocationChecked = $(this).closest('.food-modal').find('input[name="location"]:checked').length > 0;
-            var branchId = isLocationChecked ? $(this).closest('.food-modal').find('input[name="branch_id"]').val() : '';
-            var variantId = '';
+        var strikeEl = $(this).find('.variant-original-price');
+        if (originalPrice > 0 && originalPrice > price) {
+            strikeEl.text('£' + originalPrice.toFixed(2)).removeAttr('style').show();
+        } else {
+            strikeEl.text('').hide();
+        }
+    });
 
-            var deliveryStatus = $(this).closest('.food-modal').find('input[name^="status_' + productId + '"]:checked').val();
-            var deliveryAddress = '';
-            
-            if (deliveryStatus == '2') {
-                deliveryAddress = $(this).closest('.food-modal').find('input[name="delivery_address_' + productId + '"]').val();
-                if (!deliveryAddress) {
-                    toastr.error('Please enter delivery address');
-                    return;
-                }
-            }
+    // =========================================
+    // 3. INCREMENT / DECREMENT BUTTONS
+    // =========================================
+    $(document).on('click', '.increment', function() {
+        var input = $(this).siblings('.cart_input');
+        input.val(parseInt(input.val()) + 1);
+    });
 
-            var lat = '';
-            var lng = '';
-            if (deliveryStatus == '2') {
-                lat = $(this).closest('.food-modal').find('input[name="lat_' + productId + '"]').val();
-                lng = $(this).closest('.food-modal').find('input[name="lng_' + productId + '"]').val();
-                if(lat == '' || lng == '') {
-                    toastr.error('Please select a valid delivery address from suggestions');
-                    return;
-                }
-            }
+    $(document).on('click', '.decrement', function() {
+        var input = $(this).siblings('.cart_input');
+        var val   = parseInt(input.val()) - 1;
+        input.val(val >= 1 ? val : 1);
+    });
 
-            var variantSelect = $(this).closest('.food-modal').find('select[name="variant_id"]');
-            if (variantSelect.length > 0) {
-                variantId = variantSelect.val().split(' ')[0];
-            }
+    // =========================================
+    // 4. ADD TO CART  ← MAIN FIX
+    // =========================================
+    $(document).on('click', '.addto-cart', function() {
 
-            var selectedToppingsByCategory = {};
+        var $btn   = $(this);
+        var $modal = $btn.closest('.food-modal');
 
-            $(this).closest('.food-modal').find('input[name="toppings[]"]:checked').each(function() {
-                var categoryId = $(this).data('category-id');
-                var toppingId = $(this).val();
+        // --- required fields ---
+        var productId = $modal.find('input[name="product_id"]').val();
+        var quantity  = $modal.find('input[name="quantity"]').val() || 1;
+        var branchId  = $modal.find('input[name="branch_id"]').first().val();
 
-                if (!selectedToppingsByCategory.hasOwnProperty(categoryId)) {
-                    selectedToppingsByCategory[categoryId] = [];
-                }
+        var complementaryId = $modal.find('input[name="complementary_id"]').length
+            ? $modal.find('input[name="complementary_id"]').val()
+            : null;
 
-                selectedToppingsByCategory[categoryId].push(toppingId);
-            });
-
-            var toppingsArray = Object.entries(selectedToppingsByCategory).map(([categoryId, toppings]) => {
-                return {
-                    category_id: categoryId,
-                    toppings: toppings
-                };
-            });
-
-            $.ajax({
-                type: 'POST',
-                url: '{{ route('add.to.cart') }}',
-                data: {
-                    '_token': '{{ csrf_token() }}',
-                    'product_id': productId,
-                    'quantity': quantity,
-                    'branch_id': branchId,
-                    'toppings_by_category': toppingsArray,
-                    'location': isLocationChecked,
-                    'variant_id': variantId,
-                    'delivery_status': deliveryStatus,
-                    'delivery_address': deliveryAddress,
-                    'lat': lat,
-                    'lng': lng,
-                    'complementary_id': complementry_id
-                },
-                success: function(data) {
-                    toastr.success('Product Added To Cart Successfully!');
-                    location.reload();
-                    $('.cart-counter-1').text(Object.keys(data.cart).length);
-                    updateCartUI(data);
-                },
-                error: function(error) {
-                    console.error('Error adding product to cart:', error);
-                }
-            });
-        });
-
-        function updateCartUI(data) {
-            var cartItemCount = 0;
-            var html = '';
-            jQuery.each(data['cart'], function(i, product) {
-                cartItemCount += parseInt(product.quantity);
-                html += '<div class="carting-child px-3 mt-3 d-flex justify-content-between pb-3 border-bottom" id="' + product.product_id + 'carted">';
-                html += '<img src="' + product.image +
-                    '" alt=""><div class="content"><div class="d-flex cart-input-parent justify-content-between">';
-                html += '<h6 class="m-0">' + product.name;
-                html += product.size ? ' (<span style="font-size: 12px;">' + product.size + '</span>)' : '';
-                html += '</h6><h6 class="m-0 total-price">£' + ((parseFloat(product.price) * product.quantity)
-                        .toFixed(2)) +
-                    '</h6><p class="product-price d-none">' + product.price + '</p></div>';
-                
-                html += '<div class="delivery-info mb-2">';
-                html += '<p class="small m-0 text-' + (product.delivery_status == '2' ? 'info' : 'success') + '">';
-                html += product.delivery_status == '2' ? 'Home Delivery' : 'Store Pickup';
-                html += '</p>';
-                html += '</div>';
-
-                html += '<div class="mb-2"><h6 class="m-0">Toppings</h6>';
-                if (product.toppingsName_by_categoryName) {
-                    $.each(product.toppingsName_by_categoryName, function(index, category) {
-                        html += '<div class="mb-2">';
-                        html += '<p class="category-name mb-1 fw-bold pb-1 text-black">' + category.category_name + '</p>';
-                        $.each(category.topping_names, function(i, topping) {
-                            html += '<p class="small m-0">' + topping + '</p>';
-                        });
-                        html += '</div>';
-                    });
-                }
-
-                html += '</div><div class="cart-btn">';
-                html += '<button class="btn decrement-btn p-0" data-product-id="' + product.product_id + ',' +
-                    product.variant_id +
-                    '">-</button>';
-                html += '<input type="number" name="quantity" value="' + product.quantity +
-                    '" class="increment-input cart-input cart_input text-center">';
-                html += '<button class="btn increment-btn p-0" data-product-id="' + product.product_id + ',' +
-                    product.variant_id +
-                    '">+</button>';
-                html += '<p id="' + product.product_id + '" class="d-none sibling-p"></p>';
-                html += '</div></div></div>';
-            });
-
-            $('.cart-counter-1').text(cartItemCount);
-            $('.cards-parent').html(html);
-
-            if (cartItemCount > 0) {
-                $('.button-disable').removeClass('disabled');
-            }
+        if (!productId) {
+            toastr.error('Product not found. Please try again.');
+            return;
         }
 
-        $('.updateLocationBtn').on('click', function() {
-            var selectedBranch = $('input[name="choosen_location"]:checked');
+        // --- delivery status ---
+        var deliveryStatus = $modal.find('input[name^="status_"]:checked').val() || '1';
 
-            if (selectedBranch.length === 0) {
-                alert('Please select a location before updating.');
+        // --- delivery address (only if home delivery) ---
+        var deliveryAddress = '';
+        var lat = '';
+        var lng = '';
+
+        if (deliveryStatus == '2') {
+            deliveryAddress = $modal.find('input[name="delivery_address_' + productId + '"]').val();
+            lat = $modal.find('input[name="lat_' + productId + '"]').val();
+            lng = $modal.find('input[name="lng_' + productId + '"]').val();
+
+            if (!deliveryAddress) {
+                toastr.error('Please enter delivery address');
                 return;
             }
-
-            var branchId = selectedBranch.data('branch-id');
-
-            $.ajax({
-                type: 'POST',
-                url: '{{ route('update.branch.status') }}',
-                data: {
-                    '_token': '{{ csrf_token() }}',
-                    'branch_id': branchId,
-                },
-                success: function(data) {
-                    toastr.success('Location Updated Successful');
-                    setTimeout(function() {
-                        location.reload();
-                    }, 1000);
-                },
-                error: function(error) {
-                    console.error('Error updating branch status:', error);
-                }
-            });
-        });
-
-        function scrollTabs(direction) {
-            const tabsContainer = document.querySelector('.menu-category-tabs');
-            const scrollAmount = 200;
-            const currentScroll = tabsContainer.scrollLeft;
-
-            if (direction === 'left') {
-                tabsContainer.scrollBy({
-                    left: -scrollAmount,
-                    behavior: 'smooth'
-                });
-            } else if (direction === 'right') {
-                tabsContainer.scrollBy({
-                    left: scrollAmount,
-                    behavior: 'smooth'
-                });
+            if (!lat || !lng) {
+                toastr.error('Please select a valid address from suggestions');
+                return;
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const tabsContainer = document.querySelector('.menu-category-tabs');
-            const leftBtn = document.querySelector('.tab-scroll-btn.left');
-            const rightBtn = document.querySelector('.tab-scroll-btn.right');
+        // --- variant ---
+        var variantId  = '';
+        var variantSel = $modal.find('select[name="variant_id"]');
+        if (variantSel.length) {
+            var parts = variantSel.val().trim().split(' ');
+            variantId = parts[0];
+        }
 
-            if (tabsContainer && leftBtn && rightBtn) {
-                function updateButtons() {
-                    const isScrollable = tabsContainer.scrollWidth > tabsContainer.clientWidth;
+        // --- toppings ---
+        var toppingsByCategory = {};
+        $modal.find('input[name="toppings[]"]:checked').each(function() {
+            var catId = $(this).data('category-id');
+            if (!toppingsByCategory[catId]) toppingsByCategory[catId] = [];
+            toppingsByCategory[catId].push($(this).val());
+        });
 
-                    if (!isScrollable) {
-                        leftBtn.style.display = 'none';
-                        rightBtn.style.display = 'none';
-                    } else {
-                        const isAtStart = tabsContainer.scrollLeft === 0;
-                        const isAtEnd = tabsContainer.scrollLeft + tabsContainer.clientWidth >= tabsContainer.scrollWidth - 10;
+        var toppingsArray = Object.entries(toppingsByCategory).map(function([catId, tops]) {
+            return { category_id: catId, toppings: tops };
+        });
 
-                        leftBtn.classList.toggle('disabled', isAtStart);
-                        rightBtn.classList.toggle('disabled', isAtEnd);
+        // --- disable button to prevent double click ---
+        $btn.prop('disabled', true).text('Adding...');
+
+        $.ajax({
+            type: 'POST',
+            url: '{{ route("add.to.cart") }}',
+            data: {
+                _token:               '{{ csrf_token() }}',
+                product_id:           productId,
+                quantity:             quantity,
+                branch_id:            branchId,
+                variant_id:           variantId,
+                delivery_status:      deliveryStatus,
+                delivery_address:     deliveryAddress,
+                lat:                  lat,
+                lng:                  lng,
+                complementary_id:     complementaryId,
+                location:             deliveryStatus,
+                toppings_by_category: toppingsArray,
+            },
+            success: function(response) {
+                if (response.success) {
+                    toastr.success('Product added to cart!');
+
+                    // update counter
+                    var cartCount = Object.keys(response.cart).length;
+                    $('.cart-counter-1').text(cartCount);
+
+                    // update cart UI
+                    updateCartUI(response);
+
+                    // enable cart button
+                    if (cartCount > 0) {
+                        $('.header .btn[href*="my-cart"]').removeClass('disabled').prop('disabled', false);
                     }
-                }
 
-                tabsContainer.addEventListener('scroll', updateButtons);
-                updateButtons();
+                    // close modal
+                    $btn.closest('.modal').modal('hide');
+
+                } else {
+                    toastr.error(response.message || 'Something went wrong.');
+                }
+            },
+            error: function(xhr) {
+                console.error('Cart error:', xhr.responseText);
+                toastr.error('Error: ' + (xhr.responseJSON?.message || 'Server error'));
+            },
+            complete: function() {
+                // re-enable button
+                $btn.prop('disabled', false).text('Add To Order');
             }
         });
+    });
 
-        function toggleDelivery(productId, branchUnique) {
-            const pickupRadio = document.getElementById(`pickupStatus${productId}_${branchUnique}`);
-            const homeRadio = document.getElementById(`homeStatus${productId}_${branchUnique}`);
-            const pickupSection = document.getElementById(`storePickupSection${productId}_${branchUnique}`);
-            const deliveryField = document.getElementById(`deliveryAddressField${productId}_${branchUnique}`);
+    // =========================================
+    // 5. UPDATE CART UI
+    // =========================================
+    function updateCartUI(data) {
+        var cartItemCount = 0;
+        var html = '';
 
-            if (homeRadio && homeRadio.checked) {
-                if (pickupSection) pickupSection.style.display = 'none';
-                if (deliveryField) deliveryField.style.display = 'block';
-            } else if (pickupRadio && pickupRadio.checked) {
-                if (pickupSection) pickupSection.style.display = 'block';
-                if (deliveryField) {
-                    deliveryField.style.display = 'none';
-                    deliveryField.querySelector('input').value = '';
-                }
+        $.each(data.cart, function(key, product) {
+            cartItemCount += parseInt(product.quantity);
+
+            html += '<div class="carting-child px-3 mt-3 d-flex justify-content-between pb-3 border-bottom" id="' + product.product_id + 'carted">';
+            html += '<img src="' + product.image + '" alt="">';
+            html += '<div class="content">';
+            html += '<div class="d-flex cart-input-parent justify-content-between">';
+            html += '<h6 class="m-0">' + product.name;
+            html += product.size ? ' (<span style="font-size:12px">' + product.size + '</span>)' : '';
+            html += '</h6>';
+            html += '<h6 class="m-0 total-price">£' + (parseFloat(product.price) * product.quantity).toFixed(2) + '</h6>';
+            html += '<p class="product-price d-none">' + product.price + '</p>';
+            html += '</div>';
+
+            html += '<div class="delivery-info mb-2">';
+            html += '<p class="small m-0 text-' + (product.delivery_status == '2' ? 'info' : 'success') + '">';
+            html += product.delivery_status == '2' ? 'Home Delivery' : 'Store Pickup';
+            html += '</p></div>';
+
+            html += '<div class="mb-2"><h6 class="m-0">Toppings</h6>';
+            if (product.toppingsName_by_categoryName && product.toppingsName_by_categoryName.length) {
+                $.each(product.toppingsName_by_categoryName, function(i, cat) {
+                    html += '<div class="mb-2">';
+                    html += '<p class="mb-1 fw-bold text-black">' + cat.category_name + '</p>';
+                    $.each(cat.topping_names, function(j, name) {
+                        html += '<p class="small m-0">' + name + '</p>';
+                    });
+                    html += '</div>';
+                });
             }
+            html += '</div>';
+
+            html += '<div class="cart-btn">';
+            html += '<button class="btn decrement-btn p-0" data-product-id="' + product.product_id + ',' + product.variant_id + '">-</button>';
+            html += '<input type="number" name="quantity" value="' + product.quantity + '" class="increment-input cart-input cart_input text-center">';
+            html += '<button class="btn increment-btn p-0" data-product-id="' + product.product_id + ',' + product.variant_id + '">+</button>';
+            html += '</div>';
+
+            html += '</div></div>';
+        });
+
+        $('.cart-counter-1').text(cartItemCount);
+        $('.cards-parent').html(html);
+
+        if (cartItemCount > 0) {
+            $('.button-disable').removeClass('disabled');
         }
-    </script>
-    <script async defer 
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBUMK9qFdsbuuuTMiaPHCJok4Rro91yvaE&libraries=places&callback=initAllAutocomplete">
-    </script>
-    <script>
-        window.initAllAutocomplete = function () {
-            console.log("Google Loaded ✅");
-            bindAutocomplete();
+    }
 
-            document.addEventListener('shown.bs.modal', function (event) {
-                bindAutocomplete(event.target);
-            });
-        };
-
-        function bindAutocomplete(container = document) {
-            container.querySelectorAll('.location-input').forEach(input => {
-                if (input.dataset.autocompleteInit === "1") return;
-                input.dataset.autocompleteInit = "1";
-
-                const productId = input.dataset.product;
-                const branchId = input.dataset.branch;
-
-                let isSelectedFromList = false;
-
-                const autocomplete = new google.maps.places.Autocomplete(input, {
-                    fields: ["geometry", "name"],
-                    types: ['geocode'],
-                    componentRestrictions: { country: "gb" }
-                });
-
-                const latField = document.getElementById(`lat${productId}_${branchId}`);
-                const lngField = document.getElementById(`lng${productId}_${branchId}`);
-
-                input.addEventListener('input', function () {
-                    isSelectedFromList = false;
-                    if (latField) latField.value = '';
-                    if (lngField) lngField.value = '';
-                });
-
-                autocomplete.addListener('place_changed', function () {
-                    const place = autocomplete.getPlace();
-                    if (!place.geometry) return;
-                    isSelectedFromList = true;
-                    if (latField) latField.value = place.geometry.location.lat();
-                    if (lngField) lngField.value = place.geometry.location.lng();
-                });
-
-                input.addEventListener('blur', function () {
-                    setTimeout(() => {
-                        if (latField && latField.value && lngField && lngField.value) {
-                            return;
-                        }
-                        input.value = '';
-                        if (latField) latField.value = '';
-                        if (lngField) lngField.value = '';
-                        alert("Please select a location from suggestions only.");
-                    }, 300);
-                });
-            });
+    // =========================================
+    // 6. UPDATE LOCATION BUTTON
+    // =========================================
+    $(document).on('click', '.updateLocationBtn', function() {
+        var selectedBranch = $('input[name="choosen_location"]:checked');
+        if (!selectedBranch.length) {
+            alert('Please select a location before updating.');
+            return;
         }
-    </script>
+        $.ajax({
+            type: 'POST',
+            url: '{{ route("update.branch.status") }}',
+            data: { _token: '{{ csrf_token() }}', branch_id: selectedBranch.data('branch-id') },
+            success: function() {
+                toastr.success('Location Updated Successfully');
+                setTimeout(function() { location.reload(); }, 1000);
+            },
+            error: function(err) { console.error(err); }
+        });
+    });
+
+    // =========================================
+    // 7. TAB SCROLL BUTTONS
+    // =========================================
+    window.scrollTabs = function(direction) {
+        var tabs = document.querySelector('.menu-category-tabs');
+        if (tabs) tabs.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+    };
+
+    (function initScrollBtns() {
+        var tabs     = document.querySelector('.menu-category-tabs');
+        var leftBtn  = document.querySelector('.tab-scroll-btn.left');
+        var rightBtn = document.querySelector('.tab-scroll-btn.right');
+
+        if (!tabs || !leftBtn || !rightBtn) return;
+
+        function updateBtns() {
+            var scrollable = tabs.scrollWidth > tabs.clientWidth;
+            if (!scrollable) {
+                leftBtn.style.display = rightBtn.style.display = 'none';
+                return;
+            }
+            leftBtn.classList.toggle('disabled', tabs.scrollLeft === 0);
+            rightBtn.classList.toggle('disabled', tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 10);
+        }
+
+        tabs.addEventListener('scroll', updateBtns);
+        updateBtns();
+    })();
+
+}); // end $(function)
+
+// =========================================
+// 8. TOGGLE DELIVERY
+// =========================================
+function toggleDelivery(productId, branchUnique) {
+    var pickupRadio   = document.getElementById('pickupStatus'  + productId + '_' + branchUnique);
+    var homeRadio     = document.getElementById('homeStatus'    + productId + '_' + branchUnique);
+    var pickupSection = document.getElementById('storePickupSection' + productId + '_' + branchUnique);
+    var deliveryField = document.getElementById('deliveryAddressField' + productId + '_' + branchUnique);
+
+    if (!homeRadio || !pickupRadio) return;
+
+    if (homeRadio.checked) {
+        if (pickupSection) pickupSection.style.display = 'none';
+        if (deliveryField) deliveryField.style.display = 'block';
+    } else {
+        if (pickupSection) pickupSection.style.display = 'block';
+        if (deliveryField) {
+            deliveryField.style.display = 'none';
+            var inp = deliveryField.querySelector('input[type="text"]');
+            if (inp) inp.value = '';
+        }
+    }
+}
+</script>
 @endsection

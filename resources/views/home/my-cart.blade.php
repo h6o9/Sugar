@@ -700,7 +700,6 @@
                                 <!-- Input + Button -->
                                 <div class="collapse-div mt-3 d-flex align-items-center gap-2">
                                     <span class="border border-2 px-2 py-3 d-flex align-items-center w-100">
-                                        £ 
                                         <input type="number" name="loyalty_points" id="loyaltyPointInput"
                                             class="ps-2 w-100 cart_input"
                                             placeholder="Enter points">
@@ -940,9 +939,9 @@
                 Total();
                 return;
             }
-            // Validation
+            // Validation - Using toastr instead of alert
             if (enteredPoints > availablePoints) {
-                alert('You cannot use more than available points');
+                toastr.error('You cannot use more than available points');
                 $(this).val('');
                 loyaltyRedeemAmount = 0;
                 $('.redeem-value').text('£0');
@@ -1172,7 +1171,7 @@
         var selectedTime = timeModal.find('input[name="time-radio"]:checked').val();
 
         if (!selectedTime) {
-            alert('Please select a time slot.');
+            toastr.warning('Please select a time slot.');
             return;
         }
 
@@ -1197,6 +1196,7 @@
             error: function(error) {
                 // Handle the error response, e.g., show an error message
                 console.error('Error updating time:', error);
+                toastr.error('Failed to update time. Please try again.');
             }
         });
     });
@@ -1246,11 +1246,13 @@
                     error: function(error) {
                         // Handle errors if needed
                         console.error('Error storing tip in session:', error);
+                        toastr.error('Failed to process. Please try again.');
                     }
                 });
             },
             error: function(error) {
                 console.error('Error storing selected time in session:', error);
+                toastr.error('Failed to store time. Please try again.');
             }
         });
     });
@@ -1263,7 +1265,7 @@
         var selectedBranch = $('input[name="choosen_location"]:checked');
 
         if (selectedBranch.length === 0) {
-            alert('Please select a location before updating.');
+            toastr.warning('Please select a location before updating.');
             return;
         }
 
@@ -1279,19 +1281,12 @@
                 'branch_id': branchId,
             },
             success: function(data) {
-                toastr.success('Updated Successfully');
-                // setTimeout(function() {
-                //     location.reload();
-                // }, 500);
-                console.log(response.message);
-
-                // Reload the page after a short delay
-                // setTimeout(function() {
-                //     location.reload();
-                // }, 500);
+                toastr.success('Location Updated Successfully');
+                console.log(data);
             },
             error: function(error) {
                 console.error('Error updating branch status:', error);
+                toastr.error('Failed to update location. Please try again.');
             }
         });
     });

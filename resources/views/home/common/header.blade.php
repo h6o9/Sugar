@@ -34,7 +34,7 @@ if ($product) {
             $discountPercent = (int) ($product->featured_amount ?? 0);
         } elseif ($product->featured_method == 'amount') {
             if ($originalPrice > 0) {
-                $discountPercent = round($originalPrice - $finalPrice);
+                $discountPercent = round((($originalPrice - $finalPrice) / $originalPrice) * 100);
             }
         }
     }

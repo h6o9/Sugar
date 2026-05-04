@@ -110,7 +110,7 @@ public function placeOrder(Request $request)
 
         DB::commit();
 
-        // ===============================
+                // ===============================
         // 🔔 SAVE NOTIFICATION IN DATABASE
         // ===============================
         $title = 'Order Placed Successfully!';
@@ -123,11 +123,13 @@ public function placeOrder(Request $request)
             'seenByUser'  => 0,
         ]);
 
+
+
         // ===============================
-        // 🔔 PUSH NOTIFICATION (APP ONLY)
+        // 🔔 DIRECT PUSH NOTIFICATION (WITHOUT JOB)
         // ===============================
         if ($user->fcmtoken) {
-            dispatch(new \App\Jobs\JobNotification(
+            $this->sendDirectNotification(
                 $user->fcmtoken,
                 $title,
                 $description,
@@ -135,14 +137,15 @@ public function placeOrder(Request $request)
                     'order_id' => $orderId,
                     'status'   => 'Pending'
                 ]
-            ));
+            );
         }
 
-		if (!empty($user->email)) {
-        \Mail::to($user->email)->send(
-            new \App\Mail\OrderPlacedMail($order->code)
-        );
-    }
+	//    send email
+	// 	if (!empty($user->email)) {
+    //     \Mail::to($user->email)->send(
+    //         new \App\Mail\OrderPlacedMail($order->code)
+    //     );
+    // }
 
         return response()->json([
             'status'   => true,
@@ -161,7 +164,48 @@ public function placeOrder(Request $request)
 }
 
 
-
-
+private function sendDirectNotification($fcmToken, $title, $body, $data = [])
+{
+    try {
+        $SERVER_API_KEY = env('FCM_SERVER_KEY'); // Your FCM Server Key
+        
+        $payload = [
+            'to' => $fcmToken,
+            'notification' => [
+                'title' => $title,
+                'body'  => $body,
+                'sound' => 'default',
+                'badge' => 1
+            ],
+            'data' => $data,
+            'priority' => 'high'
+        ];
+        
+        $headers = [
+            'Authorization: key=' . $SERVER_API_KEY,
+            'Content-Type: application/json',
+        ];
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://fcm.googleapis.com/fcm/send');
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        \Log::info('Direct FCM Response: ', ['response' => $response, 'http_code' => $httpCode]);
+        
+        return $response;
+        
+    } catch (\Exception $e) {
+        \Log::error('Direct FCM Error: ' . $e->getMessage());
+        return false;
+    }
+}
 
 }

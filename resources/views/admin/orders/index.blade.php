@@ -113,7 +113,7 @@
                                         </td> --}}
                                         <td>
                                             @php
-                                            $displayLocations = [];
+                                             $displayLocations = [];
                                             @endphp
 
                                             @foreach ($order->orderItem as $orderItem)

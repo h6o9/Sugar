@@ -326,6 +326,7 @@ class ApiOrderPlacementService
         ?float  $gatewayFee      = null
     ): Order {
 
+
         // ── Guard: cart must exist ────────────────────────────────────────────
         $cartItems = DB::table('add_to_cart_items')
             ->where('user_id', $userId)

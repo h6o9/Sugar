@@ -181,19 +181,45 @@ public function addToCart(Request $request)
             'cart_item_id' => $cartItemId
         ]);
 
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        DB::rollBack();
+        
+        // ✅ Show complete validation errors
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation failed',
+            'errors' => $e->errors(),
+            'error_details' => $e->getMessage()
+        ], 422);
+        
+    } catch (\Illuminate\Database\QueryException $e) {
+        DB::rollBack();
+        
+        // ✅ Show database errors
+        return response()->json([
+            'success' => false,
+            'message' => 'Database error',
+            'error' => $e->getMessage(),
+            'sql' => $e->getSql() // if available
+        ], 500);
+        
     } catch (\Exception $e) {
-
         DB::rollBack();
 
         Log::error('Add to cart error', [
             'error' => $e->getMessage(),
-            'request' => $request->all()
+            'request' => $request->all(),
+            'trace' => $e->getTraceAsString()
         ]);
 
+        // ✅ Show complete error with details
         return response()->json([
             'success' => false,
             'message' => 'Something went wrong while adding to cart.',
             'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString() // for debugging
         ], 500);
     }
 }
@@ -216,7 +242,6 @@ public function proceedToPayment(Request $request)
         // Validate request
         $request->validate([
             'tip' => 'nullable|numeric|min:0',
-            'branch_id' => 'required|exists:branches,id',
             'points_to_redeem' => 'nullable|integer|min:0',
         ]);
 
@@ -227,8 +252,9 @@ public function proceedToPayment(Request $request)
         // =========================
         // GET BRANCH TAX
         // =========================
-        $branch = DB::table('branches')->where('id', $branchId)->first();
-        
+        $branch = DB::table('branches')
+            ->orderBy('id')
+            ->first();        
         if (!$branch) {
             return response()->json([
                 'success' => false,
@@ -236,28 +262,27 @@ public function proceedToPayment(Request $request)
             ], 404);
         }
         
-        $branchTax = $branch->tax ?? 0; // Branch tax percentage (e.g., 10 for 10%)
+        $branchTax = $branch->tax ?? 0;
         
         // =========================
         // CALCULATIONS
         // =========================
-        $subtotal = $cartItems->sum('price'); // Discounted price sum
-        $originalPriceSum = $cartItems->sum('original_price'); // Original price sum
+        $subtotal = $cartItems->sum('price');
+        $originalPriceSum = $cartItems->sum('original_price');
         
-        // Calculate tax based on branch tax percentage
+        // Calculate tax
         $taxAmount = ($subtotal * $branchTax) / 100;
         
-        $deliveryCharges = 1.5; // Fixed delivery charges
+        $deliveryCharges = 1.5;
         
         $estimatedTotal = $subtotal + $taxAmount + $tips + $deliveryCharges;
         $originalEstimatedAmount = $originalPriceSum + $taxAmount + $tips + $deliveryCharges;
         
         // =========================
-        // POINTS REDEMPTION LOGIC
+        // POINTS REDEMPTION LOGIC (ONLY IF points_to_redeem > 0)
         // =========================
         $pointsDiscount = 0;
         $finalTotal = $estimatedTotal;
-        $userRewards = null;
         
         if ($pointsToRedeem > 0) {
             // Check if user has enough points
@@ -284,7 +309,7 @@ public function proceedToPayment(Request $request)
                 ], 400);
             }
             
-            // Calculate discount: points * price per point
+            // Calculate discount
             $pointsDiscount = $pointsToRedeem * (float) $rewardSetting->price;
             
             // Check if discount exceeds estimated total
@@ -297,10 +322,21 @@ public function proceedToPayment(Request $request)
             
             // Apply discount
             $finalTotal = $estimatedTotal - $pointsDiscount;
+            
+            // ✅ FIXED: Calculate remaining points
+            $remainingRewards = (int) $userRewards->rewards - $pointsToRedeem;
+            
+            // ✅ UPDATE rewards table - MINUS POINTS
+            DB::table('rewards')
+                ->where('user_id', $userId)
+                ->update([
+                    'rewards' => $remainingRewards,
+                    'updated_at' => now()
+                ]);
         }
         
         // =========================
-        // STORE CALCULATIONS IN SESSION/CACHE FOR PLACE ORDER
+        // STORE CALCULATIONS IN SESSION
         // =========================
         $paymentData = [
             'branch_id' => $branchId,
@@ -317,47 +353,46 @@ public function proceedToPayment(Request $request)
             'calculated_at' => now()
         ];
         
-        // Store in session or cache
         session(['payment_data_' . $userId => $paymentData]);
-        // OR using cache
-        // Cache::put('payment_data_' . $userId, $paymentData, now()->addMinutes(30));
         
         // =========================
-        // UPDATE CART TABLE (optional - store temp values)
+        // UPDATE CART ITEMS
         // =========================
         foreach ($cartItems as $item) {
             $item->tips = $tips;
             $item->branch_id = $branchId;
             $item->tax_amount = $taxAmount;
             $item->subtotal = $subtotal;
-            $item->estimated_total = $finalTotal; // Store final total after discount
+            $item->estimated_total = $finalTotal;
             $item->save();
         }
         
-        return response()->json([
+        // =========================
+        // PREPARE RESPONSE (EXACT SAME STRUCTURE)
+        // =========================
+        $responseData = [
             'success' => true,
             'message' => 'Continue to payment',
-            
             'summary' => [
-                'branch_id' => $branchId,
-                'branch_name' => $branch->name ?? null,
-                'branch_tax_percentage' => $branchTax,
-                
                 'subtotal' => round($subtotal, 2),
                 'original_price_sum' => round($originalPriceSum, 2),
                 'tax_amount' => round($taxAmount, 2),
                 'delivery_charges' => round($deliveryCharges, 2),
                 'tips' => round($tips, 2),
-                
-                'estimated_total_before_discount' => round($estimatedTotal, 2),
-                'points_redeemed' => $pointsToRedeem,
-                'points_discount' => round($pointsDiscount, 2),
-                'final_total' => round($finalTotal, 2),
+                'estimated_total' => round($finalTotal, 2),
                 'original_estimated_amount' => round($originalEstimatedAmount, 2),
-                
-                'savings' => round($originalEstimatedAmount - $finalTotal, 2)
             ]
-        ]);
+        ];
+        
+        // ✅ ONLY ADD POINTS FIELDS IF POINTS WERE REDEEMED
+        if ($pointsToRedeem > 0) {
+            $responseData['summary']['points_redeemed'] = $pointsToRedeem;
+            $responseData['summary']['points_discount'] = round($pointsDiscount, 2);
+            $responseData['summary']['estimated_total_before_discount'] = round($estimatedTotal, 2);
+            $responseData['summary']['savings'] = round($originalEstimatedAmount - $finalTotal, 2);
+        }
+        
+        return response()->json($responseData);
         
     } catch (\Exception $e) {
         \Log::error('Proceed to payment error', [
@@ -372,20 +407,19 @@ public function proceedToPayment(Request $request)
     }
 }
 
+
 public function getUserCartItems(Request $request)
 {
     $userId = auth()->id();
 
-    // Get delivery charges and tip from request
     $deliveryCharges = (float) $request->input('delivery_charges', 0);
     $tip = (float) $request->input('tip', 0);
 
     $cartItems = AddToCartItem::with([
-            'product:id,name,image',
-            'toppings.variant:id,size'
-        ])
-        ->where('user_id', $userId)
-        ->get();
+        'product:id,name,image'
+    ])
+    ->where('user_id', $userId)
+    ->get();
 
     if ($cartItems->isEmpty()) {
         return response()->json([
@@ -394,73 +428,178 @@ public function getUserCartItems(Request $request)
         ], 404);
     }
 
-    // =========================
-    // SIRF CALCULATE KAREIN, UPDATE NA KAREIN
-    // =========================
-    
-    // Calculate subtotal (original prices sum)
-    $subtotal = $cartItems->sum('original_price');
-    
-    // Calculate total price (final prices sum)
-    $totalPrice = $cartItems->sum('price');
-    
-    // Get tax from first item (assuming same tax for all items)
-    $taxRate = $cartItems->first()->tax_amount ?? 0;
-    
-    // Calculate total tax amount
-    $taxAmount = 0;
-    if ($taxRate > 0 && $taxRate < 100) {
-        // Tax is percentage
-        $taxAmount = ($totalPrice * $taxRate) / 100;
-    } else {
-        // Tax is fixed amount
-        $taxAmount = $taxRate;
+    /*
+    |--------------------------------------------------------------------------
+    | PROCESS EACH CART ITEM - CHECK VARIANT FIRST
+    |--------------------------------------------------------------------------
+    */
+    foreach ($cartItems as $item) {
+        $basePrice = 0;
+        $baseOriginalPrice = 0;
+        $variantSize = null;
+        
+        // Check if variant_id exists in cart item
+        if ($item->variant_id && $item->variant_id > 0) {
+            // Fetch price from product_variants table
+            $variant = DB::table('product_variants')
+                ->where('id', $item->variant_id)
+                ->select('price', 'original_price', 'size')
+                ->first();
+            
+            if ($variant) {
+                $basePrice = (float) $variant->price;
+                $baseOriginalPrice = (float) ($variant->original_price ?? $variant->price);
+                $variantSize = $variant->size;
+            } else {
+                // Fallback to product if variant not found
+                $product = DB::table('products')
+                    ->where('id', $item->product_id)
+                    ->select('price', 'original_price')
+                    ->first();
+                
+                if ($product) {
+                    $basePrice = (float) $product->price;
+                    $baseOriginalPrice = (float) ($product->original_price ?? $product->price);
+                }
+            }
+        } else {
+            // No variant, fetch price from products table
+            $product = DB::table('products')
+                ->where('id', $item->product_id)
+                ->select('price', 'original_price')
+                ->first();
+            
+            if ($product) {
+                $basePrice = (float) $product->price;
+                $baseOriginalPrice = (float) ($product->original_price ?? $product->price);
+            }
+        }
+        
+        // Get all toppings for this cart item with their prices
+        $toppingsData = DB::table('add_to_cart_item_toppings as act')
+            ->leftJoin('toppings as t', 'act.topping_id', '=', 't.id')
+            ->leftJoin('categories as c', 'act.category_id', '=', 'c.id')
+            ->where('act.add_to_cart_item_id', $item->id)
+            ->select(
+                'act.id',
+                'act.topping_id',
+                'act.category_id',
+                'act.variant_id',
+                't.name as topping_name',
+                't.price as topping_price',
+                'c.name as category_name'
+            )
+            ->get();
+
+        // Calculate total toppings price for this item
+        $totalToppingsPrice = $toppingsData->sum('topping_price');
+        
+        $quantity = (int) $item->quantity;
+        
+        // Add toppings price to product/variant base prices
+        $finalPrice = $basePrice + $totalToppingsPrice;
+        $finalOriginalPrice = $baseOriginalPrice + $totalToppingsPrice;
+        
+        // Calculate subtotal and estimated total with toppings
+        $calculatedSubtotal = $finalPrice * $quantity;
+        $calculatedEstimatedTotal = $finalPrice * $quantity;
+        
+        // Update the cart item in database with new calculated values
+        DB::table('add_to_cart_items')
+            ->where('id', $item->id)
+            ->update([
+                'price' => $finalPrice,
+                'original_price' => $finalOriginalPrice,
+                'subtotal' => $calculatedSubtotal,
+                'estimated_total' => $calculatedEstimatedTotal,
+                'updated_at' => now()
+            ]);
+        
+        // Update the current item object
+        $item->price = $finalPrice;
+        $item->original_price = $finalOriginalPrice;
+        $item->subtotal = $calculatedSubtotal;
+        $item->estimated_total = $calculatedEstimatedTotal;
+        $item->product_base_price = $basePrice;
+        $item->product_base_original_price = $baseOriginalPrice;
+        $item->variant_size = $variantSize;
+        
+        // Store toppings data with prices for response
+        $item->toppings_data = $toppingsData;
+        $item->total_toppings_price = $totalToppingsPrice;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | TOTALS CALCULATION (INCLUDING TOPPINGS)
+    |--------------------------------------------------------------------------
+    */
+    // SUBTOTAL = sum of (price * quantity)
+    $subtotal = $cartItems->sum(function ($item) {
+        return (float) $item->price * (int) $item->quantity;
+    });
     
-    // Calculate tips (use request tip or sum from items)
+    // TOTAL_PRICE = sum of (original_price * quantity)
+    $totalPrice = $cartItems->sum(function ($item) {
+        return (float) $item->original_price * (int) $item->quantity;
+    });
+
+    // Tax calculation
+    $taxRate = $cartItems->first()->tax_amount ?? 0;
+    $taxAmount = ($taxRate > 0 && $taxRate < 100)
+        ? ($subtotal * $taxRate) / 100
+        : (float) $taxRate;
+
+    // Tips
     $tipsFromItems = $cartItems->sum('tips');
     $finalTip = $tip > 0 ? $tip : $tipsFromItems;
-    
-    // Calculate estimated total
-    $estimatedTotal = $totalPrice + $finalTip + $taxAmount + $deliveryCharges;
-    
-    // Validate total is reasonable
-    if ($estimatedTotal > 99999999.99 || $estimatedTotal < 0) {
-        \Log::warning('Unusual cart total calculated', [
-            'user_id' => $userId,
-            'estimated_total' => $estimatedTotal,
-            'total_price' => $totalPrice,
-            'tips' => $finalTip,
-            'tax' => $taxAmount,
-            'delivery' => $deliveryCharges
-        ]);
-    }
-    
-    // Prepare summary
+
+    // Delivery charges
+    $totalDeliveryCharges = $deliveryCharges > 0 ? $deliveryCharges : $cartItems->sum('delivery_charges');
+
+    // ESTIMATED TOTAL = subtotal + delivery_charges + tips + tax
+    $estimatedTotal = $subtotal + $totalDeliveryCharges + $finalTip + $taxAmount;
+
     $summary = [
         'subtotal' => round($subtotal, 2),
         'total_price' => round($totalPrice, 2),
         'tax_amount' => round($taxAmount, 2),
         'tips' => round($finalTip, 2),
-        'delivery_charges' => round($deliveryCharges, 2),
+        'delivery_charges' => round($totalDeliveryCharges, 2),
         'estimated_total' => round($estimatedTotal, 2),
     ];
 
-    // Prepare items response
+    /*
+    |--------------------------------------------------------------------------
+    | ITEMS RESPONSE
+    |--------------------------------------------------------------------------
+    */
     $items = $cartItems->map(function ($item) {
-        $variantSize = $item->toppings
-            ->pluck('variant.size')
-            ->filter()
-            ->unique()
-            ->values()
-            ->first();
 
-        // Check for complementary product
+        // Format toppings with price
+        $toppings = $item->toppings_data->map(function ($topping) {
+            return [
+                'id' => $topping->id,
+                'topping_id' => $topping->topping_id,
+                'topping_name' => $topping->topping_name,
+                'topping_price' => (float) $topping->topping_price,
+                'category_id' => $topping->category_id,
+                'category_name' => $topping->category_name,
+                'variant_id' => $topping->variant_id,
+            ];
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | COMPLEMENT PRODUCT
+        |--------------------------------------------------------------------------
+        */
         $complement = DB::table('complementary_products')
             ->where('product_id', $item->product_id)
             ->first();
 
         $complementProduct = null;
+
         if ($complement) {
             $compProd = DB::table('products')
                 ->where('id', $complement->complementary_product_id)
@@ -470,10 +609,13 @@ public function getUserCartItems(Request $request)
                 $compToppings = DB::table('topping_products')
                     ->join('categories', 'topping_products.category_id', '=', 'categories.id')
                     ->where('topping_products.product_id', $compProd->id)
-                    ->get([
-                        'categories.id',
-                        'categories.name'
-                    ]);
+                    ->get(['categories.id', 'categories.name'])
+                    ->map(function ($topping) {
+                        return [
+                            'id' => $topping->id,
+                            'name' => $topping->name
+                        ];
+                    });
 
                 $complementProduct = [
                     'product_id'    => $compProd->id,
@@ -484,24 +626,34 @@ public function getUserCartItems(Request $request)
             }
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | RESPONSE
+        |--------------------------------------------------------------------------
+        */
         return [
-            'id'       => $item->id,
-            'product_id'         => $item->product_id,
-            'product_name'       => $item->product?->name,
-            'product_image'      => $item->product?->image,
-            'variant_size'       => $variantSize,
-            'price'              => $item->price,
-            'original_price'     => $item->original_price,
-            'quantity'           => $item->quantity,
-            'subtotal'           => $item->subtotal,
-            'tips'               => $item->tips,
-            'tax_amount'         => $item->tax_amount,
-            'estimated_total'    => $item->estimated_total,
-            'delivery_address'   => $item->delivery_address,
-            'order_type'         => $item->order_type,
-            'pickup_time'        => $item->pickup_time,
-            'delivery_charges'   => $item->delivery_charges,
-            'complement_product' => $complementProduct,
+            'id'                => $item->id,
+            'product_id'        => $item->product_id,
+            'product_name'      => $item->product?->name,
+            'product_image'     => $item->product?->image,
+            'variant_id'        => $item->variant_id,
+            'variant_size'      => $item->variant_size,
+            'product_base_price' => round($item->product_base_price ?? 0, 2),
+            'product_base_original_price' => round($item->product_base_original_price ?? 0, 2),
+            'total_toppings_price' => round($item->total_toppings_price, 2),
+            'price'             => round((float) $item->price, 2),
+            'original_price'    => round((float) $item->original_price, 2),
+            'quantity'          => $item->quantity,
+            'subtotal'          => round((float) $item->subtotal, 2),
+            'tips'              => $item->tips,
+            'tax_amount'        => $item->tax_amount,
+            'estimated_total'   => round((float) $item->estimated_total, 2),
+            'delivery_address'  => $item->delivery_address,
+            'order_type'        => $item->order_type,
+            'pickup_time'       => $item->pickup_time,
+            'delivery_charges'  => $item->delivery_charges,
+            'toppings'          => $toppings,
+            'complement_product'=> $complementProduct,
         ];
     });
 
@@ -513,7 +665,6 @@ public function getUserCartItems(Request $request)
         'items' => $items
     ], 200);
 }
-
 
 
 public function deleteCartItem($id)
@@ -694,7 +845,7 @@ public function getBranchInfo()
 {
     try {
         $branches = DB::table('branches')
-            ->select('email', 'phone_number', 'location')
+            ->select('id', 'email', 'phone_number', 'location')  // ← id add karo
             ->get();
 
         return response()->json([

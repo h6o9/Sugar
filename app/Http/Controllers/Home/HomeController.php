@@ -16,6 +16,7 @@ use App\Models\MenuGallery;
 use App\Http\Requests\AntiBotFormRequest;
 use Illuminate\Http\Request;
 use App\Models\UserTimeSlotes;
+use App\Support\MenuCatalog;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -52,42 +53,23 @@ public function index()
         }
     }
 
-    $ciboExpressItems = \App\Models\CiboExpress::all();
-
-    $menuCategories = Menu::with(['products' => function ($query) {
-        $query->where('status', 1);
-    }])->orderBy('id', 'asc')->get();
-
-    foreach ($menuCategories as $menu) {
-
-        $menuproduct = Product::where('menu_id', $menu->id)
-            ->where('status', 1)
-            ->with(['variants', 'complementaryProductSingle.complementary'])
-            ->get();
-
-        // Set default price for menu products with variants
-        foreach ($menuproduct as $product) {
-            if ($product->variants && $product->variants->count() > 0) {
-                $regularVariant = $product->variants->where('size', 'regular')->first();
-                $firstVariantWithPrice = $product->variants->where('price', '>', 0)->first();
-
-                if ($regularVariant && $regularVariant->price > 0) {
-                    $product->default_price = $regularVariant->price;
-                } elseif ($firstVariantWithPrice) {
-                    $product->default_price = $firstVariantWithPrice->price;
-                } else {
-                    $product->default_price = $product->variants->first()->price ?? 0;
-                }
-            } else {
-                $product->default_price = $product->price ?? 0;
-            }
-        }
-
-        $menu->product = $menuproduct;
-    }
-
     $faqs = Faq::orderBy('id', 'DESC')->get();
     $branches = Branch::all();
+    $ciboExpressItems = collect();
+    $landingStores = $this->landingStores($branches);
+    $pappiSpecial = $products;
+    $heroVideo = 'public/videos/hero.mp4';
+    $heroPoster = 'public/img/hero-poster.jpg';
+    $hours = ['is_open' => true, 'message' => '', 'next_opening_time' => '4:00 PM'];
+    try {
+        $heroVideo = \App\Models\BusinessSetting::getValue('hero_video_path', $heroVideo);
+        $heroPoster = \App\Models\BusinessSetting::getValue('hero_poster_path', $heroPoster);
+        $hours = app(\App\Services\BusinessTimeService::class)->status();
+    } catch (\Throwable $e) {
+        \Log::warning('Home landing extras skipped: '.$e->getMessage());
+    }
+
+    $menuCategories = MenuCatalog::forStorefront(true, true);
 
     $userId = Auth::guard('user')->id();
 
@@ -105,9 +87,44 @@ public function index()
         'userTimeSlots',
         'menuCategories',
         'faqs',
-        'ciboExpressItems'
+        'ciboExpressItems',
+        'landingStores',
+        'pappiSpecial',
+        'heroVideo',
+        'heroPoster',
+        'hours'
     ));
 }
+
+    protected function landingStores($branches)
+    {
+        $stores = $branches->filter(function ($branch) {
+            $orderable = (bool) ($branch->is_orderable ?? false);
+            $hay = strtolower(($branch->city_label ?? '') . ' ' . ($branch->name ?? '') . ' ' . ($branch->location ?? ''));
+            $manchester = strpos($hay, 'manchester') !== false;
+            return $orderable || $manchester;
+        })->map(function ($branch) {
+            return [
+                'label' => $branch->city_label ?: $branch->name,
+                'branch' => $branch,
+                'is_orderable' => true,
+            ];
+        })->values();
+
+        // #region agent log
+        file_put_contents(base_path('debug-1796d5.log'), json_encode([
+            'sessionId' => '1796d5',
+            'hypothesisId' => 'S1',
+            'location' => 'HomeController.php:landingStores',
+            'message' => 'orderable stores for modal',
+            'data' => ['count' => $stores->count(), 'labels' => $stores->pluck('label')->values()],
+            'timestamp' => (int) round(microtime(true) * 1000),
+        ]) . "\n", FILE_APPEND);
+        // #endregion
+
+        return $stores;
+    }
+
     public function getmenuPicture()
     {
         $menuGalleries = MenuGallery::orderBy('id', 'DESC')->get();
@@ -118,40 +135,53 @@ public function index()
     {
         $branches = Branch::all();
         $userId = Auth::guard('user')->id();
-        $userTimeSlots = UserTimeSlotes::where('user_id', $userId)
-            ->first();
+        $userTimeSlots = UserTimeSlotes::where('user_id', $userId)->first();
         $timeSlots = TimeSlot::all();
-        // $products = Menu::with('products.category')->orderBy('id', 'asc')->get();
-        $products = Menu::with(['products.category','products' => function ($query) {
-            $query->where('status', 1); // Filter products by status
-        }])
-        ->orderBy('id', 'asc')
-        ->get();
-        foreach ($products as $product) {
-            $menuproduct = Product::where('menu_id', $product->id)->get();
-            
-            // Set default price for menu products with variants
-            foreach ($menuproduct as $prod) {
-                if ($prod->variants && $prod->variants->count() > 0) {
-                    // Try to find 'regular' variant first, otherwise use first variant with price
-                    $regularVariant = $prod->variants->where('size', 'regular')->first();
-                    $firstVariantWithPrice = $prod->variants->where('price', '>', 0)->first();
-                    
-                    if ($regularVariant && $regularVariant->price > 0) {
-                        $prod->default_price = $regularVariant->price;
-                    } elseif ($firstVariantWithPrice) {
-                        $prod->default_price = $firstVariantWithPrice->price;
-                    } else {
-                        $prod->default_price = $prod->variants->first()->price ?? 0;
-                    }
-                } else {
-                    $prod->default_price = $prod->price ?? 0;
-                }
-            }
-            
-            $product->product = $menuproduct;
+        $searchTerm = '';
+        $filteredProducts = collect();
+
+        $menuCategories = MenuCatalog::forStorefront(true, true);
+
+        $addingToOrder = false;
+        try {
+            $addingToOrder = app(\App\Services\OrderLifecycleService::class)
+                ->hasActiveAddToOrderSession($userId ? (int) $userId : null);
+        } catch (\Throwable $e) {
+            $addingToOrder = false;
         }
-        return view('home.our-menu', compact('products', 'branches', 'timeSlots', 'userTimeSlots'));
+
+        // #region agent log
+        file_put_contents(base_path('debug-1796d5.log'), json_encode([
+            'sessionId' => '1796d5',
+            'runId' => 'post-fix',
+            'hypothesisId' => 'H3',
+            'location' => 'HomeController.php:getOurMenu',
+            'message' => 'menu categories for storefront',
+            'data' => [
+                'addingToOrder' => (bool) $addingToOrder,
+                'categories' => $menuCategories->map(function ($m) {
+                    return [
+                        'id' => $m->id,
+                        'name' => $m->name,
+                        'type' => $m->type ?? null,
+                        'slug' => $m->slug ?? null,
+                        'product_count' => $m->product ? $m->product->count() : 0,
+                    ];
+                })->values(),
+            ],
+            'timestamp' => (int) round(microtime(true) * 1000),
+        ]) . "\n", FILE_APPEND);
+        // #endregion
+
+        return view('home.our-menu', compact(
+            'menuCategories',
+            'branches',
+            'timeSlots',
+            'userTimeSlots',
+            'searchTerm',
+            'filteredProducts',
+            'addingToOrder'
+        ));
     }
     public function getOurGallery()
     {
@@ -174,13 +204,18 @@ public function index()
 
     // ✅ FIX: Load ALL relationships needed by calcDiscount() + modal rendering
     $filteredProducts = Product::with([
+            'menu',
             'variants',
             'category.getCategory',
-            'complementaryProductSingle.complementary.variants', // ✅ comp product variants too
+            'complementaryProductSingle.complementary.variants',
         ])
         ->where('status', 1)
         ->where('name', 'like', "%{$searchTerm}%")
-        ->get();
+        ->get()
+        ->filter(function ($product) {
+            return !MenuCatalog::isSpecial($product->menu);
+        })
+        ->values();
 
     // ✅ FIX: Set default_price, original_price, featured_* on each filtered product
     foreach ($filteredProducts as $product) {
@@ -215,42 +250,17 @@ public function index()
         }
     }
 
-    // Menu categories (for tabs in the same view)
-    $menuCategories = Menu::with(['products' => function ($query) {
-        $query->where('status', 1);
-    }])->orderBy('id', 'asc')->get();
-
-    foreach ($menuCategories as $menu) {
-        $menu->product = $menu->products->load([
-            'variants',
-            'complementaryProductSingle.complementary',
-        ]);
-
-        foreach ($menu->product as $product) {
-            if ($product->variants && $product->variants->count() > 0) {
-                $regularVariant        = $product->variants->where('size', 'regular')->first();
-                $firstVariantWithPrice = $product->variants->where('price', '>', 0)->first();
-
-                if ($regularVariant && $regularVariant->price > 0) {
-                    $displayVariant = $regularVariant;
-                } elseif ($firstVariantWithPrice) {
-                    $displayVariant = $firstVariantWithPrice;
-                } else {
-                    $displayVariant = $product->variants->first();
-                }
-
-                $product->default_price = $displayVariant ? $displayVariant->price : 0;
-
-                if ($displayVariant && isset($displayVariant->original_price) && $displayVariant->original_price > 0) {
-                    $product->original_price = $displayVariant->original_price;
-                }
-            } else {
-                $product->default_price = $product->price ?? 0;
-            }
-        }
-    }
+    $menuCategories = MenuCatalog::forStorefront(true, true);
 
     $menuGalleries = MenuGallery::orderBy('id', 'DESC')->take(4)->get();
+
+    $addingToOrder = false;
+    try {
+        $addingToOrder = app(\App\Services\OrderLifecycleService::class)
+            ->hasActiveAddToOrderSession($userId ? (int) $userId : null);
+    } catch (\Throwable $e) {
+        $addingToOrder = false;
+    }
 
     return view('home.our-menu', compact(
         'filteredProducts',
@@ -259,7 +269,8 @@ public function index()
         'userTimeSlots',
         'menuCategories',
         'menuGalleries',
-        'searchTerm'
+        'searchTerm',
+        'addingToOrder'
     ));
 }
 

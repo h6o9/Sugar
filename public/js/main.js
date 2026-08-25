@@ -87,26 +87,6 @@
     $("#videoModal").on("hide.bs.modal", function (e) {
       $("#video").attr("src", ""); // Set the src attribute to an empty string
     });
-
-    var $banner = $('.app-download-banner');
-
-    function updateBannerVisibility() {
-      var scrollTop = $(window).scrollTop();
-      var windowHeight = $(window).height();
-      var documentHeight = $(document).height();
-
-      // Page bottom check
-      if (scrollTop + windowHeight >= documentHeight) {
-        $banner.addClass('d-none'); // hide banner
-      } else {
-        $banner.removeClass('d-none'); // show banner
-      }
-    }
-
-    $(window).on('scroll resize', updateBannerVisibility);
-
-    // Also run immediately on load (e.g., after refresh when user may already be at bottom)
-    updateBannerVisibility();
   });
 
   // Gallery carousel

@@ -1,5 +1,5 @@
 @extends('admin.layout.app')
-@section('title', 'Edit Cibo Express')
+@section('title', 'Edit Content')
 
 @section('content')
 <div class="main-content">
@@ -13,14 +13,20 @@
 
 <div class="card">
 <div class="card-header">
-<h4 class="text-center w-100">Edit Cibo Express</h4>
+<h4 class="text-center w-100">Edit Content</h4>
 </div>
 
 <div class="card-body">
 
 <div class="row">
 
-{{-- Title --}}
+<div class="col-md-6">
+<div class="form-group">
+<label>Page key (wholesale / private_booking)</label>
+<input type="text" name="page_key" class="form-control" value="{{ $ciboExpressItem->page_key }}">
+</div>
+</div>
+
 <div class="col-md-6">
 <div class="form-group">
 <label>Title</label>
@@ -29,7 +35,6 @@ name="title"
 class="form-control"
 placeholder="Enter Title"
 value="{{ $ciboExpressItem->title }}">
-
 @error('title')
 <div class="text-danger">{{ $message }}</div>
 @enderror

@@ -155,10 +155,16 @@
     <section class="section">
         <div class="container-xxl bg-white p-0">
             <div class="container-xxl position-relative p-0">
-                <div class="container-xxl py-5 bg-primary hero-header mb-5">
-                    <div class="container text-center my-lg-5 pt-lg-5 pb-lg-4">
-                        <h1 class="display-3 text-dark mb-3 animated slideInDown">Your Cart</h1>
-                    </div>
+                @php
+                    $cartHero = file_exists(public_path('img/page-hero.jpg'))
+                        ? asset('public/img/page-hero.jpg')
+                        : (file_exists(public_path('img/cart-hero.png'))
+                            ? asset('public/img/cart-hero.png')
+                            : asset('public/img/logo.png'));
+                @endphp
+                <div class="sp-page-hero sp-cart-hero" style="background-image:url('{{ $cartHero }}')">
+                    @include('home.partials.order-timer')
+                    <h1>Your Cart</h1>
                 </div>
             </div>
             <!-- Navbar & Hero End -->
@@ -470,11 +476,13 @@
                                 }
                             @endphp
                             <h6>You Order Items (<span class='order-items'>{{ $quantity }}</span>)</h6>
+                            <p class="small text-muted mb-3">Tick the items you want to place now. Unchecked items stay in My Cart.</p>
                             <!-- The First Card -->
-                           @forelse (session('cart', []) as $item)
+                           @forelse (session('cart', []) as $cartKey => $item)
                                 <div class="cart_card mb-3 d-flex border-bottom py-4">
                                     <!-- Img Part -->
-                                    <div>
+                                    <div class="d-flex align-items-start gap-2">
+                                        <input type="checkbox" class="cart-select-item mt-2" name="cart_keys[]" form="checkoutSelectedForm" value="{{ $cartKey }}" checked>
                                         <img src="{{ $item['image'] }}" alt>
                                     </div>
 
@@ -493,13 +501,9 @@
                                         <p class="mb-1">Variation: Regular</p>
 
                                         {{-- ✅ Delivery Type --}}
-                                        @if(isset($item['delivery_status']))
-                                            <p class="mb-1 fw-bold">
-                                                @if($item['delivery_status'] == 1)
-                                                @elseif($item['delivery_status'] == 2)
-                                                @else
-                                                    Delivery Type: Not Specified
-                                                @endif
+                                        @if(isset($item['delivery_status']) || !empty($item['fulfillment']))
+                                            <p class="mb-1 fw-bold text-dark">
+                                                {{ \App\Support\CartCheckout::fulfillmentLabel($item, session('selected_order_type')) }}
                                             </p>
                                         @endif
 
@@ -812,9 +816,19 @@
                                     <p class="text-danger text-center">Your cart is empty.</p>
                                 @endif
 
-                                <a href="{{ route('checkout') }}"
-                                    class="mt-3 w-100 btn py-2 btn-danger continue-to-add-tip continue-to-payment">Continue
-                                    to Payment</a>
+                                @if(!empty($addingToExisting))
+                                    <form method="POST" action="{{ route('orders.confirm-add-items') }}">
+                                        @csrf
+                                        <button class="mt-3 w-100 btn py-2" style="background:#ff2d87;color:#fff">Confirm additional items</button>
+                                    </form>
+                                @else
+                                <form method="POST" action="{{ route('checkout.selected') }}" id="checkoutSelectedForm">
+                                    @csrf
+                                    <button type="submit" class="mt-3 w-100 btn py-2 continue-to-add-tip continue-to-payment" style="background:#ff2d87;color:#fff;border:0">
+                                        Continue to Payment
+                                    </button>
+                                </form>
+                                @endif
                             </div>
 
                             <!-- Billing ENd -->
@@ -833,9 +847,13 @@
 @section('js')
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pikaday/1.8.0/pikaday.min.js"></script>
-@if (\Illuminate\Support\Facades\Session::has('message'))
+@if (session()->has('message'))
 <script>
-    toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
+    @if(session('status') === false)
+        toastr.error(@json(session('message')));
+    @else
+        toastr.success(@json(session('message')));
+    @endif
 </script>
 @endif
 <script> 
@@ -987,29 +1005,29 @@
             let count = 0;
             let sum = 0;
             let item=0;
-            $('.topping_price-1').each(function() {
-                item++;
-                console.log(item)
-                let toppingPriceText = $(this).text().trim();
-                console.log(toppingPriceText);
-                // Check if the topping price is not empty
-                if (toppingPriceText !== '') {
-                    let toppingPrice = parseFloat(toppingPriceText.slice(2, -
-                        1)); // Extract the numeric part
-                    sum += toppingPrice;
+            $('.cart_card').each(function() {
+                var $card = $(this);
+                if ($card.find('.cart-select-item').length && !$card.find('.cart-select-item').prop('checked')) {
+                    return;
                 }
+                $card.find('.topping_price-1').each(function() {
+                    item++;
+                    let toppingPriceText = $(this).text().trim();
+                    if (toppingPriceText !== '') {
+                        let toppingPrice = parseFloat(toppingPriceText.slice(2, -1));
+                        sum += toppingPrice;
+                    }
+                });
+                $card.find('.count-input').each(function() {
+                    let productPriceText = $(this).closest('.order-card').find('.price').text().slice(1);
+                    let productPrice = parseFloat(productPriceText);
+                    let ItemCount = Number($(this).val());
+                    count += ItemCount;
+                    sum += productPrice * ItemCount;
+                    sum = parseFloat(sum.toFixed(2));
+                });
             });
-            let a = 0;
-            $('.count-input').each(function() {
-                let productPriceText = $(this).closest('.order-card').find('.price').text().slice(1);
-                let productPrice = parseFloat(productPriceText);
-                let ItemCount = Number($(this).val());
-                a += ItemCount;
-                count += ItemCount;
-                sum += productPrice * ItemCount;
-                sum = parseFloat(sum.toFixed(2));
-            });
-            $('.order-items').text(a);
+            $('.order-items').text(count);
             $('.sub-total').text('£' + sum);
             let tipValue = Number($('.tip-value').text().slice(1));
             let tax = Number($('.tax-value').text().slice(1));
@@ -1022,6 +1040,17 @@
             $('.total-value').text('£' + (tipValue + tax + delivery  + sum - redeem + gatewayFee).toFixed(2));
             $('.order-input').text(count);
         }
+
+        $(document).on('change', '.cart-select-item', function () {
+            $(this).closest('.cart_card').toggleClass('cart-item-unselected', !this.checked);
+            Total();
+        });
+        $('#checkoutSelectedForm').on('submit', function (e) {
+            if (!$('.cart-select-item:checked').length) {
+                e.preventDefault();
+                toastr.error('Please select at least one item to place the order.');
+            }
+        });
 
         //delete the border of the last child
         $('.card-parent .cart_card:last').removeClass('border-bottom');
@@ -1212,48 +1241,47 @@
     $('.continue-to-payment').on('click', function(e) {
         e.preventDefault();
 
-        // Get the selected time from the data attribute
-        var selectedTime = $('.selected-time').data('time');
+        if (!$('.cart-select-item:checked').length) {
+            toastr.error('Please select at least one item to place the order.');
+            return;
+        }
 
-        // Make an AJAX request to store the selected time in the session
+        var form = document.getElementById('checkoutSelectedForm');
+        var checkoutUrl = '{{ route('checkout') }}';
+
+        function goToCheckout() {
+            if (form) {
+                HTMLFormElement.prototype.submit.call(form);
+                return;
+            }
+            window.location.href = checkoutUrl;
+        }
+
+        var selectedTime = $('.selected-time').data('time');
+        var tipAmount = $('.tip-input').val();
+        var redeemPoints = $('#loyaltyPointInput').val();
+        var redeemAmount = Number($('.redeem-value').text().slice(1));
+
         $.ajax({
             type: 'POST',
             url: '{{ route('time-solt') }}',
             data: {
                 '_token': '{{ csrf_token() }}',
                 'selectedTime': selectedTime,
-            },
-            success: function(data) {
-                console.log(data);
-
-                // Send the tip amount to the server using AJAX
-                var tipAmount = $('.tip-input').val();
-                var redeemPoints = $('#loyaltyPointInput').val();
-                var redeemAmount = Number($('.redeem-value').text().slice(1));
-                $.ajax({
-                    type: 'POST',
-                    url: '{{ route('store.tip') }}', // Replace with the actual route
-                    data: {
-                        '_token': '{{ csrf_token() }}',
-                        'tipAmount': tipAmount,
-                        'redeemAmount': redeemAmount,
-                        'redeemPoints': redeemPoints
-                    },
-                    success: function(data) {
-                        // Redirect to the checkout page after storing the tip in the session
-                        window.location.href = $(e.currentTarget).attr('href');
-                    },
-                    error: function(error) {
-                        // Handle errors if needed
-                        console.error('Error storing tip in session:', error);
-                        toastr.error('Failed to process. Please try again.');
-                    }
-                });
-            },
-            error: function(error) {
-                console.error('Error storing selected time in session:', error);
-                toastr.error('Failed to store time. Please try again.');
             }
+        }).always(function () {
+            $.ajax({
+                type: 'POST',
+                url: '{{ route('store.tip') }}',
+                data: {
+                    '_token': '{{ csrf_token() }}',
+                    'tipAmount': tipAmount,
+                    'redeemAmount': redeemAmount,
+                    'redeemPoints': redeemPoints
+                }
+            }).always(function () {
+                goToCheckout();
+            });
         });
     });
 

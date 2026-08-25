@@ -1,7 +1,7 @@
 /********** Template CSS **********/
 
 :root {
-    --primary: #FE7701;
+    --primary: #ff2d87;
     --light: #f1f8ff;
     --dark: #482a15;
 }
@@ -15,7 +15,7 @@ form button[type="submit"] {
   bottom: 0;
   left: 0;
   width: 100%;
-  background: #ff6b6b; /* warm food color */
+  background: #ff2d87;
   color: #fff;
   text-align: center;
   padding: 12px 15px;
@@ -468,11 +468,11 @@ button.tab-scroll-btn.left.disabled, button.tab-scroll-btn.right.disabled {
 }
 
 .navbar-dark {
-    position: sticky;
+    position: relative;
     width: 100%;
-    top: 0;
+    top: auto;
     left: 0;
-    z-index: 999;
+    z-index: auto;
     background: #FFF !important;
 }
 
@@ -883,13 +883,14 @@ button.tab-scroll-btn.left.disabled, button.tab-scroll-btn.right.disabled {
 }
 
 .carting-card .cards-parent {
-    height: 400px;
-    overflow: auto;
+    height: auto;
+    max-height: 160px;
+    overflow-y: auto;
 }
 
 /*** Footer ***/
 .footer {
-    background: var(--primary);
+    background: #ff2d87;
 }
 
 .footer-email-box {
@@ -970,9 +971,9 @@ button.tab-scroll-btn.left.disabled, button.tab-scroll-btn.right.disabled {
 }
 
 .menu-modal img[alt="product-img"] {
-    height: 320px;
+    height: 140px;
     object-fit: cover;
-    object-position: top;
+    object-position: center;
 }
 
 .dropdown .mobile-notify-block {

@@ -13,6 +13,10 @@ class AddTipToOrderItemsTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasColumn('order_items', 'tip')) {
+            return;
+        }
+
         Schema::table('order_items', function (Blueprint $table) {
             $table->decimal('tip', 8, 2)->after('quantity')->nullable();
         });

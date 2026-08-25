@@ -4,11 +4,7 @@
     <section class="section">
         <div class="container-xxl position-relative p-0">
 
-            <div class="container-xxl py-5 bg-primary hero-header mb-5">
-                <div class="container text-center my-lg-5 pt-lg-5 pb-lg-4">
-                    <h1 class="display-3 text-dark mb-3 animated slideInDown">Privacy Policy</h1>
-                </div>
-            </div>
+            @include('home.partials.page-hero', ['title' => 'Privacy Policy'])
         </div>
         <div class="container-xxl bg-white p-0">
             <!-- Privacy Policy Start -->

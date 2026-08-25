@@ -111,11 +111,7 @@
     </style>
     <section class="section">
         <div class="container-xxl position-relative p-0">
-            <div class="container-xxl py-5 bg-primary hero-header mb-md-5 mb-3">
-                <div class="container text-center my-lg-5 pt-lg-5 pb-lg-4">
-                    <h1 class="display-3 text-dark mb-3 animated slideInDown">Checkout</h1>
-                </div>
-            </div>
+            @include('home.partials.page-hero', ['title' => 'Checkout'])
         </div>
 
         <!--Cart Section Start -->
@@ -147,7 +143,7 @@
                             <p class="small">All transactions are secure and encrypted</p>
 
                             {{-- Square Pyament Gate way --}}
-                            <form class="mt-2 payment" action="{{ route('orders') }}" method="POST">
+                            <form class="mt-2 payment" action="{{ !empty($addingToExisting) ? route('orders.confirm-add-items') : route('orders') }}" method="POST">
                                 @csrf
                                 @foreach ($branchess as $branch)
                                     @if ($branch->status == 1)
@@ -170,9 +166,22 @@
                                             <input type="hidden" name="branch_id" value="{{ $branch->id }}">
                                             <input type="hidden" name="payment_method" value="offline">
 
+                                            @if(session('selected_order_type') === 'wholesale')
+                                                <div class="alert alert-dark mt-3">
+                                                    Wholesale delivery date: {{ session('wholesale_delivery_date') ?: 'Please select a date' }}
+                                                    <a href="{{ route('dessert-wholesale') }}">Change</a>
+                                                </div>
+                                            @endif
+                                            @if(session('selected_order_type') === 'drive_in')
+                                                <div class="alert alert-info mt-3">Drive-In 20% off will be applied to this order.</div>
+                                            @endif
+                                            @if(!empty($addingToExisting))
+                                                <button type="submit" class="mt-3 w-100 rounded-3 btn py-2 btn-danger">Confirm additional items</button>
+                                            @else
                                             <button type="submit"
                                                 class="mt-3 w-100 rounded-3 btn py-2 btn-danger placeOrderBtn">Place
                                                 Order</button>
+                                            @endif
                                         @else
                                             <a href="{{ route('login') }}"
                                                 class="mt-3 w-100 rounded-3 btn py-2 btn-danger">Get Login First</a>
@@ -193,10 +202,10 @@
                             <div class="col-xl-11 mt-0">
                                 <!-- Alert And Location Start -->
                                 <div class="border-bottom pb-3 mt-0">
-                                            <h5 class="mb-3">PICKUP AT</h5>
+                                            <h5 class="mb-3">HOW YOU GET IT</h5>
 
                                             @php
-                                                $cart = session('cart', []);
+                                                $cart = $cart ?? session('cart', []);
                                                 $storePickupBranch = null;
                                                 $homeDeliveryAddress = null;
 
@@ -213,6 +222,15 @@
                                                 $hasPickup = !empty($storePickupBranch);
                                                 $hasHomeDelivery = !empty($homeDeliveryAddress);
                                             @endphp
+
+                                            <ul class="list-unstyled mb-3">
+                                                @foreach ($cart as $item)
+                                                    <li class="small mb-1">
+                                                        <strong>{{ $item['name'] }}</strong>
+                                                        — {{ \App\Support\CartCheckout::fulfillmentLabel($item, session('selected_order_type')) }}
+                                                    </li>
+                                                @endforeach
+                                            </ul>
 
                                             {{-- 🏬 Store Pickup Section --}}
                                             @if ($hasPickup)
@@ -282,7 +300,7 @@
                             <!-- Location -->
                             <!-- Blling Start -->
                             @php
-                                $cartItems = session('cart', []);
+                                $cartItems = $cart ?? session('cart', []);
                                 // Calculate the total based on the prices of all items
                                 $totalQuantity = count($cartItems);
                                 $subtotal = 0;
@@ -324,6 +342,13 @@
                                 // $tip = is_array($tip_amount) ? 0 : $tip_amount;
                                 // $orderTotal = $subtotal + $tax + $tip;
                                 $orderTotal = $subtotal + $tax + $tip + $deliveryCharge - $redeem_amount;
+                                $driveDiscount = 0;
+                                if (session('selected_order_type') === 'drive_in') {
+                                    $drivePercent = (float) (\App\Models\BusinessSetting::getValue('drive_in_discount_percent', 20) ?: 20);
+                                    $driveDiscount = round($subtotal * ($drivePercent / 100), 2);
+                                    $orderTotal = max(0, $orderTotal - $driveDiscount);
+                                }
+                                $gatewayFee = ($orderTotal * 0.025) + 0.25;
                                 // ✅ UK Stripe Fee (2.5% + £0.25)
                                 $gatewayFee = ($orderTotal * 0.025) + 0.25;
                                 $finalTotalWithFee = $orderTotal + $gatewayFee;
@@ -337,6 +362,12 @@
                                     <p class="text-muted">Sub Total</p>
                                     <p class="sub-total">£{{ number_format($subtotal, 2) }}</p>
                                 </div>
+                                @if($driveDiscount > 0)
+                                <div class="d-flex justify-content-between">
+                                    <p class="text-muted">Drive-In 20% Off</p>
+                                    <p class="text-success">-£{{ number_format($driveDiscount, 2) }}</p>
+                                </div>
+                                @endif
                                 <!-- Estimated taxes -->
                                 <div class="d-flex justify-content-between">
                                     <p class="text-muted">Estimated taxes (New York)</p>
@@ -410,7 +441,11 @@
 @section('js')
 @if (\Illuminate\Support\Facades\Session::has('message'))
     <script>
-        toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');
+        @if(session('status') === false)
+            toastr.error(@json(session('message')));
+        @else
+            toastr.success(@json(session('message')));
+        @endif
     </script>
 @endif
 

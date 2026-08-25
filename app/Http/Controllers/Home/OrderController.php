@@ -15,6 +15,7 @@ use App\Models\Reward;
 use App\Models\RewardHistory;
 use App\Models\Topping;
 use App\Models\User;
+use App\Support\CartCheckout;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -36,16 +37,61 @@ class OrderController extends Controller
 {
     public function myOrder()
     {
-        $orders = OrderItem::with([
-            'complementaryProduct',
-            'branch',
-            'product.variants',
-            'order.user',
-            'orderToppings.category',
-            'orderToppings.toppings'
-        ])->latest()->get();
-        // return $orders;
-        return view('home.my-orders', compact('orders'));
+        $userId = Auth::guard('user')->id();
+        $lifecycle = app(\App\Services\OrderLifecycleService::class);
+        if ($userId) {
+            $lifecycle->reattachOrphanItemsForUser((int) $userId);
+        }
+        $orders = \App\Models\Order::with([
+                'orderItem.complementaryProduct',
+                'orderItem.branch',
+                'orderItem.product',
+                'orderItem.orderToppings.category',
+                'orderItem.orderToppings.toppings',
+            ])
+            ->where('user_id', $userId)
+            ->latest()
+            ->get();
+
+        $timerOrders = $orders->filter(function ($order) use ($lifecycle) {
+            return $lifecycle->canModify($order) && $lifecycle->remainingSeconds($order) > 0;
+        })->values();
+        // #region agent log
+        $firstTimer = $timerOrders->first();
+        $latest = $orders->first();
+        file_put_contents(base_path('debug-1796d5.log'), json_encode([
+            'sessionId' => '1796d5',
+            'hypothesisId' => 'W1',
+            'location' => 'OrderController.php:myOrder',
+            'message' => 'latest vs timer order types',
+            'data' => [
+                'latest_code' => $latest->code ?? null,
+                'latest_order_type' => $latest->order_type ?? null,
+                'latest_menu_type' => $latest->menu_type ?? null,
+                'latest_wholesale_date' => $latest->wholesale_delivery_date ?? null,
+                'latest_can_modify' => $latest ? $lifecycle->canModify($latest) : null,
+                'timer_code' => $firstTimer->code ?? null,
+                'timer_order_type' => $firstTimer->order_type ?? null,
+                'session_order_type' => session('selected_order_type'),
+            ],
+            'timestamp' => (int) round(microtime(true) * 1000),
+        ]) . "\n", FILE_APPEND);
+        // #endregion
+
+        $pendingOrders = $orders->filter(function ($order) use ($lifecycle) {
+            if ($lifecycle->canModify($order) && $lifecycle->remainingSeconds($order) > 0) {
+                return false;
+            }
+            $status = strtolower((string) $order->status);
+            return !in_array($status, ['delivered', 'cancelled', 'canceled', 'completed'], true);
+        })->values();
+
+        $pastOrders = $orders->filter(function ($order) {
+            $status = strtolower((string) $order->status);
+            return in_array($status, ['delivered', 'cancelled', 'canceled', 'completed'], true);
+        })->values();
+
+        return view('home.my-orders', compact('timerOrders', 'pendingOrders', 'pastOrders'));
     }
 
 
@@ -179,11 +225,39 @@ class OrderController extends Controller
    
     public function order(Request $request)
     {
+        $looksWholesale = $this->cartLooksWholesale();
+        $selectedCart = CartCheckout::selected();
+        // #region agent log
+        file_put_contents(base_path('debug-1796d5.log'), json_encode([
+            'sessionId' => '1796d5',
+            'hypothesisId' => 'W4',
+            'location' => 'OrderController.php:order',
+            'message' => 'place order wholesale check',
+            'data' => [
+                'cartLooksWholesale' => $looksWholesale,
+                'session_order_type' => session('selected_order_type'),
+                'has_wholesale_date' => (bool) session('wholesale_delivery_date'),
+                'cart_count' => count(session('cart', [])),
+                'selected_count' => count($selectedCart),
+                'fulfillments' => array_values(array_map(function ($item) {
+                    return \App\Support\CartCheckout::fulfillmentLabel($item, session('selected_order_type'));
+                }, $selectedCart)),
+            ],
+            'timestamp' => (int) round(microtime(true) * 1000),
+        ]) . "\n", FILE_APPEND);
+        // #endregion
+        if ($redirect = $this->rejectInvalidWholesaleSession()) {
+            return $redirect;
+        }
         DB::beginTransaction();
         try {
             $user = Auth::guard('user')->user();
             $userId = $user->id;
-            $products = session('cart', []);
+            $products = CartCheckout::selected();
+            if (empty($products)) {
+                DB::rollBack();
+                return redirect()->route('my-cart')->with(['status' => false, 'message' => 'Please select at least one item to place the order.']);
+            }
             $vehicle_color = session('vehicle_color', []);
             $vehicle_number = session('vehicle_number', []);
             $redeemedAmount = session('redeem_amount', []);
@@ -193,22 +267,24 @@ class OrderController extends Controller
             $tip_amount = session('tip_amount', []);
             $orderTotal = session('orderTotal', []);
             $deliveryCharge = session('delivery_charge', 0);
-            // return $redeemedAmount;
+            $tipValue = is_array($tip_amount) ? floatval(array_sum($tip_amount)) : floatval($tip_amount ?: 0);
+            $redeemValue = is_array($redeemedAmount) ? floatval(array_sum($redeemedAmount)) : floatval($redeemedAmount ?: 0);
+            $redeemPointsValue = is_array($redeemedPoints) ? floatval(array_sum($redeemedPoints)) : floatval($redeemedPoints ?: 0);
             $total = 0;
+            $branchId = null;
             foreach ($products as $id => $details) {
-                $branchId = $details['branch_id'];
+                $branchId = $details['branch_id'] ?? $branchId;
             }
 
-            // ✅ CREATE ORDER WITHOUT PAYMENT GATEWAY
             $order = new Order();
             $order->code = random_int(10000000, 99999999);
             $order->user_id = $userId;
             $order->vehicle_color = $vehicle_color ?: 'NULL';
             $order->vehicle_number = $vehicle_number ?: 'NULL';
-            $order->redeemed = $redeemedAmount ?: 0;
-            $order->redeemed_points = $redeemedPoints ?: 0;
+            $order->redeemed = $redeemValue;
+            $order->redeemed_points = $redeemPointsValue;
             $order->status = 'Pending';
-            $order->payment = 'offline'; // ✅ manual payment
+            $order->payment = 'offline';
             $order->date = $dateTime['date'] ?? null;
             $order->time = $dateTime['time'] ?? $startTime;
 
@@ -222,7 +298,7 @@ class OrderController extends Controller
             $order->delivery_charge = $deliveryCharge;
             $order->save();
 
-            $orderId = $order->id;
+            $orderId = $this->resolvedOrderId($order, $userId);
 
             // ✅ Save order items and toppings
             foreach ($products as $id => $details) {
@@ -235,7 +311,7 @@ class OrderController extends Controller
                 $orderItem->branch_id = $details['branch_id'];
                 $orderItem->product_name = $details['name'];
                 $orderItem->quantity = $details['quantity'];
-                $orderItem->tip = is_array($tip_amount) ? array_sum($tip_amount) : ($tip_amount ?: 0);
+                $orderItem->tip = $tipValue;
                 $orderItem->sub_total = floatval($details['price']) * floatval($details['quantity']);
                 $orderItem->delivery_status = $details['delivery_status'] ?? null;
                 $orderItem->delivery_address = $details['delivery_address'] ?? null;
@@ -260,11 +336,9 @@ class OrderController extends Controller
                 }
             }
 
-            $order->total_amount = $total + ($tip_amount ?: 0) + $tax + $deliveryCharge - ($redeemedAmount ?: 0);
-            // ✅ Extract delivery info from session cart
+            $order->total_amount = $total + $tipValue + $tax + $deliveryCharge - $redeemValue;
             $order->save();
 
-            // ✅ Loyalty points logic
             $points = $order->total_amount;
             if ($user) {
                 $existingPoints = $user->point;
@@ -273,30 +347,45 @@ class OrderController extends Controller
             }
 
             $reward = Reward::where('user_id', $user->id)->first();
-            if($reward) {
+            if ($reward) {
                $reward->update([
-                    'rewards' =>$reward->rewards - $redeemedPoints ,
-                    'redeemed' => $redeemedPoints + ($reward->redeemed ?? 0),
+                    'rewards' => $reward->rewards - $redeemPointsValue,
+                    'redeemed' => $redeemPointsValue + ($reward->redeemed ?? 0),
                 ]);
             }
 
-            // ✅ Email notification
             $orderCode = $order->code;
-            // Mail::to($user->email)->send(new OrderConfirm($orderCode));
-
-            // ✅ Clear session
-            session()->forget('cart');
-            session()->forget('tip_amount');
-            session()->forget('redeem_points');
-            session()->forget('redeem_amount');
-            session()->forget('vehicle_color');
-            session()->forget('vehicle_number');
-            session()->forget('time');
-            session()->forget('start_time'); 
-            session()->forget('delivery_charge');
+            $orderType = session('selected_order_type', 'standard');
+            $lifecycle = app(\App\Services\OrderLifecycleService::class);
+            try {
+                $lifecycle->initializeNewOrder($order, [
+                    'order_type' => $orderType,
+                    'menu_type' => $orderType === 'wholesale' ? 'wholesale' : 'food',
+                    'is_scheduled' => session('scheduled_order') ? 1 : 0,
+                    'scheduled_at' => session('scheduled_at'),
+                    'wholesale_delivery_date' => session('wholesale_delivery_date'),
+                ]);
+            } catch (\Throwable $e) {
+                \Log::warning('initializeNewOrder skipped after place order', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            }
+            if (strtolower((string) $order->payment) !== 'stripe') {
+                try {
+                    $lifecycle->recordPayment($order, 0, 'offline', 'original', ['status' => 'unpaid', 'notes' => 'Pay on collection/delivery']);
+                } catch (\Throwable $e) {
+                    \Log::warning('recordPayment skipped after place order', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+                }
+            }
             DB::commit();
-            return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order placed successfully! Payment will be handled manually.']);
-        } catch (\Exception $e) {
+            CartCheckout::forgetPlaced();
+            session()->forget([
+                'tip_amount', 'redeem_points', 'redeem_amount',
+                'vehicle_color', 'vehicle_number', 'time', 'start_time',
+                'delivery_charge', 'selected_order_type', 'scheduled_order',
+                'scheduled_at', 'wholesale_delivery_date', 'adding_to_order_id',
+            ]);
+            session(['active_add_order_id' => $order->id]);
+            return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order placed successfully. You can see your order in My Orders.']);
+        } catch (\Throwable $e) {
             DB::rollBack();
             return redirect()->back()->with(['status' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
@@ -349,11 +438,18 @@ public function stripeSuccess()
     if ($session->payment_status !== 'paid') {
         return redirect()->route('checkout')->with('error', 'Payment not completed');
     }
+    if ($redirect = $this->rejectInvalidWholesaleSession()) {
+        return $redirect;
+    }
      DB::beginTransaction();
         try {
             $user = Auth::guard('user')->user();
             $userId = $user->id;
-            $products = session('cart', []);
+            $products = CartCheckout::selected();
+            if (empty($products)) {
+                DB::rollBack();
+                return redirect()->route('my-cart')->with(['status' => false, 'message' => 'Please select at least one item to place the order.']);
+            }
             $vehicle_color = session('vehicle_color', []);
             $vehicle_number = session('vehicle_number', []);
             $redeemedAmount = session('redeem_amount', []);
@@ -363,22 +459,24 @@ public function stripeSuccess()
             $tip_amount = session('tip_amount', []);
             $orderTotal = session('orderTotal', []);
             $deliveryCharge = session('delivery_charge', 0);
-            // return $redeemedAmount;
+            $tipValue = is_array($tip_amount) ? floatval(array_sum($tip_amount)) : floatval($tip_amount ?: 0);
+            $redeemValue = is_array($redeemedAmount) ? floatval(array_sum($redeemedAmount)) : floatval($redeemedAmount ?: 0);
+            $redeemPointsValue = is_array($redeemedPoints) ? floatval(array_sum($redeemedPoints)) : floatval($redeemedPoints ?: 0);
             $total = 0;
+            $branchId = null;
             foreach ($products as $id => $details) {
-                $branchId = $details['branch_id'];
+                $branchId = $details['branch_id'] ?? $branchId;
             }
 
-            // ✅ CREATE ORDER WITHOUT PAYMENT GATEWAY
             $order = new Order();
             $order->code = random_int(10000000, 99999999);
             $order->user_id = $userId;
             $order->vehicle_color = $vehicle_color ?: 'NULL';
             $order->vehicle_number = $vehicle_number ?: 'NULL';
-            $order->redeemed = $redeemedAmount ?: 0;
-            $order->redeemed_points = $redeemedPoints ?: 0;
+            $order->redeemed = $redeemValue;
+            $order->redeemed_points = $redeemPointsValue;
             $order->status = 'Pending';
-            $order->payment = 'stripe'; // ✅ manual payment
+            $order->payment = 'stripe';
             $order->date = $dateTime['date'] ?? null;
             $order->time = $dateTime['time'] ?? $startTime;
 
@@ -392,9 +490,8 @@ public function stripeSuccess()
             $order->delivery_charge = $deliveryCharge;
             $order->save();
 
-            $orderId = $order->id;
+            $orderId = $this->resolvedOrderId($order, $userId);
 
-            // ✅ Save order items and toppings
             foreach ($products as $id => $details) {
                 $orderItem = new OrderItem();
                 $orderItem->order_id = $orderId;
@@ -405,7 +502,7 @@ public function stripeSuccess()
                 $orderItem->branch_id = $details['branch_id'];
                 $orderItem->product_name = $details['name'];
                 $orderItem->quantity = $details['quantity'];
-                $orderItem->tip = is_array($tip_amount) ? array_sum($tip_amount) : ($tip_amount ?: 0);
+                $orderItem->tip = $tipValue;
                 $orderItem->sub_total = floatval($details['price']) * floatval($details['quantity']);
                 $orderItem->delivery_status = $details['delivery_status'] ?? null;
                 $orderItem->delivery_address = $details['delivery_address'] ?? null;
@@ -430,15 +527,13 @@ public function stripeSuccess()
                 }
             }
 
-            $finalTotal = $total + ($tip_amount ?: 0) + $tax + $deliveryCharge - ($redeemedAmount ?: 0);
+            $finalTotal = $total + $tipValue + $tax + $deliveryCharge - $redeemValue;
             $gatewayFee = ($finalTotal * 0.025) + 0.25;
 
             $order->total_amount = $finalTotal + $gatewayFee;
             $order->gateway_fee = $gatewayFee;
-            // ✅ Extract delivery info from session cart
             $order->save();
 
-            // ✅ Loyalty points logic
             $points = $order->total_amount;
             if ($user) {
                 $existingPoints = $user->point;
@@ -447,30 +542,45 @@ public function stripeSuccess()
             }
 
             $reward = Reward::where('user_id', $user->id)->first();
-            if($reward) {
+            if ($reward) {
                $reward->update([
-                    'rewards' =>$reward->rewards - $redeemedPoints ,
-                    'redeemed' => $redeemedPoints + ($reward->redeemed ?? 0),
+                    'rewards' => $reward->rewards - $redeemPointsValue,
+                    'redeemed' => $redeemPointsValue + ($reward->redeemed ?? 0),
                 ]);
             }
 
-            // ✅ Email notification
-            $orderCode = $order->code;
-            // Mail::to($user->email)->send(new OrderConfirm($orderCode));
-
-            // ✅ Clear session
-            session()->forget('cart');
-            session()->forget('tip_amount');
-            session()->forget('redeem_points');
-            session()->forget('redeem_amount');
-            session()->forget('vehicle_color');
-            session()->forget('vehicle_number');
-            session()->forget('time');
-            session()->forget('start_time'); 
-            session()->forget('delivery_charge');
+            $orderType = session('selected_order_type', 'standard');
+            $lifecycle = app(\App\Services\OrderLifecycleService::class);
+            try {
+                $lifecycle->initializeNewOrder($order, [
+                    'order_type' => $orderType,
+                    'menu_type' => $orderType === 'wholesale' ? 'wholesale' : 'food',
+                    'is_scheduled' => session('scheduled_order') ? 1 : 0,
+                    'scheduled_at' => session('scheduled_at'),
+                    'wholesale_delivery_date' => session('wholesale_delivery_date'),
+                ]);
+            } catch (\Throwable $e) {
+                \Log::warning('initializeNewOrder skipped after stripe order', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            }
+            try {
+                $lifecycle->recordPayment($order, floatval($order->total_amount), 'stripe', 'original', [
+                    'stripe_session_id' => $sessionId,
+                    'status' => 'paid',
+                ]);
+            } catch (\Throwable $e) {
+                \Log::warning('recordPayment skipped after stripe order', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            }
             DB::commit();
-            return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order placed successfully']);
-        } catch (\Exception $e) {
+            CartCheckout::forgetPlaced();
+            session()->forget([
+                'tip_amount', 'redeem_points', 'redeem_amount',
+                'vehicle_color', 'vehicle_number', 'time', 'start_time',
+                'delivery_charge', 'selected_order_type', 'scheduled_order',
+                'scheduled_at', 'wholesale_delivery_date', 'adding_to_order_id',
+            ]);
+            session(['active_add_order_id' => $order->id]);
+            return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order placed successfully. You can see your order in My Orders.']);
+        } catch (\Throwable $e) {
             DB::rollBack();
             return redirect()->back()->with(['status' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
@@ -493,5 +603,79 @@ public function stripeSuccess()
             $notification->seen = 1;
             $notification->save();
         }
+    }
+
+    private function cartLooksWholesale(): bool
+    {
+        $cart = session('cart', []);
+        if (empty($cart)) {
+            return session('selected_order_type') === 'wholesale' && (bool) session('wholesale_delivery_date');
+        }
+        foreach ($cart as $item) {
+            if (($item['fulfillment'] ?? '') === 'wholesale') {
+                return true;
+            }
+        }
+        $ids = [];
+        foreach ($cart as $item) {
+            if (!empty($item['product_id'])) {
+                $ids[] = (int) $item['product_id'];
+            }
+        }
+        if (!$ids) {
+            return session('selected_order_type') === 'wholesale';
+        }
+        try {
+            $products = \App\Models\Product::with('menu')->whereIn('id', $ids)->get();
+        } catch (\Throwable $e) {
+            return session('selected_order_type') === 'wholesale';
+        }
+        foreach ($products as $product) {
+            $menu = $product->menu;
+            if (!$menu) {
+                continue;
+            }
+            $type = strtolower((string) ($menu->type ?? ''));
+            $slug = strtolower((string) ($menu->slug ?? ''));
+            if ($type === 'wholesale' || $slug === 'dessert-wholesale') {
+                return true;
+            }
+        }
+        return session('selected_order_type') === 'wholesale';
+    }
+
+    private function rejectInvalidWholesaleSession()
+    {
+        if (!$this->cartLooksWholesale()) {
+            return null;
+        }
+        Session::put('selected_order_type', 'wholesale');
+        $date = session('wholesale_delivery_date');
+        $wholesale = app(\App\Services\WholesaleScheduleService::class);
+        if (!$date || !$wholesale->isValidDate($date)) {
+            return redirect()->route('dessert-wholesale')->with([
+                'status' => false,
+                'message' => 'Please select a wholesale delivery date before placing this order.',
+            ]);
+        }
+        return null;
+    }
+
+    private function resolvedOrderId(Order $order, $userId): int
+    {
+        $id = (int) $order->getKey();
+        if ($id > 0) {
+            return $id;
+        }
+        $found = Order::where('code', $order->code)
+            ->where('user_id', $userId)
+            ->orderByDesc('id')
+            ->first();
+        if ($found) {
+            $order->id = $found->id;
+            $order->exists = true;
+            return (int) $found->id;
+        }
+        return 0;
     }
 }

@@ -15,6 +15,7 @@ class CiboExpress extends Model
         'title',
         'description',
         'image',
-        'status'
+        'status',
+        'page_key'
     ];
 }

@@ -1,5 +1,5 @@
 @extends('admin.layout.app')
-@section('title', 'Cibo Express')
+@section('title', 'Website Content')
 @section('content')
     <div class="main-content" style="min-height: 562px;">
         <section class="section">
@@ -9,7 +9,7 @@
                         <div class="card">
                             <div class="card-header">
                                 <div class="col-12">
-                                    <h4>Cibo Express</h4>
+                                    <h4>Dessert Wholesale / Private Booking Content</h4>
                                 </div>
                             </div>
                             <div class="card-body table-striped table-bordered table-responsive">
@@ -17,7 +17,8 @@
                                     <thead>
                                         <tr>
                                             <th>Sr.</th>
-											<th>Image</th>
+                                            <th>Image</th>
+                                            <th>Page</th>
                                             <th>Title</th>
                                             <th>Description</th>	
                                             <th scope="col">Actions</th>
@@ -32,6 +33,7 @@
                                                     <img src="{{ asset($cibo->image) }}" alt="" height="50"
                                                         width="50" class="image">
                                                 </td>
+                                                <td>{{ $cibo->page_key ?? 'legacy' }}</td>
                                                 <td>{{ $cibo->title }}</td>
                                                 <td>{{ $cibo->description }}</td>
                                                 <td>

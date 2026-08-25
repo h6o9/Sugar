@@ -10,8 +10,10 @@ use Illuminate\Http\Request;
 use App\Models\ToppingProduct;
 use App\Models\ProductVariants;
 use App\Http\Controllers\Controller;
+use App\Support\MenuCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 class ProductController extends Controller
 {
@@ -211,6 +213,10 @@ public function store(Request $request)
         'featured_method' => ($hasVariants || !$rule) ? null : $method,
         'featured_amount' => ($hasVariants || !$rule) ? null : $amount,
     ]);
+    if (Schema::hasColumn('products', 'food_menu_id') && $request->filled('food_menu_id')) {
+        $product->food_menu_id = $request->food_menu_id;
+        $product->save();
+    }
 
     // -------------------------
     // Complementary Product
@@ -442,8 +448,20 @@ public function update(Request $request, $id)
     // -------------------------
     // UPDATE BASIC PRODUCT INFO
     // -------------------------
+    $oldMenuId = $product->menu_id;
     $product->name = $request->name;
     $product->menu_id = $request->menu_id;
+    if (Schema::hasColumn('products', 'food_menu_id')) {
+        if ($request->filled('food_menu_id')) {
+            $product->food_menu_id = $request->food_menu_id;
+        } else {
+            $newMenu = Menu::find($request->menu_id);
+            $oldMenu = Menu::find($oldMenuId);
+            if ($newMenu && MenuCatalog::isWholesale($newMenu) && $oldMenu && !MenuCatalog::isWholesale($oldMenu)) {
+                $product->food_menu_id = $oldMenuId;
+            }
+        }
+    }
     $product->rule = $applyPriority ? 'Priority' : null;
 
     if ($applyPriority) {

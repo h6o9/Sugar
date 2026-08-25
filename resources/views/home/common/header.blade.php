@@ -9,6 +9,13 @@ $notifications        = collect();
 $notificationCount    = 0;
 $latestNotifications  = collect();
 $branches             = Branch::all();
+$spAddingToOrder      = false;
+try {
+    $spAddingToOrder = app(\App\Services\OrderLifecycleService::class)
+        ->hasActiveAddToOrderSession(Auth::guard('user')->id() ? (int) Auth::guard('user')->id() : null);
+} catch (\Throwable $e) {
+    $spAddingToOrder = false;
+}
 
 if (Auth::guard('user')->check()) {
     $userId              = Auth::guard('user')->id();
@@ -114,11 +121,12 @@ if ($product) {
 <style>.pac-container { z-index: 9999999 !important; }</style>
 @endif
 
-<div id="spinner" class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
+<div id="spinner" class="bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
     <div class="spinner-border text-dark" style="width:3rem;height:3rem;" role="status">
         <span class="sr-only">Loading...</span>
     </div>
 </div>
+<div id="spHeaderBackdrop" aria-hidden="true"></div>
 
 <!-- Disclaimer Modal -->
 <div class="modal fade" id="disclaimerModal" tabindex="-1" aria-labelledby="disclaimerModalLabel" aria-hidden="true">
@@ -131,7 +139,8 @@ if ($product) {
     </div>
 </div>
 
-<!-- Promo Bar -->
+<!-- Promo Bar + Navbar stay visible above wholesale bar -->
+<div class="sp-site-header">
 @if($product)
 <div class="promo-bar">
     <a href="#" style="text-decoration:none;"
@@ -160,7 +169,7 @@ if ($product) {
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-dark px-4 px-lg-5 py-lg-0 py-2">
     <div>
-        <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+        <button class="navbar-toggler me-2 d-inline-flex" type="button" aria-label="Open menu">
             <span class="fa fa-bars"></span>
         </button>
         <a href="{{ route('index') }}" class="navbar-brand p-0">
@@ -168,24 +177,23 @@ if ($product) {
         </a>
     </div>
 
-    <div class="d-lg-none">
-        <span class="fa fa-search me-2 header-icon open-btn"></span>
-        <a href="#" class="fa fa-shopping-cart position-relative header-icon">
-            <span class="badge cart-counter cart-counter-1"></span>
-        </a>
+    <div class="d-lg-none d-flex align-items-center sp-header-actions">
+        <span class="fa fa-search header-icon open-btn"></span>
+        @include('home.partials.header-cart', ['wrapperClass' => 'd-inline nav-item dropdown', 'toggleClass' => 'd-inline nav-link p-0', 'iconClass' => ''])
 
         @if(Auth::guard('user')->check())
         <div class="d-inline nav-item dropdown notification-wrapper">
-            <a href="#" class="d-inline nav-link p-0" data-bs-toggle="dropdown">
-                <span class="fa fa-bell ms-3 position-relative header-icon">
+            <a href="#" class="d-inline nav-link p-0" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                <span class="fa fa-bell position-relative header-icon">
                     @if($notificationCount > 0)
                         <span class="badge bell-counter">{{ $notificationCount }}</span>
                     @endif
                 </span>
             </a>
             <div class="mobile-notify-block dropdown-menu py-3 px-0">
-                <div class="border-bottom pb-3 px-3">
+                <div class="border-bottom pb-3 px-3 d-flex justify-content-between align-items-center">
                     <h5 class="m-0 text-black">Notifications ({{ $notificationCount }})</h5>
+                    <button type="button" class="btn-close sp-dropdown-close d-lg-none" aria-label="Close"></button>
                 </div>
                 <div class="notify-block">
                     @forelse($latestNotifications as $notification)
@@ -215,7 +223,12 @@ if ($product) {
     <div class="collapse navbar-collapse" id="navbarCollapse">
         <div class="navbar-nav ms-auto py-0 pe-xl-4 pe-3">
             <a href="{{ route('index') }}" class="nav-item nav-link {{ request()->is('/') ? 'active' : '' }}">Home</a>
-            <a href="{{ route('get-our-gallery') }}" class="nav-item nav-link {{ request()->is('get-our-gallery') ? 'active' : '' }}">EXPLORE Sugar Pappi GALLERY</a>
+            <a href="{{ route('get-our-menu') }}" class="nav-item nav-link {{ request()->is('get-our-menu') ? 'active' : '' }}">Menu</a>
+            <a href="{{ route('pappi-special') }}" class="nav-item nav-link {{ request()->is('pappi-special') ? 'active' : '' }}">Pappi Special</a>
+            <a href="{{ route('get-our-gallery') }}" class="nav-item nav-link {{ request()->is('get-our-gallery') ? 'active' : '' }}">Gallery</a>
+            <a href="{{ route('dessert-wholesale') }}" class="nav-item nav-link">Dessert Wholesale</a>
+            <a href="{{ route('drive-in') }}" class="nav-item nav-link">Drive-In</a>
+            <a href="{{ $whatsappUrl ?? 'https://wa.me/447727412922' }}" class="nav-item nav-link" target="_blank" rel="noopener">WhatsApp</a>
             @if(Auth::guard('user')->check())
                 <a href="{{ route('my-order') }}" class="nav-item nav-link {{ request()->is('my-order') ? 'active' : '' }}">My Orders</a>
             @endif
@@ -265,53 +278,8 @@ if ($product) {
         @endif
 
         <!-- Cart Dropdown -->
-        <div class="ms-2 nav-item dropdown">
-            <a href="#" class="nav-link p-0" data-bs-toggle="dropdown">
-                <span class="fa fa-shopping-cart me-3 position-relative header-icon">
-                    <span class="badge cart-counter cart-counter-1">{{ count(session('cart', [])) }}</span>
-                </span>
-            </a>
-            <div class="carting-card dropdown-menu py-3 px-0">
-                <div class="border-bottom mb-1 pb-3 px-3">
-                    <h5>Your Cart (<span class="cart-counter-1">{{ count(session('cart', [])) }}</span>)</h5>
-                    <b class="small text-danger">You're viewing a quick summary. Full details including toppings and complimentary items will be available on the cart page.</b>
-                </div>
-                <div class="cards-parent scrollable">
-                    @forelse(session('cart', []) as $item)
-                    <div id="{{ $item['product_id'] }}carted"
-                        class="carting-child px-3 mt-3 d-flex justify-content-between pb-3 border-bottom">
-                        <img src="{{ asset($item['image']) }}" alt="">
-                        <div class="content">
-                            <div class="d-flex cart-input-parent justify-content-between">
-                                <h6 class="m-0">{{ $item['name'] }}
-                                    <span style="font-size:12px">{{ !empty($item['size']) ? '('.$item['size'].')' : '' }}</span>
-                                </h6>
-                                <h6 class="m-0 total-price">
-                                    £{{ number_format(floatval($item['price']) * intval($item['quantity']), 2) }}
-                                </h6>
-                                <p class="product-price d-none">{{ floatval($item['price']) }}</p>
-                            </div>
-                            <div class="cart-btn">
-                                <button class="btn p-0 decrement-btn"
-                                    data-product-id="{{ $item['product_id'] }}, {{ $item['variant_id'] ?? null }}">-</button>
-                                <input type="number" name="quantity" value="{{ $item['quantity'] }}"
-                                    class="increment-input cart-input cart_input text-center">
-                                <button class="btn p-0 increment-btn"
-                                    data-product-id="{{ $item['product_id'] }}, {{ $item['variant_id'] ?? null }}">+</button>
-                            </div>
-                        </div>
-                    </div>
-                    @empty
-                    <p class="text-danger text-center">Your cart is empty!</p>
-                    @endforelse
-                </div>
-                <div class="pt-3 border-top mt-1 text-center">
-                    <a href="{{ route('my-cart') }}"
-                        class="btn btn-danger px-5 {{ count(session('cart', [])) == 0 ? 'disabled' : '' }}">
-                        Continue To Cart
-                    </a>
-                </div>
-            </div>
+        <div class="ms-2 d-none d-lg-block">
+            @include('home.partials.header-cart')
         </div>
 
         @if(Auth::guard('user')->check())
@@ -321,6 +289,7 @@ if ($product) {
         @endif
     </div>
 </nav>
+</div>
 
 <!-- Overlay Search -->
 <div id="myOverlay" class="overlay">
@@ -550,10 +519,12 @@ if ($product) {
 </div>
 @endif
 
-<!-- Scripts -->
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 <script>
-$(document).ready(function () {
+window.spInitStorefront = function () {
+    if (window.__spStorefrontReady || !window.jQuery) return;
+    window.__spStorefrontReady = true;
+    window.spAddingToOrder = @json(!empty($spAddingToOrder));
+    window.jQuery(function ($) {
 
     // ── Cart +/- buttons in header dropdown ─────────────────────────────
     function updateServerCart(productId, variantId, quantity) {
@@ -656,10 +627,15 @@ $(document).ready(function () {
         }
     });
 
-    // ── Add To Order ─────────────────────────────────────────────────────
-    $(document).on('click', '.addto-cart', function () {
+    // ── Add to cart / Add to order (once only) ────────────────────────────
+    $(document).off('click.spAddCart', '.addto-cart').on('click.spAddCart', '.addto-cart', function (e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
         var $btn   = $(this);
+        if ($btn.data('spAdding')) return;
+        $btn.data('spAdding', true);
         var $modal = $btn.closest('.food-modal');
+        var addLabel = $btn.data('addLabel') || (window.spAddingToOrder ? 'Add to Order' : 'Add to Cart');
 
         var productId       = $modal.find('input[name="product_id"]').val();
         var quantity        = $modal.find('input[name="quantity"]').val() || 1;
@@ -667,18 +643,31 @@ $(document).ready(function () {
         var complementaryId = $modal.find('input[name="complementary_id"]').length
                               ? $modal.find('input[name="complementary_id"]').val() : null;
 
-        if (!productId) { toastr.error('Product not found'); return; }
+        function resetBtn() {
+            $btn.data('spAdding', false);
+            $btn.prop('disabled', false).text(addLabel);
+        }
 
-        var deliveryStatus  = $modal.find('input[name^="status_"]:checked').val() || '1';
+        if (!productId) { toastr.error('Product not found'); resetBtn(); return; }
+
+        var isWholesaleAdd = !!$btn.data('wholesale') || !!window.spWholesalePage;
+        if (isWholesaleAdd && !window.spWholesaleDate) {
+            toastr.error('Select and save a wholesale delivery date first (Monday / Thursday / Saturday, 7–10 PM).');
+            var bar = document.getElementById('wholesaleDateBar');
+            if (bar) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            resetBtn();
+            return;
+        }
+        var deliveryStatus  = isWholesaleAdd ? '2' : ($modal.find('input[name^="status_"]:checked').val() || '1');
         var deliveryAddress = '', lat = '', lng = '';
 
-        if (deliveryStatus == '2') {
+        if (!isWholesaleAdd && deliveryStatus == '2') {
             deliveryAddress = $modal.find('input[name="delivery_address_' + productId + '"]').val();
             lat             = $modal.find('input[name="lat_' + productId + '"]').val();
             lng             = $modal.find('input[name="lng_' + productId + '"]').val();
 
-            if (!deliveryAddress)  { toastr.error('Please enter delivery address'); return; }
-            if (!lat || !lng)      { toastr.error('Please select a valid address from suggestions'); return; }
+            if (!deliveryAddress)  { toastr.error('Please enter delivery address'); resetBtn(); return; }
+            if (!lat || !lng)      { toastr.error('Please select a valid address from suggestions'); resetBtn(); return; }
         }
 
         var variantId  = '';
@@ -697,46 +686,88 @@ $(document).ready(function () {
             return { category_id: catId, toppings: tops };
         });
 
-        $btn.prop('disabled', true).text('Adding...');
-
-        $.ajax({
-            type: 'POST',
-            url:  '{{ route("add.to.cart") }}',
-            data: {
-                _token:               '{{ csrf_token() }}',
-                product_id:           productId,
-                quantity:             quantity,
-                branch_id:            branchId,
-                variant_id:           variantId,
-                delivery_status:      deliveryStatus,
-                delivery_address:     deliveryAddress,
-                lat:                  lat,
-                lng:                  lng,
-                complementary_id:     complementaryId,
-                location:             deliveryStatus,
-                toppings_by_category: toppingsArray,
-            },
-            success: function (data) {
-                toastr.success('Product Added To Cart Successfully!');
-                var count = Object.keys(data.cart).length;
-                $('.cart-counter-1').text(count);
-                if (typeof updateCartUI === 'function') updateCartUI(data);
-                if (count > 0) {
-                    $('a[href*="my-cart"]').removeClass('disabled').prop('disabled', false);
+        function sendAdd() {
+            $btn.prop('disabled', true).text('Adding...');
+            $.ajax({
+                type: 'POST',
+                url:  '{{ route("add.to.cart") }}',
+                data: {
+                    _token:               '{{ csrf_token() }}',
+                    product_id:           productId,
+                    quantity:             quantity,
+                    branch_id:            branchId,
+                    variant_id:           variantId,
+                    delivery_status:      deliveryStatus,
+                    delivery_address:     deliveryAddress,
+                    lat:                  lat,
+                    lng:                  lng,
+                    complementary_id:     complementaryId,
+                    location:             deliveryStatus,
+                    toppings_by_category: toppingsArray,
+                    wholesale:            isWholesaleAdd ? 1 : 0,
+                },
+                success: function (data) {
+                    if (data && data.success === false) {
+                        toastr.error((data && data.message) || 'Something went wrong.');
+                        return;
+                    }
+                    if (data && data.receipt_generated) {
+                        toastr.success(data.message || 'Your product has been added in My Orders.');
+                        var count = 0;
+                        $('.cart-counter-1').text(count);
+                        if (typeof window.updateCartUI === 'function') window.updateCartUI({ cart: {} });
+                        $btn.closest('.modal').modal('hide');
+                        return;
+                    }
+                    toastr.success(window.spAddingToOrder ? 'Your product has been added in My Orders.' : (isWholesaleAdd ? 'Added. Open My Cart, then Place Order. No timer on wholesale.' : 'Product added to cart!'));
+                    var count = data && data.cart ? Object.keys(data.cart).length : 0;
+                    $('.cart-counter-1').text(count);
+                    if (typeof window.updateCartUI === 'function') window.updateCartUI(data);
+                    if (count > 0) {
+                        $('a[href*="my-cart"]').removeClass('disabled').prop('disabled', false);
+                    }
+                    $btn.closest('.modal').modal('hide');
+                },
+                error: function (xhr) {
+                    console.error('Cart error:', xhr.responseText);
+                    toastr.error('Error: ' + ((xhr.responseJSON && xhr.responseJSON.message) || 'Server error'));
+                },
+                complete: function () {
+                    resetBtn();
                 }
-                $btn.closest('.modal').modal('hide');
-            },
-            error: function (xhr) {
-                console.error('Cart error:', xhr.responseText);
-                toastr.error('Error adding product to cart');
-            },
-            complete: function () {
-                $btn.prop('disabled', false).text('Add To Order');
-            }
-        });
+            });
+        }
+
+        if (window.spAddingToOrder && typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: 'Are you sure you want to add this product in your order?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#ff2d87',
+                confirmButtonText: 'Yes',
+                cancelButtonText: 'Cancel'
+            }).then(function (result) {
+                if (!result.isConfirmed) {
+                    resetBtn();
+                    return;
+                }
+                sendAdd();
+            });
+            return;
+        }
+        sendAdd();
     });
 
-}); // end ready
+    });
+};
+if (window.jQuery) {
+    window.spInitStorefront();
+} else {
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.spInitStorefront) window.spInitStorefront();
+    });
+}
 
 // ── toggleDelivery (global — called from onchange) ────────────────────────
 function toggleDelivery(productId, branchUnique) {

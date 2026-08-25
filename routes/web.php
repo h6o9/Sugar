@@ -38,6 +38,8 @@ use App\Http\Controllers\Home\LoyalityPointsController;
 use App\Http\Controllers\Home\LoyaltyPointController;
 use App\Http\Controllers\Home\OrderController;
 use App\Http\Controllers\Home\SecurityController;
+use App\Http\Controllers\Home\StorefrontController;
+use App\Http\Controllers\Admin\BusinessSettingController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\WebController;
 use Illuminate\Support\Facades\Route;
@@ -87,10 +89,13 @@ Route::prefix('admin')->middleware('admin')->group(function () {
     Route::post('update-profile', [AdminController::class, 'update_profile']);
     Route::get('logout', [AdminController::class, 'logout']);
 
-	// Cibo Express
+	// Website content (replaces customer-facing Cibo Express)
 	Route::get('/cibo-express', [CiboExpressController::class, 'index'])->name('cibo-express.index');
 	Route::get('/cibo-express/edit/{id}', [CiboExpressController::class, 'edit'])->name('cibo-express.edit');
 	Route::post('/cibo-express/update/{id}', [CiboExpressController::class, 'update'])->name('cibo-express.update');
+    Route::get('/business-settings', [BusinessSettingController::class, 'index'])->name('business-settings.index');
+    Route::post('/business-settings', [BusinessSettingController::class, 'update'])->name('business-settings.update');
+    Route::get('/orders/{id}/print-receipt', [StorefrontController::class, 'printReceipt'])->name('admin.orders.print');
 
 // Complementary Product Routes
 	Route::get('/complementary-products', [ComplementaryProductController::class, 'index'])
@@ -284,6 +289,7 @@ Route::get('terms-conditions', [SecurityController::class, 'getTermCondition'])-
 
 //addtocart routes
 Route::post('add-to-cart', [CartController::class, 'addToCart'])->name('add.to.cart');
+Route::post('checkout-selected', [CartController::class, 'prepareCheckout'])->name('checkout.selected');
 Route::post('add-to-cart-remove', [CartController::class, 'remove'])->name('remove.from.cart');
 Route::post('update-cart', [CartController::class, 'updateCart'])->name('update.cart');
 Route::post('update-my-cart', [CartController::class, 'updateMyCartValue'])->name('update.my.cart');
@@ -304,4 +310,21 @@ Route::get('/stripe/success', [OrderController::class, 'stripeSuccess'])->name('
 Route::get('/stripe/cancel', function () {
     return redirect()->route('checkout')->with(['message' =>'Payment cancelled']);
 })->name('stripe.cancel');
+
+Route::get('/drive-in', [StorefrontController::class, 'driveIn'])->name('drive-in');
+Route::get('/pappi-special', [StorefrontController::class, 'pappiSpecial'])->name('pappi-special');
+Route::get('/dessert-wholesale', [StorefrontController::class, 'wholesale'])->name('dessert-wholesale');
+Route::get('/private-bookings', [StorefrontController::class, 'privateBookings'])->name('private-bookings');
+Route::get('/business-status', [StorefrontController::class, 'businessStatus'])->name('business.status');
+Route::post('/select-store', [StorefrontController::class, 'selectStore'])->name('select.store');
+Route::post('/wholesale-delivery-date', [StorefrontController::class, 'setWholesaleDate'])->name('wholesale.date');
+Route::post('/schedule-order', [StorefrontController::class, 'setSchedule'])->name('schedule.order');
+Route::get('/orders/{id}/receipt', [StorefrontController::class, 'printReceipt'])->name('orders.receipt');
+Route::middleware('user')->group(function () {
+    Route::get('/orders/{orderId}/add-items', [StorefrontController::class, 'startAddToOrder'])->name('orders.add-items');
+    Route::post('/orders/confirm-add-items', [StorefrontController::class, 'confirmAddToOrder'])->name('orders.confirm-add-items');
+    Route::post('/orders/{orderId}/items/{itemId}', [StorefrontController::class, 'updateOrderItem'])->name('orders.update-item');
+    Route::post('/orders/{orderId}/remove-items', [StorefrontController::class, 'removeOrderItems'])->name('orders.remove-items');
+    Route::get('/orders/balance-success', [StorefrontController::class, 'balanceSuccess'])->name('order.balance.success');
+});
 

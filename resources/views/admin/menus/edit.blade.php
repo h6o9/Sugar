@@ -21,10 +21,25 @@
                                             <label>Category Name</label>
                                             <input type="text" class="form-control" placeholder="Category" name="name"
                                                 value="{{ $menu->name }}">
-
                                             @error('name')
                                                 <div class="text-danger">{{ $message }}</div>
                                             @enderror
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Type</label>
+                                            <select name="type" class="form-control">
+                                                <option value="food" {{ ($menu->type ?? '')=='food' ? 'selected' : '' }}>Food</option>
+                                                <option value="special" {{ ($menu->type ?? '')=='special' ? 'selected' : '' }}>Pappi Special</option>
+                                                <option value="wholesale" {{ ($menu->type ?? '')=='wholesale' ? 'selected' : '' }}>Wholesale</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Icon class</label>
+                                            <input type="text" class="form-control" name="icon" value="{{ $menu->icon }}">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Sort order</label>
+                                            <input type="number" class="form-control" name="sort_order" value="{{ $menu->sort_order }}">
                                         </div>
                                     </div>
                                     <div class="card-footer text-right">

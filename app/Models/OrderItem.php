@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class OrderItem extends Model
 {
     use HasFactory;
+    use Concerns\AssignsNextId;
+
+    public $incrementing = false;
     protected $guarded = [];
     public function order()
     {

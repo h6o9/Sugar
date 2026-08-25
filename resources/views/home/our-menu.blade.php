@@ -1,19 +1,23 @@
 @extends('home.layout.app')
-@section('title', 'Login')
+@section('title', !empty($wholesaleMode) ? 'Dessert Wholesale' : (!empty($specialPage) ? 'Pappi Special' : 'Menu'))
 @section('content')
     <style>
-        button.tab-scroll-btn {
-            padding: 5px;
-            background: var(--primary);
-            color: #000;
-            border-radius: 50px;
-            border: none;
-            width: 30px;
-            height: 30px;
+        .cz-cats-wrap {
+            width: 100%;
             display: flex;
-            justify-content: center;
             align-items: center;
+            gap: 8px;
+            overflow: visible;
         }
+        .cz-cats-track {
+            overflow-x: auto;
+            flex: 1;
+            scrollbar-width: none;
+        }
+        .cz-cats-track::-webkit-scrollbar { display: none; }
+        .cz-marquee { overflow: visible; mask-image: none; }
+        .cz-marquee-track { display: block; width: auto; animation: none; }
+        .cz-marquee-group { display: flex; }
 
         .about-us-az-1 { height: 285px; object-fit: cover; }
         .about-us-az-2 { height: 205px; object-fit: cover; }
@@ -27,91 +31,109 @@
         .accordion-button:not(.collapsed) { background-color: #f8f9fa; color: #212529; }
         .accordion-button:focus { box-shadow: none; border-color: transparent; }
 
-        .menu-category-tabs { border-bottom: 2px solid #dee2e6; }
-        .menu-category-tabs .nav-item { margin-bottom: -2px; }
-        .menu-category-tabs .nav-link {
-            color: #6c757d;
-            border: none;
-            border-bottom: 3px solid transparent;
-            padding: 15px 20px;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-        .menu-category-tabs .nav-link:hover,
-        .menu-category-tabs .nav-link.active {
-            color: #dc3545;
-            border-bottom-color: #dc3545;
-            background-color: transparent;
-        }
-
-        .popular-item {
-            transition: transform 0.3s, box-shadow 0.3s;
-            cursor: pointer;
-        }
-        .popular-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-        @media (max-width: 768px) {
-            .menu-category-tabs { overflow-x: auto; display: flex; flex-wrap: nowrap; }
-            .menu-category-tabs .nav-item { flex-shrink: 0; }
-            .menu-category-tabs .nav-link { padding: 10px 15px; font-size: 12px; }
-        }
-
-        /* Sliding Tabs */
-        .menu-tabs-wrapper { position: relative; }
-        .menu-tabs-container { overflow: hidden; position: relative; }
-        .menu-category-tabs {
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
-            white-space: nowrap;
+        .cz-cats.menu-category-tabs {
             display: flex !important;
-            gap: 10px;
             flex-wrap: nowrap !important;
+            overflow: visible !important;
+            gap: 10px;
+            border: 0 !important;
+            margin: 0;
+            padding: 0;
         }
-        .menu-category-tabs .nav-item { flex-shrink: 0 !important; display: inline-block; }
-        .menu-category-tabs .nav-link { white-space: nowrap !important; flex-shrink: 0; }
-
-        .menu-tabs-container .tab-scroll-btn {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: white;
-            border: 2px solid #dc3545;
-            color: #dc3545;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 10;
-            transition: all 0.3s;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .cz-cats .nav-item { flex: 0 0 auto !important; display: block; margin: 0; }
+        .cz-cat {
+            border: 1px solid #e6e6e6 !important;
+            background: #fff !important;
+            color: #111 !important;
+            border-radius: 10px !important;
+            padding: 10px 18px !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
+            text-transform: none !important;
         }
-        .menu-tabs-container .tab-scroll-btn:hover { background: #dc3545; color: white; transform: translateY(-50%) scale(1.1); }
-        .menu-tabs-container .tab-scroll-btn.left  { left: -15px; }
-        .menu-tabs-container .tab-scroll-btn.right { right: -15px; }
-        .menu-tabs-container .tab-scroll-btn.disabled { opacity: 0.3; cursor: not-allowed; }
-        .menu-tabs-container .tab-scroll-btn.disabled:hover {
-            transform: translateY(-50%) scale(1);
-            background: white;
-            color: #dc3545;
+        .cz-cat.active {
+            background: #ffd400 !important;
+            border-color: #ffd400 !important;
+            color: #111 !important;
         }
-        .menu-category-tabs::-webkit-scrollbar { display: none; }
-        .menu-category-tabs { -ms-overflow-style: none; scrollbar-width: none; }
-        .menu-category-tabs .nav-link { white-space: nowrap; padding: 12px 25px !important; }
+        .cz-cat:hover {
+            border-color: #111 !important;
+            background: #fff !important;
+            color: #111 !important;
+        }
+        .cz-cat[data-special="1"] {
+            background: #ff2d87 !important;
+            border-color: #ff2d87 !important;
+            color: #fff !important;
+        }
+        .cz-cat[data-special="1"].active,
+        .cz-cat[data-special="1"]:hover,
+        .cz-cat[data-special="1"].active:hover {
+            background: #e01870 !important;
+            border-color: #e01870 !important;
+            color: #fff !important;
+        }
+        .sp-special-pane .cz-add-btn,
+        .sp-special-pane .cz-card-body h5 {
+            color: inherit;
+        }
+        .cz-menu-page .tab-content > .tab-pane { display: none !important; }
+        .cz-menu-page .tab-content > .tab-pane.active { display: block !important; }
+        .cz-card {
+            overflow: hidden !important;
+            position: relative;
+            isolation: isolate;
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 14px;
+        }
+        .cz-card-media {
+            display: block;
+            width: 100%;
+            height: 180px;
+            overflow: hidden !important;
+            border: 0;
+            background: #fff;
+            padding: 0;
+            position: relative;
+        }
+        .cz-card-media img {
+            width: 100% !important;
+            height: 180px !important;
+            max-width: 100% !important;
+            object-fit: cover !important;
+            display: block;
+        }
+        .cz-card-body { padding: 12px 16px 16px; }
+        .cz-card-body h5 { font-weight: 800; font-size: 18px; margin: 0 0 6px; color: #111; }
+        .cz-card-desc { color: #666; font-size: 13px; min-height: 38px; margin-bottom: 8px; }
+        .cz-add-btn {
+            width: 100%;
+            background: #ff2d87 !important;
+            color: #fff !important;
+            font-weight: 700;
+            border-radius: 8px;
+            border: 0;
+        }
+        .food-modal { display: contents; }
+        .menu-modal:not(.show) { display: none !important; }
 
         /* ✅ Google Places autocomplete z-index fix for modals */
         .pac-container { z-index: 99999 !important; }
 
         .prodPrice { font-weight: bold; font-size: 1.2rem; }
         .price-display { font-size: 1.2rem; font-weight: bold; }
+        .cz-cat-arrow {
+            width: 44px !important;
+            height: 44px !important;
+            border-radius: 50% !important;
+            border: 0 !important;
+            background: #ff2d87 !important;
+            color: #fff !important;
+            font-size: 28px !important;
+            line-height: 1 !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,.18);
+        }
     </style>
 
     <div class="modal fade" id="videoModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -159,13 +181,25 @@
             }
         }
 
-        // Prices
+        // Prices — sell price, then original/base if sell price is 0
         if ($hasVariants && $displayVariant) {
-            $originalPrice = floatval($displayVariant->original_price ?? $displayVariant->price);
+            $originalPrice = floatval($displayVariant->original_price ?? 0);
             $finalPrice    = floatval($displayVariant->price);
+            if ($finalPrice <= 0) {
+                $finalPrice = $originalPrice;
+            }
+            if ($originalPrice <= 0) {
+                $originalPrice = $finalPrice;
+            }
         } else {
-            $originalPrice = floatval($product->original_price ?? $product->price);
+            $originalPrice = floatval($product->original_price ?? 0);
             $finalPrice    = floatval($product->price);
+            if ($finalPrice <= 0) {
+                $finalPrice = $originalPrice;
+            }
+            if ($originalPrice <= 0) {
+                $originalPrice = $finalPrice;
+            }
         }
 
         // Discount badge
@@ -200,30 +234,64 @@
     {{-- ================================================================
          FULL MENU
          ================================================================ --}}
-    <div class="container-xxl py-5">
+    @php
+        $addingToOrder = !empty($addingToOrder);
+        $wholesaleMode = !empty($wholesaleMode)
+            || request()->routeIs('dessert-wholesale')
+            || request()->is('dessert-wholesale');
+        $addBtnLabel = $addingToOrder ? 'Add to Order' : 'Add to Cart';
+        $menuCategories = $menuCategories ?? collect();
+        $branches = $branches ?? collect();
+        $wholesaleSelectedDate = session('wholesale_delivery_date');
+        $wholesaleDates = $dates ?? [];
+    @endphp
+    @if($wholesaleMode)
+        @include('home.partials.page-hero', ['title' => 'Dessert Wholesale'])
+        <div class="sp-wholesale-bar" id="wholesaleDateBar">
+            <div class="container py-3">
+                <div class="fw-bold mb-1" style="color:#ff2d87;letter-spacing:.04em;">WHOLESALE DELIVERY</div>
+                <p class="mb-2 text-white">Deliveries: Monday, Thursday and Saturday, <strong>7:00 PM – 10:00 PM</strong>. Order any time until 7:00 PM that day. No add-to-order timer.</p>
+                <p class="mb-3 small text-white-50">Flow: 1) Save a date &nbsp; 2) Add to Cart &nbsp; 3) Open My Cart → Continue to Payment → Place Order</p>
+                <form method="POST" action="{{ route('wholesale.date') }}" class="row g-2 align-items-end">
+                    @csrf
+                    <div class="col-md-8">
+                        <label class="form-label text-white fw-bold mb-1">Select delivery date</label>
+                        <select name="wholesale_delivery_date" class="form-control form-control-lg" required>
+                            <option value="">Choose Monday / Thursday / Saturday</option>
+                            @forelse($wholesaleDates as $date)
+                                <option value="{{ $date['date'] }}" {{ $wholesaleSelectedDate == $date['date'] ? 'selected' : '' }}>
+                                    {{ $date['label'] }} ({{ $date['window'] }})
+                                </option>
+                            @empty
+                                <option value="" disabled>No dates available — check Business Settings delivery days</option>
+                            @endforelse
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn sp-btn-pink w-100 btn-lg">Save delivery date</button>
+                    </div>
+                </form>
+                @if($wholesaleSelectedDate)
+                    <div class="alert alert-success mt-3 mb-0">
+                        Delivery locked: <strong>{{ $wholesaleSelectedDate }}</strong>, 7:00 PM – 10:00 PM.
+                        Add items, then <a href="{{ route('my-cart') }}" class="fw-bold">My Cart → Place Order</a>.
+                    </div>
+                @else
+                    <div class="alert alert-warning mt-3 mb-0">Save a delivery date first. Add to Cart stays locked until a date is saved.</div>
+                @endif
+            </div>
+        </div>
+    @else
+        @include('home.partials.page-hero', ['title' => !empty($specialPage) ? 'Pappi Special' : 'Menu'])
+    @endif
+    <div class="container-xxl py-4 cz-menu-page">
         <div class="container">
 
             <div class="wow fadeInUp mb-2" data-wow-delay="0.1s">
-                <div id="menuContainer"
-                    class="d-flex flex-column align-items-center justify-content-center flex-wrap">
-                    <div class="text-center">
-                        <h3 class="m-0">
-                            @if (!empty($searchTerm))
-                                Search Results for "{{ $searchTerm }}"
-                            @else
-                                Explore Our Complete Menu
-                            @endif
-                        </h3>
-                    </div>
-
-                    @if (empty($searchTerm) && $menuCategories && $menuCategories->isNotEmpty())
-                        <div class="w-100 d-flex align-items-center justify-content-end gap-2">
-                            <button class="tab-scroll-btn left" onclick="scrollTabs('left')">
-                                <span class="ri-arrow-left-line"></span>
-                            </button>
-                            <button class="tab-scroll-btn right" onclick="scrollTabs('right')">
-                                <span class="ri-arrow-right-line"></span>
-                            </button>
+                <div id="menuContainer" class="d-flex flex-column align-items-center justify-content-center flex-wrap">
+                    @if (!empty($searchTerm))
+                        <div class="text-center">
+                            <h3 class="m-0">Search Results for "{{ $searchTerm }}"</h3>
                         </div>
                     @endif
                 </div>
@@ -307,94 +375,80 @@
             @else
                 @if ($menuCategories && $menuCategories->isNotEmpty())
 
-                    {{-- Tab nav --}}
+                    {{-- Category scroller: auto-slide + manual arrows, single select --}}
                     <div class="row mb-4">
                         <div class="col-12">
-                            <div class="menu-tabs-wrapper">
-                                <div class="menu-tabs-container">
-                                    <ul class="nav nav-tabs nav-justified menu-category-tabs"
-                                        id="menuTabs" role="tablist">
+                            <div class="cz-cats-wrap" id="czMarquee">
+                                <button type="button" class="cz-cat-arrow" id="czCatPrev" aria-label="Previous categories">&lsaquo;</button>
+                                <div class="cz-cats-track" id="czCatsTrack">
+                                    <ul class="nav menu-category-tabs cz-cats" id="menuTabs">
                                         @foreach ($menuCategories as $index => $menuCat)
+                                            @php
+                                                $isSpecial = strtolower((string) ($menuCat->type ?? '')) === 'special'
+                                                    || strtolower((string) ($menuCat->slug ?? '')) === 'pappi-special'
+                                                    || stripos((string) $menuCat->name, 'Pappi Special') !== false;
+                                            @endphp
                                             <li class="nav-item" role="presentation">
-                                                <button class="nav-link @if($index==0) active @endif"
-                                                    id="tab{{ $menuCat->id }}"
-                                                    data-bs-toggle="tab"
-                                                    data-bs-target="#menuTab{{ $menuCat->id }}"
-                                                    type="button" role="tab"
-                                                    aria-controls="menuTab{{ $menuCat->id }}"
-                                                    aria-selected="{{ $index == 0 ? 'true' : 'false' }}">
+                                                <button class="nav-link cz-cat @if($index==0) active @endif"
+                                                    type="button"
+                                                    data-pane="menuTab{{ $menuCat->id }}"
+                                                    @if($isSpecial) data-special="1" @endif>
                                                     {{ $menuCat->name }}
                                                 </button>
                                             </li>
                                         @endforeach
                                     </ul>
                                 </div>
+                                <button type="button" class="cz-cat-arrow" id="czCatNext" aria-label="Next categories">&rsaquo;</button>
                             </div>
                         </div>
                     </div>
 
+                    <h2 class="cz-cat-title" id="czCatTitle">{{ optional($menuCategories->first())->name }}</h2>
+
                     {{-- Tab content --}}
                     <div class="tab-content" id="menuContent">
                         @foreach ($menuCategories as $index => $menuCat)
-                            <div class="tab-pane fade @if($index==0) show active @endif"
+                            @php
+                                $isSpecialPane = strtolower((string) ($menuCat->type ?? '')) === 'special'
+                                    || strtolower((string) ($menuCat->slug ?? '')) === 'pappi-special'
+                                    || stripos((string) $menuCat->name, 'Pappi Special') !== false;
+                            @endphp
+                            <div class="tab-pane @if($index==0) active @endif @if($isSpecialPane) sp-special-pane @endif"
                                 id="menuTab{{ $menuCat->id }}" role="tabpanel"
+                                @if($isSpecialPane) data-special-pane="1" @endif
                                 aria-labelledby="tab{{ $menuCat->id }}">
+                                @if($isSpecialPane)
+                                    <span id="pappi-special"></span>
+                                    <p class="small mb-3" style="color:#ff2d87;">Pappi Special is only available here. Add to Cart / Add to Order uses the timer. These items do not appear in regular food categories or wholesale.</p>
+                                @endif
 
                                 @if ($menuCat->product && $menuCat->product->isNotEmpty())
                                     <div class="row g-4">
                                         @foreach ($menuCat->product as $prod)
                                         @php $d = calcDiscount($prod); @endphp
                                         <div class="col-xl-3 col-lg-4 col-md-6">
-                                            <a class="popular-item bg-transparent border rounded p-4 d-block text-center h-100 position-relative"
-                                                href="#" data-bs-toggle="modal"
-                                                data-bs-target="#menuModalFull-{{ $prod->id }}">
-
-                                                {{-- ✅ Discount badge --}}
-                                                @if($d['hasDiscount'])
-                                                    <span class="badge bg-danger position-absolute top-0 end-0 m-2">
-                                                        {{ $d['badgeText'] }}
-                                                    </span>
-                                                @endif
-
-                                                <div class="text-center mb-3">
-                                                    <div class="d-flex flex-column align-items-center">
-                                                        <img class="img-fluid rounded"
-                                                             src="{{ asset($prod->image) }}"
-                                                             alt="{{ $prod->name }}"
-                                                             style="width:130px;height:130px;object-fit:cover;">
-
-                                                        {{-- ✅ Complementary product --}}
-                                                        @if(optional($d['comp'])->complementary)
-                                                            <span style="font-size:22px;font-weight:bold;color:#000;">+</span>
-                                                            <div class="text-center">
-                                                                <img class="img-fluid rounded"
-                                                                     src="{{ asset($d['comp']->complementary->image) }}"
-                                                                     alt="{{ $d['comp']->complementary->name }}"
-                                                                     style="width:100px;height:100px;object-fit:cover;">
-                                                                <br>
-                                                                <span class="badge bg-success m-2">BUY 1 GET 1 FREE</span>
-                                                                <p class="mb-0 small mt-1 fw-medium text-dark">{{ $d['comp']->complementary->name }}</p>
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                </div>
-
-                                                <div class="mb-2">
-                                                    <h5 class="mb-1 main-heading text-center">{{ $prod->name }}</h5>
-                                                    <p class="text-center mb-2">
+                                            <div class="cz-card h-100">
+                                                <button type="button" class="cz-card-media" data-bs-toggle="modal" data-bs-target="#menuModalFull-{{ $prod->id }}">
+                                                    @if($d['hasDiscount'])
+                                                        <span class="badge bg-danger cz-card-badge">{{ $d['badgeText'] }}</span>
+                                                    @endif
+                                                    <img src="{{ asset($prod->image) }}" alt="{{ $prod->name }}">
+                                                </button>
+                                                <div class="cz-card-body">
+                                                    <h5>{{ $prod->name }}</h5>
+                                                    <p class="cz-card-desc">{!! \Illuminate\Support\Str::limit(strip_tags($prod->description), 90) !!}</p>
+                                                    <p class="cz-card-price mb-2">
                                                         @if($d['hasDiscount'])
-                                                            <span class="text-muted text-decoration-line-through small d-block">
-                                                                £{{ number_format($d['originalPrice'], 2) }}
-                                                            </span>
+                                                            <span class="text-muted text-decoration-line-through small me-1">£{{ number_format($d['originalPrice'], 2) }}</span>
                                                         @endif
-                                                        <span class="badge bg-primary">
-                                                            {{ $d['hasVariants'] ? 'From ' : '' }}£{{ number_format($d['finalPrice'], 2) }}
-                                                        </span>
+                                                        <strong>{{ $d['hasVariants'] ? 'From ' : '' }}£{{ number_format($d['finalPrice'], 2) }}</strong>
                                                     </p>
+                                                    <button type="button" class="btn cz-add-btn" data-bs-toggle="modal" data-bs-target="#menuModalFull-{{ $prod->id }}">
+                                                        {{ $addBtnLabel }}
+                                                    </button>
                                                 </div>
-
-                                                <p class="mb-0 text-muted small text-center">{!! $prod->description !!}</p>
-                                            </a>
+                                            </div>
                                         </div>
                                         @endforeach
                                     </div>
@@ -425,12 +479,19 @@
          (covers both search results & normal menu items)
          ================================================================ --}}
     @if ($menuCategories && $menuCategories->isNotEmpty())
+        @php $renderedModalIds = []; @endphp
         @foreach ($menuCategories as $menuCat)
             @if ($menuCat->product && $menuCat->product->isNotEmpty())
                 @foreach ($menuCat->product as $prod)
-                @php $d = calcDiscount($prod); @endphp
+                @if(in_array($prod->id, $renderedModalIds, true))
+                    @continue
+                @endif
+                @php
+                    $renderedModalIds[] = $prod->id;
+                    $d = calcDiscount($prod);
+                @endphp
 
-                <div class="container-fluid cart food-modal wow fadeIn" data-wow-delay="0.1s">
+                <div class="food-modal">
                     <div class="modal fade menu-modal" id="menuModalFull-{{ $prod->id }}"
                         tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
@@ -494,11 +555,16 @@
                                             <select class="form-control bg-white ps-1 select-size"
                                                     name="variant_id" style="appearance:auto">
                                                 @foreach ($prod->variants as $variant)
+                                                    @php
+                                                        $variantSell = (float) $variant->price;
+                                                        $variantBase = (float) ($variant->original_price ?? 0);
+                                                        $variantShow = $variantSell > 0 ? $variantSell : $variantBase;
+                                                    @endphp
                                                     <option
-                                                        value="{{ $variant->id }} {{ number_format((float)$variant->price, 2) }}"
-                                                        data-original="{{ number_format((float)($variant->original_price ?? 0), 2) }}"
+                                                        value="{{ $variant->id }} {{ number_format($variantShow, 2) }}"
+                                                        data-original="{{ number_format($variantBase, 2) }}"
                                                         {{ $loop->first ? 'selected' : '' }}>
-                                                        {{ $variant->size }} – £{{ number_format((float)$variant->price, 2) }}
+                                                        {{ $variant->size }} – £{{ number_format($variantShow, 2) }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -650,8 +716,8 @@
                                         class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
                                         data-bs-dismiss="modal"></button>
                                     <div class="text-center mx-auto">
-                                        <button class="btn btn-danger addto-cart px-sm-5 px-4">
-                                            Add To Order
+                                        <button class="btn btn-danger addto-cart px-sm-5 px-4" data-add-label="{{ $addBtnLabel }}" @if(!empty($wholesaleMode)) data-wholesale="1" @endif>
+                                            {{ $addBtnLabel }}
                                         </button>
                                     </div>
                                 </div>
@@ -668,12 +734,13 @@
 @endsection
 
 @section('js')
-
 @if (\Illuminate\Support\Facades\Session::has('message'))
     <script>toastr.success('{{ \Illuminate\Support\Facades\Session::get('message') }}');</script>
 @endif
 
 <script>
+window.spWholesalePage = {{ (request()->routeIs('dessert-wholesale') || request()->is('dessert-wholesale') || !empty($wholesaleMode)) ? 'true' : 'false' }};
+window.spWholesaleDate = @json(session('wholesale_delivery_date'));
 $(function () {
 
     // =========================================================
@@ -736,106 +803,11 @@ $(function () {
         $input.val(val >= 1 ? val : 1);
     });
 
-    // =========================================================
-    // 4. ADD TO ORDER
-    // =========================================================
-    $(document).on('click', '.addto-cart', function () {
-        var $btn      = $(this);
-        var $modal    = $btn.closest('.food-modal');
-
-        var productId = $modal.find('input[name="product_id"]').val();
-        var quantity  = $modal.find('input[name="quantity"]').val() || 1;
-        var branchId  = $modal.find('input[name="branch_id"]').first().val();
-
-        var complementaryId = $modal.find('input[name="complementary_id"]').length
-            ? $modal.find('input[name="complementary_id"]').val()
-            : null;
-
-        if (!productId) { toastr.error('Product not found.'); return; }
-
-        var deliveryStatus  = $modal.find('input[name^="status_"]:checked').val() || '1';
-        var deliveryAddress = '', lat = '', lng = '';
-
-        if (deliveryStatus == '2') {
-            deliveryAddress = $modal.find('input[name="delivery_address_' + productId + '"]').val();
-            lat             = $modal.find('input[name="lat_' + productId + '"]').val();
-            lng             = $modal.find('input[name="lng_' + productId + '"]').val();
-
-            if (!deliveryAddress) {
-                toastr.error('Please enter delivery address');
-                return;
-            }
-            if (!lat || !lng) {
-                toastr.error('Please select a valid address from the suggestions');
-                return;
-            }
-        }
-
-        // Variant
-        var variantId  = '';
-        var $variantSel = $modal.find('select[name="variant_id"]');
-        if ($variantSel.length && $variantSel.val()) {
-            variantId = $variantSel.val().trim().split(' ')[0];
-        }
-
-        // Toppings by category
-        var toppingsByCategory = {};
-        $modal.find('input[name="toppings[]"]:checked').each(function () {
-            var catId = $(this).data('category-id');
-            if (!toppingsByCategory[catId]) toppingsByCategory[catId] = [];
-            toppingsByCategory[catId].push($(this).val());
-        });
-        var toppingsArray = Object.entries(toppingsByCategory).map(function (entry) {
-            return { category_id: entry[0], toppings: entry[1] };
-        });
-
-        $btn.prop('disabled', true).text('Adding...');
-
-        $.ajax({
-            type: 'POST',
-            url: '{{ route("add.to.cart") }}',
-            data: {
-                _token:               '{{ csrf_token() }}',
-                product_id:           productId,
-                quantity:             quantity,
-                branch_id:            branchId,
-                variant_id:           variantId,
-                delivery_status:      deliveryStatus,
-                delivery_address:     deliveryAddress,
-                lat:                  lat,
-                lng:                  lng,
-                complementary_id:     complementaryId,
-                location:             deliveryStatus,
-                toppings_by_category: toppingsArray,
-            },
-            success: function (response) {
-                if (response.success) {
-                    toastr.success('Product added to cart!');
-                    var cartCount = Object.keys(response.cart).length;
-                    $('.cart-counter-1').text(cartCount);
-                    updateCartUI(response);
-                    if (cartCount > 0) {
-                        $('a[href*="my-cart"]').removeClass('disabled').prop('disabled', false);
-                    }
-                    $btn.closest('.modal').modal('hide');
-                } else {
-                    toastr.error(response.message || 'Something went wrong.');
-                }
-            },
-            error: function (xhr) {
-                console.error('Cart error:', xhr.responseText);
-                toastr.error('Error: ' + (xhr.responseJSON?.message || 'Server error'));
-            },
-            complete: function () {
-                $btn.prop('disabled', false).text('Add To Order');
-            }
-        });
-    });
-
+    // Add to cart is handled once in header.blade.php
     // =========================================================
     // 5. UPDATE CART UI
     // =========================================================
-    function updateCartUI(data) {
+    window.updateCartUI = function (data) {
         var cartItemCount = 0;
         var html = '';
 
@@ -915,30 +887,86 @@ $(function () {
     });
 
     // =========================================================
-    // 8. TAB SCROLL
+    // 8. CATEGORY SCROLLER — auto-slide + manual arrows, single select
     // =========================================================
-    window.scrollTabs = function (direction) {
-        var tabs = document.querySelector('.menu-category-tabs');
-        if (tabs) tabs.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
-    };
-
     (function () {
-        var tabs     = document.querySelector('.menu-category-tabs');
-        var leftBtn  = document.querySelector('.tab-scroll-btn.left');
-        var rightBtn = document.querySelector('.tab-scroll-btn.right');
-        if (!tabs || !leftBtn || !rightBtn) return;
+        var wrap = document.getElementById('czMarquee');
+        var track = document.getElementById('czCatsTrack');
+        var titleEl = document.getElementById('czCatTitle');
+        if (!wrap || !track) return;
 
-        function updateBtns() {
-            if (tabs.scrollWidth <= tabs.clientWidth) {
-                leftBtn.style.display = rightBtn.style.display = 'none';
-                return;
-            }
-            leftBtn.classList.toggle('disabled', tabs.scrollLeft === 0);
-            rightBtn.classList.toggle('disabled',
-                tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 10);
+        var pills = Array.prototype.slice.call(wrap.querySelectorAll('.cz-cat'));
+        var panes = Array.prototype.slice.call(document.querySelectorAll('#menuContent > .tab-pane'));
+        if (!pills.length) return;
+
+        var paused = false;
+        var dir = 1;
+        var resumeTimer = null;
+
+        function pauseAuto(ms) {
+            paused = true;
+            if (resumeTimer) clearTimeout(resumeTimer);
+            resumeTimer = setTimeout(function () {
+                paused = false;
+                resumeTimer = null;
+            }, ms || 10000);
         }
-        tabs.addEventListener('scroll', updateBtns);
-        updateBtns();
+
+        function showPane(paneId, fromClick) {
+            pills.forEach(function (pill) {
+                pill.classList.toggle('active', pill.getAttribute('data-pane') === paneId);
+            });
+            panes.forEach(function (pane) {
+                var on = pane.id === paneId;
+                pane.classList.toggle('active', on);
+                pane.classList.toggle('show', on);
+            });
+            var active = pills.filter(function (p) { return p.classList.contains('active'); })[0];
+            if (titleEl && active) titleEl.textContent = (active.textContent || '').trim();
+            if (fromClick && active) {
+                pauseAuto(10000);
+                try {
+                    active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                } catch (e) {}
+            }
+            // #region agent log
+            fetch('http://127.0.0.1:7335/ingest/7b869b6d-0737-4031-abfa-725419739f94',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1796d5'},body:JSON.stringify({sessionId:'1796d5',runId:'post-fix',hypothesisId:'H4',location:'our-menu.blade.php:showPane',message:'category slider',data:{paneId:paneId,fromClick:!!fromClick,activeCount:pills.filter(function(p){return p.classList.contains('active');}).length,paused:paused},timestamp:Date.now()})}).catch(function(){});
+            // #endregion
+        }
+
+        pills.forEach(function (pill) {
+            pill.addEventListener('click', function () {
+                showPane(pill.getAttribute('data-pane'), true);
+            });
+        });
+
+        function scrollCats(stepDir) {
+            pauseAuto(10000);
+            dir = stepDir;
+            track.scrollBy({ left: stepDir * Math.max(200, track.clientWidth * 0.55), behavior: 'smooth' });
+            // #region agent log
+            fetch('http://127.0.0.1:7335/ingest/7b869b6d-0737-4031-abfa-725419739f94',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1796d5'},body:JSON.stringify({sessionId:'1796d5',runId:'post-fix',hypothesisId:'H4',location:'our-menu.blade.php:scrollCats',message:'manual category arrow',data:{dir:stepDir},timestamp:Date.now()})}).catch(function(){});
+            // #endregion
+        }
+        var prev = document.getElementById('czCatPrev');
+        var next = document.getElementById('czCatNext');
+        if (prev) prev.addEventListener('click', function () { scrollCats(-1); });
+        if (next) next.addEventListener('click', function () { scrollCats(1); });
+
+        wrap.addEventListener('mouseenter', function () { paused = true; });
+        wrap.addEventListener('mouseleave', function () {
+            if (!resumeTimer) paused = false;
+        });
+
+        setInterval(function () {
+            if (paused) return;
+            if (track.scrollWidth <= track.clientWidth + 4) return;
+            track.scrollLeft += dir * 0.85;
+            if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 1) dir = -1;
+            if (track.scrollLeft <= 0) dir = 1;
+        }, 25);
+
+        window.spShowMenuPane = function (paneId) { showPane(paneId, true); };
     })();
 
 }); // end $(function)

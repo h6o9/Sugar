@@ -73,6 +73,16 @@
                                                     value="{{ $branch->tax }}" class="form-control">
                                             </div>
                                         </div>
+                                        <div class="col-sm-6 pl-sm-0 pr-sm-2">
+                                            <div class="form-group mb-3">
+                                                <label>City label (landing page)</label>
+                                                <input type="text" name="city_label" value="{{ $branch->city_label }}" class="form-control" placeholder="Manchester City Centre">
+                                            </div>
+                                            <div class="form-check">
+                                                <input type="checkbox" name="is_orderable" value="1" class="form-check-input" {{ !empty($branch->is_orderable) ? 'checked' : '' }}>
+                                                <label class="form-check-label">Allow ordering from this store</label>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="card-footer text-center row">
                                         <div class="col">

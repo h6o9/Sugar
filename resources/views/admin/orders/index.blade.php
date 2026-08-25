@@ -40,6 +40,8 @@
                                         <th>After Redeemed</th>
                                         <th>Redeemed</th>
                                         <th>Status</th>
+                                        <th>Type / Schedule</th>
+                                        <th>Receipt</th>
                                         <th>Change Status</th>
                                     </tr>
                                 </thead>
@@ -269,7 +271,22 @@
                                             </div>
                                             @elseif($order->status === 'Delivered')
                                             <div class="badge p-2 badge-success badge-shadow">Delivered</div>
+                                            @elseif($order->status === 'Scheduled')
+                                            <div class="badge p-2 badge-info text-white">Scheduled</div>
                                             @endif
+                                        </td>
+                                        <td>
+                                            {{ $order->order_type ?: 'standard' }}
+                                            @if($order->is_scheduled)
+                                                <div class="small">{{ $order->scheduled_at }}</div>
+                                            @endif
+                                            @if($order->wholesale_delivery_date)
+                                                <div class="small">Wholesale: {{ $order->wholesale_delivery_date }}</div>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            v{{ $order->receipt_version ?? 1 }}
+                                            <a class="btn btn-sm btn-dark d-block mt-1" href="{{ route('admin.orders.print', $order->id) }}" target="_blank">Print 80mm</a>
                                         </td>
                                            <td>
                                             <div class="dropdown">
@@ -280,6 +297,7 @@
                                                     <select class="form-select" name="status"
                                                         aria-label="Default select example"
                                                         onchange="this.form.submit()">
+                                                        <option value="Scheduled" {{ $order->status === 'Scheduled' ? 'selected' : '' }}>Scheduled</option>
                                                         <option value="Pending" {{ $order->status === 'Pending' ?
                                                             'selected' : '' }}>
                                                             Pending</option>

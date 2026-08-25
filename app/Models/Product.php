@@ -42,4 +42,35 @@ class Product extends Model
         return $this->hasOne(ComplementaryProduct::class, 'product_id', 'id')
                     ->with(['complementary']);
     }
+
+    public function resolvedDisplayPrice(): float
+    {
+        $variants = $this->relationLoaded('variants') ? $this->variants : $this->variants()->get();
+        if ($variants && $variants->count() > 0) {
+            $regular = $variants->first(function ($v) {
+                return strtolower((string) $v->size) === 'regular' && (float) $v->price > 0;
+            });
+            if ($regular) {
+                return (float) $regular->price;
+            }
+            $priced = $variants->first(function ($v) {
+                return (float) $v->price > 0;
+            });
+            if ($priced) {
+                return (float) $priced->price;
+            }
+            $orig = $variants->first(function ($v) {
+                return (float) ($v->original_price ?? 0) > 0;
+            });
+            if ($orig) {
+                return (float) $orig->original_price;
+            }
+            return (float) ($variants->first()->price ?? 0);
+        }
+        $price = (float) ($this->price ?? 0);
+        if ($price > 0) {
+            return $price;
+        }
+        return (float) ($this->original_price ?? 0);
+    }
 }

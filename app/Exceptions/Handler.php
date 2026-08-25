@@ -37,5 +37,20 @@ class Handler extends ExceptionHandler
         $this->reportable(function (Throwable $e) {
             //
         });
+
+        $this->renderable(function (\RuntimeException $e, $request) {
+            $message = $e->getMessage();
+            $handled = strpos($message, 'time to add items') !== false
+                || strpos($message, 'Wholesale orders cannot be modified') !== false
+                || strpos($message, 'Please select the item') !== false
+                || strpos($message, 'Order item not found') !== false;
+            if (!$handled) {
+                return null;
+            }
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+            return redirect()->route('my-cart')->with(['status' => false, 'message' => $message]);
+        });
     }
 }

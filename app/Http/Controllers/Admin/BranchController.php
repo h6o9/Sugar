@@ -83,6 +83,8 @@ class BranchController extends Controller
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'tax' => $request->tax,
+            'is_orderable' => $request->boolean('is_orderable'),
+            'city_label' => $request->city_label,
         ]);
         return redirect()->route('branches.index')->with(['status' => true, 'message' => 'Updated successfully']);
     }

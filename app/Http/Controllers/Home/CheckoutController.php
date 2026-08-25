@@ -7,6 +7,7 @@ use App\Models\TimeSlot;
 use Illuminate\Http\Request;
 use App\Models\UserTimeSlotes;
 use App\Http\Controllers\Controller;
+use App\Support\CartCheckout;
 use Illuminate\Support\Facades\Auth;
 
 class CheckoutController extends Controller
@@ -18,8 +19,21 @@ class CheckoutController extends Controller
         ->first();
     $timeSlots = TimeSlot::all();
     
-    // ✅ Session se cart data retrieve karein
-    $cart = session('cart', []);
+    $addingToExisting = false;
+    try {
+        $addingToExisting = app(\App\Services\OrderLifecycleService::class)
+            ->hasActiveAddToOrderSession($userId ? (int) $userId : null);
+    } catch (\Throwable $e) {
+        $addingToExisting = false;
+    }
+
+    $cart = CartCheckout::selected();
+    if (empty($cart)) {
+        return redirect()->route('my-cart')->with([
+            'status' => false,
+            'message' => 'Please select at least one item to place the order.',
+        ]);
+    }
     
     // ✅ Session se tip aur delivery charges lein
     $tip = session('tip', 0);  
@@ -48,6 +62,12 @@ class CheckoutController extends Controller
     
     // ✅ Calculate total
     $total = $subtotal + $tip + $deliveryCharges + $tax - $redeemAmount;
+    if (session('selected_order_type') === 'drive_in') {
+        $drivePercent = (float) (\App\Models\BusinessSetting::getValue('drive_in_discount_percent', 20) ?: 20);
+        $driveDiscount = round($subtotal * ($drivePercent / 100), 2);
+        $total = max(0, $total - $driveDiscount);
+        session(['drive_in_discount' => $driveDiscount]);
+    }
     
     // ✅ Debug ke liye log
     \Log::info('Checkout Page Data:', [
@@ -72,7 +92,8 @@ class CheckoutController extends Controller
         'deliveryDistance',
         'tax',
         'total',
-        'quantity'
+        'quantity',
+        'addingToExisting'
     ));
 }
 }

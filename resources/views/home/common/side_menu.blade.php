@@ -1,39 +1,53 @@
 <div id="sidenav-overlay"></div>
 <div class="d-lg-none hidden sidebar">
-    <h6 class="section-title ff-secondary text-start text-dark fw-normal mb-4">Links</h6>
-    <a class="w-100 link" href="{{ route('index') }}">Home</a>
-    <a class="w-100 link" href="{{ route('get-our-gallery') }}">Our Sugar Pappi Gallery</a>
-    {{-- <a class="w-100 link" href="{{ route('loyality-points') }}">Loyalty Points</a>
-    <a class="w-100 link" href="{{ route('get-our-menu') }}">Our Menu</a>
-    {{-- <a class="w-100 link" href="{{ route('get-new-sea-moss') }}">NEW! Sea Moss</a>
-    <a class="w-100 link" href="https://squareup.com/gift/ML9HY7TG18CE2/order" target="_blank">Gift card</a>
-    <a class="w-100 link" href="{{ route('get-our-menu') }}">Order Online</a> --}}
-    <a href="{{ route('privacy-policy') }}" class="w-100 link">Privacy Policy</a>
-    <a href="{{ route('terms-conditions') }}" class="w-100 link">Terms & Conditions</a>
-    <a href="{{ route('getcontact') }}" class="w-100 link">Contact Us</a>
-    <a href="{{ route('get-faqs') }}" class="w-100 link">FAQ's</a>
-    @if (Auth::guard('user')->check())
-        <a href='{{ route('user-logout') }}' class="w-100 link logout" id="">Logout</a>
-        <script>
-            function logout() {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                    logout: true
-                }));
-            }
-           $('.logout').click(function(){
-                logout();
-           })
-        </script>
-    @else
-        <a href="{{ route('login') }}" class="w-100 link">Login</a>
-    @endif
-    {{-- <div class="footer">
-        <h6 class="section-title ff-secondary text-start text-primary fw-normal mb-4">Contact Us</h6>
-        <p class="mb-2"><a href="mailto:contact@sugarpappi.com" class="text-white"><span class="fa fa-envelope me-3"></span>contact@sugarpappi.com</a></p>
-        <div class="d-flex pt-2">
-            <a class="me-2 btn btn-outline-light btn-social" href=""><span class="fab fa-facebook-f"></span></a>
-            <a class="me-2 btn btn-outline-light btn-social" href=""><span class="fab fa-youtube"></span></a>
-            <a class="me-2 btn btn-outline-light btn-social" href=""><span class="fab fa-instagram"></span></a>
+    <button type="button" class="sp-close-nav" id="closeSidebar" aria-label="Close">&times;</button>
+
+    <a class="sp-nav-link sp-nav-link-special" href="{{ route('pappi-special') }}">
+        <i class="ri-star-smile-line"></i> Sugar Pappi Special
+    </a>
+
+    <div class="sp-menu-group">
+        <button type="button" class="sp-nav-link sp-menu-toggle" id="spMenuToggle" aria-expanded="false">
+            <span class="d-flex align-items-center gap-2">
+                <i class="ri-file-list-3-line"></i> Menu
+            </span>
+            <i class="ri-arrow-right-s-line sp-chevron" aria-hidden="true"></i>
+        </button>
+        <div class="sp-menu-cats" id="spMenuCats" hidden>
+            @foreach(($navMenus ?? collect()) as $menu)
+                @php
+                    $type = strtolower((string) ($menu->type ?? 'food'));
+                    $isSpecial = \App\Support\MenuCatalog::isSpecial($menu);
+                    $isWholesale = \App\Support\MenuCatalog::isWholesale($menu);
+                @endphp
+                @if($type !== 'wholesale' && !$isSpecial && !$isWholesale)
+                    <a class="sp-nav-link ps-4" href="{{ route('get-our-menu') }}#menuTab{{ $menu->id }}">
+                        <i class="{{ $menu->icon ?: 'ri-restaurant-line' }}"></i> {{ $menu->name }}
+                    </a>
+                @endif
+            @endforeach
         </div>
-    </div> --}}
+    </div>
+
+    <a class="sp-nav-link" href="{{ route('drive-in') }}">
+        <i class="ri-car-line"></i> Drive-In. <span class="sp-badge-save">SAVE 20%</span>
+    </a>
+    <a class="sp-nav-link" href="{{ route('private-bookings') }}">
+        <i class="ri-calendar-event-line"></i> Private Bookings
+    </a>
+    <a class="sp-nav-link" href="{{ route('dessert-wholesale') }}">
+        <i class="ri-box-3-line"></i> Dessert Wholesale
+    </a>
+    <a class="sp-nav-link" href="{{ $whatsappUrl ?? 'https://wa.me/447727412922' }}" target="_blank" rel="noopener">
+        <i class="ri-whatsapp-line"></i> WhatsApp Us
+    </a>
+    <a class="sp-nav-link" href="{{ route('get-our-gallery') }}">
+        <i class="ri-image-line"></i> Gallery
+    </a>
+    @if (Auth::guard('user')->check())
+        <a class="sp-nav-link" href="{{ route('my-order') }}"><i class="ri-shopping-bag-line"></i> My Orders</a>
+        <a href='{{ route('user-logout') }}' class="sp-nav-link logout">Logout</a>
+    @else
+        <a href="{{ route('login') }}" class="sp-nav-link">Login</a>
+    @endif
 </div>

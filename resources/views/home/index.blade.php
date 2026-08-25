@@ -89,18 +89,7 @@
         .price-display { font-size: 1.2rem; font-weight: bold; }
     </style>
 
-    <div class="mt-4 container-fluid banner-container">
-        <div class="container-fluid">
-            <div class="container-fluid">
-                <div class="container-fluid position-relative">
-                    <img src="{{ asset('public/img/pic-top.jpg') }}" alt="" class="banner-img w-100">
-                    <div class="position-absolute banner-prof-img">
-                        <img src="{{ asset('public/img/profile-top.png') }}" alt="Profile">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    @include('home.partials.landing-hero')
 
     <div>
         <div class="container-fluid mt-5">
@@ -163,26 +152,12 @@
                             </div>
                         </div>
 
-                        <!-- Cibo Express Section -->
-                        <section class="cibo-express-section py-5">
-                            <div class="container">
-                                @foreach ($ciboExpressItems as $item)
-                                <div class="row align-items-center mb-5">
-                                    <div class="col-lg-6 col-md-6">
-                                        <h2 class="mb-3">{{ $item->title ?? 'Cibo Express' }}</h2>
-                                        <p class="text-muted">{{ $item->description }}</p>
-                                    </div>
-                                    <div class="col-lg-6 col-md-6 text-center">
-                                        <img src="{{ asset($item->image) }}" class="img-fluid rounded shadow">
-                                    </div>
-                                </div>
-                                @endforeach
-                            </div>
-                        </section>
+                        {{-- Cibo Express removed. Dessert Wholesale lives at /dessert-wholesale --}}
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
         {{-- =====================================================
              HELPER MACRO: compute discount for any product+variant
@@ -441,10 +416,10 @@
         {{-- ========================
              FEATURED / POPULAR CARDS
              ======================== --}}
-        <div class="container-xxl pt-5 pb-3">
+        <div class="container-xxl pt-5 pb-3" id="pappi-special">
             <div class="container">
                 <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
-                    <h5 class="section-title ff-secondary text-center fw-normal">Our Menu's</h5>
+                    <h5 class="section-title ff-secondary text-center fw-normal">Pappi Special</h5>
                     <h3 class="mb-5 col-sm-8 mx-auto">Featured Items</h3>
                 </div>
                 <div class="owl-carousel popular-carousel gallery-carousel">
@@ -916,98 +891,11 @@ $(function() {
         input.val(val >= 1 ? val : 1);
     });
 
-    // =========================================
-    // 4. ADD TO CART
-    // =========================================
-    $(document).on('click', '.addto-cart', function() {
-        var $btn   = $(this);
-        var $modal = $btn.closest('.food-modal');
-
-        var productId = $modal.find('input[name="product_id"]').val();
-        var quantity  = $modal.find('input[name="quantity"]').val() || 1;
-        var branchId  = $modal.find('input[name="branch_id"]').first().val();
-
-        var complementaryId = $modal.find('input[name="complementary_id"]').length
-            ? $modal.find('input[name="complementary_id"]').val() : null;
-
-        if (!productId) { toastr.error('Product not found.'); return; }
-
-        var deliveryStatus  = $modal.find('input[name^="status_"]:checked').val() || '1';
-        var deliveryAddress = '', lat = '', lng = '';
-
-        if (deliveryStatus == '2') {
-            deliveryAddress = $modal.find('input[name="delivery_address_' + productId + '"]').val();
-            lat = $modal.find('input[name="lat_' + productId + '"]').val();
-            lng = $modal.find('input[name="lng_' + productId + '"]').val();
-            if (!deliveryAddress) { toastr.error('Please enter delivery address'); return; }
-            if (!lat || !lng)     { toastr.error('Please select a valid address from suggestions'); return; }
-        }
-
-        var variantId  = '';
-        var variantSel = $modal.find('select[name="variant_id"]');
-        if (variantSel.length) {
-            variantId = variantSel.val().trim().split(' ')[0];
-        }
-
-        var toppingsByCategory = {};
-        $modal.find('input[name="toppings[]"]:checked').each(function() {
-            var catId = $(this).data('category-id');
-            if (!toppingsByCategory[catId]) toppingsByCategory[catId] = [];
-            toppingsByCategory[catId].push($(this).val());
-        });
-
-        var toppingsArray = Object.entries(toppingsByCategory).map(function(entry) {
-            return { category_id: entry[0], toppings: entry[1] };
-        });
-
-        $btn.prop('disabled', true).text('Adding...');
-
-        $.ajax({
-            type: 'POST',
-            url: '{{ route("add.to.cart") }}',
-            data: {
-                _token: '{{ csrf_token() }}',
-                product_id:           productId,
-                quantity:             quantity,
-                branch_id:            branchId,
-                variant_id:           variantId,
-                delivery_status:      deliveryStatus,
-                delivery_address:     deliveryAddress,
-                lat:                  lat,
-                lng:                  lng,
-                complementary_id:     complementaryId,
-                location:             deliveryStatus,
-                toppings_by_category: toppingsArray,
-            },
-            success: function(response) {
-                if (response.success) {
-                    toastr.success('Product added to cart!');
-                    var cartCount = Object.keys(response.cart).length;
-                    $('.cart-counter-1').text(cartCount);
-                    updateCartUI(response);
-                    // ✅ FIX: header "Continue to Cart" button enable karo
-                    if (cartCount > 0) {
-                        $('a[href*="my-cart"]').removeClass('disabled').prop('disabled', false);
-                    }
-                    $btn.closest('.modal').modal('hide');
-                } else {
-                    toastr.error(response.message || 'Something went wrong.');
-                }
-            },
-            error: function(xhr) {
-                console.error('Cart error:', xhr.responseText);
-                toastr.error('Error: ' + (xhr.responseJSON?.message || 'Server error'));
-            },
-            complete: function() {
-                $btn.prop('disabled', false).text('Add To Order');
-            }
-        });
-    });
-
+    // Add to cart is handled once in header.blade.php
     // =========================================
     // 5. UPDATE CART UI
     // =========================================
-    function updateCartUI(data) {
+    window.updateCartUI = function(data) {
         var cartItemCount = 0;
         var html = '';
 

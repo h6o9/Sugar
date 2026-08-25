@@ -111,6 +111,18 @@ class ApiOrderPlacementService
         $orderType       = $request->input('order_type', $cartItems->first()->order_type ?? 'delivery');
         $deliveryAddress = $request->input('delivery_address', $cartItems->first()->delivery_address ?? '');
 
+        if ($orderType === 'wholesale' || $request->input('menu_type') === 'wholesale') {
+            $wholesale = app(\App\Services\WholesaleScheduleService::class);
+            $date = $request->input('wholesale_delivery_date');
+            if (!$date || !$wholesale->isValidDate($date)) {
+                return [
+                    'valid' => false,
+                    'code' => 'WHOLESALE_DATE',
+                    'message' => $wholesale->cutoffMessage(),
+                ];
+            }
+        }
+
         if (in_array($orderType, ['delivery', 'home'], true) && empty(trim($deliveryAddress))) {
             return [
                 'valid'   => false,
@@ -483,15 +495,20 @@ class ApiOrderPlacementService
             // Loyalty points (earning)
             $this->applyLoyaltyPoints($userId, (float) $order->total_amount);
 
+            $orderType = $request->input('order_type', $firstItem->order_type ?? 'delivery');
+            if (in_array($orderType, ['delivery', 'pickup', 'home'], true) && $request->input('menu_type') === 'wholesale') {
+                $orderType = 'wholesale';
+            }
+            app(\App\Services\OrderLifecycleService::class)->initializeNewOrder($order, [
+                'order_type' => $request->input('menu_type') === 'wholesale' ? 'wholesale' : $orderType,
+                'menu_type' => $request->input('menu_type', 'food'),
+                'is_scheduled' => $request->boolean('is_scheduled'),
+                'scheduled_at' => $request->input('scheduled_at'),
+                'wholesale_delivery_date' => $request->input('wholesale_delivery_date'),
+            ]);
+
             // COMMIT
             DB::commit();
-
-            Log::info('createOrderFromCart: order committed successfully', [
-                'order_id'   => $order->id,
-                'user_id'    => $userId,
-                'payment'    => $payment,
-                'session_id' => $stripeSessionId,
-            ]);
 
             return $order->fresh(['orderItem.branch']);
 

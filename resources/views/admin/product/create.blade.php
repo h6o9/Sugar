@@ -44,7 +44,22 @@
 <select class="form-control" name="menu_id">
 <option disabled selected>Select Menus</option>
 @foreach ($menus as $menu)
-<option value="{{ $menu->id }}">{{ $menu->name }}</option>
+                    <option value="{{ $menu->id }}">{{ $menu->name }}@if(!empty($menu->type)) ({{ $menu->type }})@endif</option>
+@endforeach
+</select>
+<small class="text-muted">Dessert Wholesale par lagaoge to neeche normal category bhi choose karo taake Menu page pe bhi dikhe.</small>
+</div>
+</div>
+<div class="col-sm-6">
+<div class="form-group mb-2">
+<label>Also show on normal menu</label>
+<select class="form-control" name="food_menu_id">
+<option value="">Same as menu above / none</option>
+@foreach ($menus as $menu)
+    @php $t = strtolower((string) ($menu->type ?? 'food')); @endphp
+    @if($t !== 'wholesale' && $t !== 'special')
+        <option value="{{ $menu->id }}">{{ $menu->name }}</option>
+    @endif
 @endforeach
 </select>
 </div>

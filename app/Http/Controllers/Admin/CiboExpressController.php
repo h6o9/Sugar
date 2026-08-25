@@ -37,6 +37,9 @@ public function update(Request $request, $id)
 
     $data->title = $request->title;
     $data->description = $request->description;
+    if ($request->filled('page_key')) {
+        $data->page_key = $request->page_key;
+    }
 
    // Image Upload
 if ($request->hasFile('image')) {
@@ -55,7 +58,7 @@ if ($request->hasFile('image')) {
 }
     $data->save();
 
-    return redirect()->back()->with('message','Cibo Express updated successfully');
+    return redirect()->back()->with('message','Content updated successfully');
 }
 
 }

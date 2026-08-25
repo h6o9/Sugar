@@ -2,9 +2,12 @@
     <div class="container py-5">
         <div class="row g-5">
             <div class="col-lg-4 col-md-6">
-                <h4 class="section-title ff-secondary text-start fw-normal mb-4">Links</h4>
+                <h4 class="section-title ff-secondary text-start fw-normal mb-4 text-white">Links</h4>
                 <a class="btn btn-link" href="{{route('index')}}">Home</a>
                 <a class="btn btn-link" href="{{route('get-our-gallery')}}">Explore Sugar Pappi Gallery</a>
+                <a class="btn btn-link" href="{{route('dessert-wholesale')}}">Dessert Wholesale</a>
+                <a class="btn btn-link" href="{{route('private-bookings')}}">Private Bookings</a>
+                <a class="btn btn-link" href="{{ $whatsappUrl ?? 'https://wa.me/447727412922' }}" target="_blank" rel="noopener">WhatsApp Us</a>
                 <a class="btn btn-link" href="{{route('get-faqs')}}">FAQ's</a>
                 <div class="mt-3">
                     <a href="#" class="d-inline-block">
@@ -16,10 +19,10 @@
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
-                <h4 class="section-title ff-secondary text-start fw-normal mb-4">Contact Us</h4>
+                <h4 class="section-title ff-secondary text-start fw-normal mb-4 text-white">Contact Us</h4>
                 {{-- <p class="mb-2"><span class="fa fa-map-marker-alt me-3"></span>123 Street, New York, USA</p>
                 <p class="mb-2"><span class="fa fa-phone-alt me-3"></span>+012 345 67890</p> --}}
-                <p class="mb-2"><a href="mailto:contact@sugarpappi.com" class="text-dark"><span class="fa fa-envelope me-3"></span>contact@sugarpappi.com</a></p>
+                <p class="mb-2"><a href="mailto:contact@sugarpappi.com" class="text-white"><span class="fa fa-envelope me-3"></span>contact@sugarpappi.com</a></p>
                 <div class="d-flex pt-2">
                     {{-- <a class="btn btn-outline-light btn-social" href=""><span class="fab fa-twitter"></span></a> --}}
                     <a class="btn btn-outline-light btn-social" href=""><span
@@ -31,9 +34,9 @@
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
-                <h4 class="section-title ff-secondary text-start fw-normal mb-4">Stay Updated!</h4>
-                <p class="small text-dark">This form is protected by reCAPTCHA and the Google <a class="text-dark text-decoration-underline" rel="noreferrer noopener"
-                        href="https://policies.google.com/privacy" target="_blank">Privacy Policy</a> and <a class="text-dark text-decoration-underline"
+                <h4 class="section-title ff-secondary text-start fw-normal mb-4 text-white">Stay Updated!</h4>
+                <p class="small text-white">This form is protected by reCAPTCHA and the Google <a class="text-white text-decoration-underline" rel="noreferrer noopener"
+                        href="https://policies.google.com/privacy" target="_blank">Privacy Policy</a> and <a class="text-white text-decoration-underline"
                         rel="noreferrer noopener" href="https://policies.google.com/terms" target="_blank">Terms of
                         Service</a> apply.</p>
                 <div class="position-relative mx-auto" style="max-width: 400px;">
@@ -49,7 +52,7 @@
         <div class="copyright">
             <div class="row">
                 <div class="col-md-6 text-center text-md-start">
-                    <p class="mb-0 text-dark"><span>Sugar Pappi &copy;
+                    <p class="mb-0 text-white">Sugar Pappi &copy;
                             <script>
                                 document.write(new Date().getFullYear());
                             </script>

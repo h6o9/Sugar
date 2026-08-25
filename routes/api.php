@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PlaceOrderController;
 use App\Http\Controllers\Api\ProductDetailsController;
+use App\Http\Controllers\Api\StorefrontApiController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -100,8 +101,16 @@ Route::post('/register-with-referral', [ReferralController::class, 'registerWith
     Route::post('/referral/use-points', [ReferralController::class, 'usePoints']);
 // get reward history
 Route::get('/reward-history', [\App\Http\Controllers\Api\RewardHistoryController::class, 'index']);
+Route::get('/order-state', [StorefrontApiController::class, 'orderState']);
+Route::post('/orders/add-items', [StorefrontApiController::class, 'addItems']);
+Route::post('/orders/update-item', [StorefrontApiController::class, 'updateItem']);
 
 });
+
+Route::get('/business-status', [StorefrontApiController::class, 'businessStatus']);
+Route::get('/stores', [StorefrontApiController::class, 'stores']);
+Route::get('/wholesale-dates', [StorefrontApiController::class, 'wholesaleDates']);
+Route::get('/wholesale-menu', [StorefrontApiController::class, 'wholesaleMenu']);
 
 // Webview Payment Routes for App
 Route::get('/payment/stripe/webview/success', [\App\Http\Controllers\Api\PaymentController::class, 'stripeWebviewSuccess'])->name('api.payment.stripe.webview.success');

@@ -51,21 +51,30 @@
     <!-- Template Stylesheet -->
     <link href="{{ asset('public/css/common.css') }}" rel="stylesheet">
     <link href="{{ asset('public/css/style.css') }}" rel="stylesheet">
+    <style>
+        body.sp-auth-body .navbar,
+        body.sp-auth-body .footer,
+        body.sp-auth-body .app-download-banner,
+        body.sp-auth-body .promo-bar,
+        body.sp-auth-body .sidebar,
+        body.sp-auth-body .sp-timer-bar,
+        body.sp-auth-body .sp-closed-bar,
+        body.sp-auth-body .back-to-top {
+            display: none !important;
+        }
+    </style>
     <!-- Template toster -->
     <link rel="stylesheet" href="{{ asset('public/admin/assets/toastr/css/toastr.css') }}">
     @yield('style')
 </head>
 
-<body>
+<body class="sp-auth-body">
 
     <div class="loader"></div>
 
     <div id="app" class="bg-white">
         <div class="main-wrapper main-wrapper-1">
-                @include('home.common.header')
-                @include('home.common.side_menu')
                 @yield('content')
-                @include('home.common.footer')
         </div>
     </div>
 

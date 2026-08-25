@@ -22,6 +22,18 @@
                                                 <div class="text-danger">{{ $message }}</div>
                                             @enderror
                                         </div>
+                                        <div class="form-group">
+                                            <label>Type</label>
+                                            <select name="type" class="form-control">
+                                                <option value="food">Food</option>
+                                                <option value="special">Pappi Special</option>
+                                                <option value="wholesale">Wholesale</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Icon class (Remix Icon)</label>
+                                            <input type="text" class="form-control" name="icon" placeholder="ri-cake-3-line">
+                                        </div>
                                     </div>
 
                                     <div class="card-footer text-right">

@@ -104,35 +104,37 @@ public function myOrders(Request $request)
                 ];
             });
 
-        $allItems = $allItems->merge($orderItems);
+    $allItems = $allItems->merge($orderItems);
     }
 
-    $order = $orders->first();
+    $lifecycle = app(\App\Services\OrderLifecycleService::class);
+    $primary = $orders->first();
+    $state = $lifecycle->publicState($primary);
 
-    if (in_array($status, ['Pending', 'Order Ready'])) {
+    if (in_array($status, ['Pending', 'Order Ready', 'Scheduled'])) {
         return response()->json([
             'status' => 'success',
-            'data' => [
+            'data' => array_merge($state, [
                 'items' => $allItems
-            ]
+            ])
         ]);
     }
 
     if ($status === 'Delivered') {
 
-        $branchId = $order?->orderItem?->first()?->branch_id;
+        $branchId = $primary?->orderItem?->first()?->branch_id;
         $branch   = $branchId ? Branch::find($branchId) : null;
 
         return response()->json([
             'status' => 'success',
             'data' => [
                 'message'          => 'Your order has been placed successfully.',
-                'total_amount'     => $order->total_amount ?? 0,
+                'total_amount'     => $primary->total_amount ?? 0,
                 'estimated_tax'    => $branch->tax ?? 0,
-                "order_code"       => $order->code,
-                'estimated_amount' => $order->estimated_total ?? 0,
-                'order_type'       => $order?->orderItem?->first()?->order_type,
-                'delivery_address' => $order?->orderItem?->first()?->delivery_address,
+                "order_code"       => $primary->code,
+                'estimated_amount' => $primary->estimated_total ?? 0,
+                'order_type'       => $primary?->order_type ?: $primary?->orderItem?->first()?->order_type,
+                'delivery_address' => $primary?->orderItem?->first()?->delivery_address,
                 'items'            => $allItems,
             ]
         ]);

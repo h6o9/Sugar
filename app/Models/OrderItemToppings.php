@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class OrderItemToppings extends Model
 {
     use HasFactory;
+    use Concerns\AssignsNextId;
+
+    public $incrementing = false;
     protected $guarded = [];
 
     public function toppings()

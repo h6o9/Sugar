@@ -43,6 +43,10 @@ class MenuController extends Controller
 
         $menu = Menu::create([
             'name' => $request->name,
+            'type' => $request->input('type', 'food'),
+            'icon' => $request->input('icon'),
+            'slug' => \Illuminate\Support\Str::slug($request->name),
+            'sort_order' => (int) $request->input('sort_order', 0),
         ]);
         return redirect()->route('menu.index')->with(['status'=> true ,'message'=>'Created Successfully']);
     }
@@ -86,6 +90,9 @@ class MenuController extends Controller
 
         $category->update([
             'name' => $request->name,
+            'type' => $request->input('type', $category->type),
+            'icon' => $request->input('icon', $category->icon),
+            'sort_order' => (int) $request->input('sort_order', $category->sort_order),
         ]);
         return redirect()->route('menu.index')->with(['status' => true, 'message' => 'Updated Successfully']);
     }

@@ -6,6 +6,8 @@ use App\Models\Menu;
 use App\Models\Product;
 use App\Models\Topping;
 use App\Models\ProductVariant;
+use App\Support\AppCartContext;
+use App\Support\MenuCatalog;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
@@ -133,6 +135,15 @@ public function homeProducts(Request $request)
             ->get();
     }
 
+    $channel = $request->filled('channel')
+        ? AppCartContext::normalizeChannel($request->input('channel'))
+        : (($menuId === 'all' || $menuId === 'featured') ? 'regular' : null);
+    if ($channel) {
+        $products = $products->filter(function ($product) use ($channel) {
+            return MenuCatalog::matchesChannel($product->menu ?? null, $channel);
+        })->values();
+    }
+
     /*
     |--------------------------------------------------------------------------
     | GET FIRST VARIANT OF EACH PRODUCT
@@ -152,7 +163,7 @@ public function homeProducts(Request $request)
     | PREPARE RESPONSE
     |--------------------------------------------------------------------------
     */
-    $response = $products->map(function ($product) use ($variants) {
+    $response = $products->map(function ($product) use ($variants, $channel) {
 
         $menu = $product->menu;
 
@@ -194,6 +205,8 @@ public function homeProducts(Request $request)
             'original_price' => $finalOriginalPrice,
             'image'          => $product->image,
             'is_featured'    => (bool) $product->is_featured,
+            'catalog_source' => MenuCatalog::isSpecial($menu) ? 'special' : (MenuCatalog::isWholesale($menu) ? 'wholesale' : 'food'),
+            'channel'        => $channel ?: 'regular',
         ];
 
         /*
@@ -404,12 +417,49 @@ private function getFeaturedDisplayText($product)
 //     ]);
 // }
 
-	public function Menueitems() {
-		$menueitems = Menu::get();
-		
+	public function Menueitems(Request $request) {
+		$channel = $request->filled('channel')
+			? AppCartContext::normalizeChannel($request->input('channel'))
+			: null;
+
+		$menueitems = Menu::orderBy('id')->get()->map(function ($menu) {
+			$isSpecial = MenuCatalog::isSpecial($menu);
+			$isWholesale = MenuCatalog::isWholesale($menu);
+			return [
+				'id' => $menu->id,
+				'name' => $menu->name,
+				'slug' => $menu->slug ?? null,
+				'type' => $menu->type ?? null,
+				'image' => $menu->image ?? null,
+				'is_special' => $isSpecial,
+				'is_wholesale' => $isWholesale,
+				'channel' => $isSpecial ? 'special' : ($isWholesale ? 'wholesale' : 'regular'),
+				'visible_on_home' => !$isSpecial,
+				'visible_on_menu' => !$isSpecial,
+				'visible_on_special' => $isSpecial,
+				'visible_on_wholesale' => $isWholesale,
+				'visible_on_drive_in' => !$isSpecial && !$isWholesale,
+			];
+		});
+
+		if ($channel) {
+			$menueitems = $menueitems->filter(function ($menu) use ($channel) {
+				if ($channel === 'special') {
+					return $menu['is_special'];
+				}
+				if ($channel === 'wholesale') {
+					return $menu['is_wholesale'];
+				}
+				if ($channel === 'drive_in') {
+					return !$menu['is_special'] && !$menu['is_wholesale'];
+				}
+				return !$menu['is_special'];
+			})->values();
+		}
+
 		return response()->json([
 			'status' => true,
-			'data'   => $menueitems
+			'data'   => $menueitems->values(),
 		]);
 	}
 

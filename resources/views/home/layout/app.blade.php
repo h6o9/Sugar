@@ -40,7 +40,7 @@
     <link href="{{ asset('public/css/sidebar.css') }}" rel="stylesheet">
     <link href="{{ asset('public/css/common.css') }}" rel="stylesheet">
     <link href="{{ asset('public/css/style.css') }}" rel="stylesheet">
-    <link href="{{ asset('public/css/sugarpappi-update.css') }}?v=20260825v" rel="stylesheet">
+    <link href="{{ asset('public/css/sugarpappi-update.css') }}?v=20260831ws2" rel="stylesheet">
     @if(request()->is('/'))
         <link rel="preload" as="video" href="{{ asset('public/videos/hero.mp4') }}" type="video/mp4">
     @endif
@@ -219,12 +219,18 @@
         })();
         (function () {
             function formatMmSs(remain) {
-                var m = String(Math.max(0, Math.floor(remain / 60))).padStart(2, '0');
-                var s = String(Math.max(0, remain % 60)).padStart(2, '0');
+                remain = Math.max(0, remain);
+                if (remain >= 3600) {
+                    var h = Math.floor(remain / 3600);
+                    var hm = String(Math.floor((remain % 3600) / 60)).padStart(2, '0');
+                    return h + 'h ' + hm + 'm';
+                }
+                var m = String(Math.floor(remain / 60)).padStart(2, '0');
+                var s = String(remain % 60).padStart(2, '0');
                 return m + ':' + s;
             }
             function hideWindowActions(el) {
-                el.querySelectorAll('.js-window-actions, .sp-remove-item, .sp-btn-pink, #spRemoveItemsBtn').forEach(function (n) {
+                el.querySelectorAll('.js-window-actions, .sp-remove-item, .sp-edit-item, .sp-btn-pink, #spRemoveItemsBtn').forEach(function (n) {
                     n.style.display = 'none';
                 });
             }
@@ -235,6 +241,9 @@
                 if (el.id === 'addToOrderTimer') {
                     var mins = el.getAttribute('data-minutes') || '10';
                     el.innerHTML = 'Your ' + mins + ' minutes are over. The order is placed as it is.';
+                } else if (el.getAttribute('data-wholesale') === '1') {
+                    var note = el.querySelector('.sp-timer-note');
+                    if (note) note.textContent = 'You can no longer update this order.';
                 }
                 if (!window.__spReloadedTimer) {
                     window.__spReloadedTimer = true;
@@ -284,7 +293,7 @@
                     body: JSON.stringify({ item_ids: itemIds })
                 }).then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); });
             }
-            function afterRemove(out) {
+            function afterRemove(out, isWholesale) {
                 if (!out.ok || (out.data && out.data.success === false)) {
                     if (typeof Swal !== 'undefined') {
                         Swal.fire('Error', (out.data && out.data.message) || 'Could not remove item.', 'error');
@@ -293,21 +302,28 @@
                     }
                     return;
                 }
-                var msg = (out.data && out.data.message) || ('Product removed. The ' + addMins + '-minute timer has started again.');
+                var msg = (out.data && out.data.message) || (isWholesale
+                    ? 'Product removed.'
+                    : ('Product removed. The ' + addMins + '-minute timer has started again.'));
                 if (typeof Swal !== 'undefined') {
                     Swal.fire('Removed', msg, 'success').then(function () { window.location.reload(); });
                 } else {
                     window.location.reload();
                 }
             }
-            function confirmRemove(url, itemId, name, count) {
+            function confirmRemove(url, itemId, name, count, isWholesale) {
                 var onlyOne = parseInt(count, 10) === 1;
-                var text = onlyOne
-                    ? 'This is the only item. Removing it will empty the order.'
-                    : ((name || 'This product') + ' will be removed and the ' + addMins + '-minute timer will start again.');
+                var text;
+                if (onlyOne) {
+                    text = 'This is the only item. Removing it will empty the order.';
+                } else if (isWholesale) {
+                    text = (name || 'This product') + ' will be removed from this order.';
+                } else {
+                    text = (name || 'This product') + ' will be removed and the ' + addMins + '-minute timer will start again.';
+                }
                 if (typeof Swal === 'undefined') {
                     if (!window.confirm(text)) return;
-                    postRemove(url, [itemId]).then(afterRemove);
+                    postRemove(url, [itemId]).then(function (out) { afterRemove(out, isWholesale); });
                     return;
                 }
                 Swal.fire({
@@ -319,18 +335,21 @@
                     confirmButtonText: 'Yes, remove it'
                 }).then(function (result) {
                     if (!result.isConfirmed) return;
-                    postRemove(url, [itemId]).then(afterRemove);
+                    postRemove(url, [itemId]).then(function (out) { afterRemove(out, isWholesale); });
                 });
             }
             document.addEventListener('click', function (e) {
                 var btn = e.target.closest('.sp-remove-item');
                 if (!btn) return;
                 e.preventDefault();
+                var isWholesale = btn.getAttribute('data-wholesale') === '1'
+                    || !!(btn.closest('[data-wholesale="1"]'));
                 confirmRemove(
                     btn.getAttribute('data-remove-url'),
                     btn.getAttribute('data-item-id'),
                     btn.getAttribute('data-item-name'),
-                    btn.getAttribute('data-item-count')
+                    btn.getAttribute('data-item-count'),
+                    isWholesale
                 );
             });
             var bar = document.getElementById('addToOrderTimer');

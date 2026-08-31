@@ -822,6 +822,26 @@ body.nav-open {
     flex-shrink: 0;
 }
 .sp-remove-item:hover { background: #ff2d87 !important; color: #fff !important; }
+.sp-item-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.sp-edit-item {
+    background: #fff !important;
+    color: #111 !important;
+    border: 1px solid #111 !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    white-space: nowrap;
+    text-decoration: none !important;
+}
+.sp-edit-item:hover { background: #ff2d87 !important; color: #fff !important; border-color: #ff2d87 !important; }
+.sp-edit-card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.06);
+}
+.sp-edit-thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; }
 .sp-timer-note {
     background: #111;
     color: #fff;
@@ -839,7 +859,7 @@ body.nav-open {
     padding: 8px 16px;
 }
 
-/* Product modal: keep Add to Cart above the app-download banner */
+/* Product modal: compact height, keep Add to Cart above the app-download banner */
 .menu-modal.show {
     display: flex !important;
     align-items: center;
@@ -852,21 +872,22 @@ body.nav-open {
 }
 .menu-modal .modal-dialog,
 .menu-modal .modal-dialog.modal-dialog-scrollable {
-    max-width: 520px;
+    max-width: 420px;
     width: 100%;
     height: auto !important;
-    max-height: calc(100vh - 92px) !important;
+    max-height: min(72vh, 560px) !important;
     margin: 0 auto;
 }
 .menu-modal .modal-content {
-    max-height: calc(100vh - 92px) !important;
+    max-height: min(72vh, 560px) !important;
+    height: auto !important;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 .menu-modal .modal-body {
     overflow-y: auto;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
     -webkit-overflow-scrolling: touch;
 }
@@ -875,23 +896,50 @@ body.nav-open {
     background: #fff;
     z-index: 3;
     box-shadow: 0 -6px 16px rgba(0,0,0,.08);
-    padding: 10px 12px !important;
+    padding: 6px 10px !important;
 }
 .menu-modal img[alt="product-img"] {
-    height: 140px !important;
-    max-height: 140px;
+    height: 88px !important;
+    max-height: 88px;
     width: 100%;
     object-fit: cover;
     object-position: center;
     display: block;
 }
+.menu-modal .description {
+    padding: 8px 12px !important;
+}
 .menu-modal .description h3 {
-    font-size: 20px;
-    margin-bottom: 8px;
+    font-size: 17px;
+    margin-bottom: 4px;
+}
+.menu-modal .description h6 {
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.menu-modal .description p {
+    margin-bottom: 6px;
 }
 .menu-modal .description p.small {
-    max-height: 3.6em;
+    max-height: 2.6em;
     overflow: hidden;
+    margin-bottom: 6px;
+}
+.menu-modal .cart-btn {
+    margin-top: 4px;
+}
+.menu-modal .branch-option {
+    margin-bottom: 8px !important;
+}
+.menu-modal .select-size {
+    padding-top: 4px;
+    padding-bottom: 4px;
+    min-height: 34px;
+}
+.menu-modal img.img-fluid.rounded-circle,
+.menu-modal .description img.img-fluid {
+    width: 64px !important;
+    height: 64px !important;
 }
 @media (max-width: 575.98px) {
     .menu-modal.show {
@@ -900,10 +948,10 @@ body.nav-open {
     .menu-modal .modal-dialog,
     .menu-modal .modal-dialog.modal-dialog-scrollable,
     .menu-modal .modal-content {
-        max-height: calc(100vh - 84px) !important;
+        max-height: min(70vh, 500px) !important;
     }
     .menu-modal img[alt="product-img"] {
-        height: 110px !important;
-        max-height: 110px;
+        height: 72px !important;
+        max-height: 72px;
     }
 }

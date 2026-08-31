@@ -48,7 +48,7 @@
                     <option value="{{ $menu->id }}" {{ $product->menu_id == $menu->id ? 'selected' : '' }}>{{ $menu->name }}@if(!empty($menu->type)) ({{ $menu->type }})@endif</option>
                 @endforeach
             </select>
-            <small class="text-muted">If this is Dessert Wholesale, pick the normal category below so it still shows on the Menu page.</small>
+            <small class="text-muted">Dessert Wholesale items also show on Home and Menu. Pappi Special items only show on the Pappi Special page. Optional: also place a wholesale item on a normal food tab.</small>
             @error('menu_id')<div class="text-danger">{{ $message }}</div>@enderror
         </div>
     </div>

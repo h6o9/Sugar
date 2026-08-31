@@ -23,9 +23,10 @@
         data-remove-url="{{ route('orders.remove-items', $timerOrderId) }}"
         data-items='@json($timerItems)'>
         <div class="sp-timer-clock">Time left: <span class="timer-remain">{{ $activeOrderState['remaining_time'] }}</span></div>
-        <p class="sp-timer-msg">Your order is placed. You have {{ (int) ($activeOrderState['add_minutes'] ?? 10) }} minutes to add or remove items. If you add or deduct anything, the old receipt is cancelled, a new receipt is issued, and this timer restarts. If you do nothing, the order stays as placed.</p>
+        <p class="sp-timer-msg">Your order is placed. You have {{ (int) ($activeOrderState['add_minutes'] ?? 10) }} minutes to add items, remove items, or change size and toppings. Any change cancels the old receipt, issues a new one, and restarts this timer.</p>
         <div class="sp-timer-actions">
             <a class="btn btn-sm btn-dark" href="{{ route('orders.add-items', $timerOrderId) }}">Add items</a>
+            <a class="btn btn-sm btn-outline-light" href="{{ route('my-order') }}">Change size / toppings</a>
             <button type="button" class="btn btn-sm btn-outline-light" id="spRemoveItemsBtn">Remove items</button>
         </div>
     </div>

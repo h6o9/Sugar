@@ -8,18 +8,55 @@ class MenuCatalog
 {
     public static function isSpecial($menu): bool
     {
+        if (!$menu) {
+            return false;
+        }
         $type = strtolower((string) ($menu->type ?? ''));
         $slug = strtolower((string) ($menu->slug ?? ''));
-        $name = (string) ($menu->name ?? '');
-        return $type === 'special' || $slug === 'pappi-special' || stripos($name, 'Pappi Special') !== false;
+        $name = strtolower((string) ($menu->name ?? ''));
+        if ($type === 'special') {
+            return true;
+        }
+        if (in_array($slug, ['pappi-special', 'papi-special', 'sugar-papi-special', 'sugar-pappi-special'], true)) {
+            return true;
+        }
+        return strpos($name, 'pappi special') !== false
+            || strpos($name, 'papi special') !== false
+            || strpos($name, 'sugar papi special') !== false
+            || strpos($name, 'sugar pappi special') !== false;
+    }
+
+    public static function matchesChannel($menu, string $channel): bool
+    {
+        $channel = \App\Support\AppCartContext::normalizeChannel($channel);
+        if ($channel === 'special') {
+            return self::isSpecial($menu);
+        }
+        if ($channel === 'wholesale') {
+            return self::isWholesale($menu);
+        }
+        if ($channel === 'drive_in') {
+            return !self::isSpecial($menu) && !self::isWholesale($menu);
+        }
+        return !self::isSpecial($menu);
     }
 
     public static function isWholesale($menu): bool
     {
+        if (!$menu) {
+            return false;
+        }
         $type = strtolower((string) ($menu->type ?? ''));
         $slug = strtolower((string) ($menu->slug ?? ''));
-        $name = (string) ($menu->name ?? '');
-        return $type === 'wholesale' || $slug === 'dessert-wholesale' || stripos($name, 'Wholesale') !== false;
+        $name = strtolower((string) ($menu->name ?? ''));
+        if ($type === 'wholesale') {
+            return true;
+        }
+        if (in_array($slug, ['dessert-wholesale', 'desert-wholesale'], true)) {
+            return true;
+        }
+        return strpos($name, 'wholesale') !== false
+            || strpos($name, 'whole sale') !== false;
     }
 
     public static function hydrate($menus)
@@ -51,7 +88,7 @@ class MenuCatalog
                 return false;
             }
             if ($excludeWholesale && self::isWholesale($menu)) {
-                return $menu->product && $menu->product->count() > 0;
+                return false;
             }
             return true;
         })->sortBy(function ($menu) {
@@ -88,9 +125,29 @@ class MenuCatalog
         return $menus;
     }
 
+    public static function forWholesale()
+    {
+        $menus = self::forStorefront(true, false)->filter(function ($menu) {
+            return self::isWholesale($menu);
+        })->values();
+
+        if ($menus->isEmpty()) {
+            $virtual = new Menu();
+            $virtual->id = 0;
+            $virtual->name = 'Dessert Wholesale';
+            $virtual->type = 'wholesale';
+            $virtual->slug = 'dessert-wholesale';
+            $virtual->product = collect();
+            $menus = collect([$virtual]);
+        }
+
+        return $menus;
+    }
+
     /**
-     * Products assigned to Dessert Wholesale also appear on the matching food tab
-     * (Cookie Dough, Waffles, Cakes, …). Pappi Special is never copied onto food tabs.
+     * Dessert Wholesale keeps every item on its own tab (Home + Menu).
+     * If a product also has food_menu_id, copy it onto that food tab as well.
+     * Pappi Special is never copied onto food tabs.
      */
     protected static function mirrorWholesaleIntoFood($menus)
     {
@@ -102,16 +159,12 @@ class MenuCatalog
         });
 
         foreach ($wholesaleMenus as $wholesaleMenu) {
-            $unmatched = collect();
             foreach ($wholesaleMenu->product as $prod) {
                 $target = self::matchFoodMenu($foodMenus, $prod);
                 if ($target) {
                     self::appendUniqueProduct($target, $prod);
-                } else {
-                    $unmatched->push($prod);
                 }
             }
-            $wholesaleMenu->product = $unmatched;
         }
 
         return $menus;
@@ -132,51 +185,11 @@ class MenuCatalog
     {
         $foodId = (int) ($prod->food_menu_id ?? 0);
         if ($foodId > 0) {
-            $byId = $foodMenus->first(function ($menu) use ($foodId) {
+            return $foodMenus->first(function ($menu) use ($foodId) {
                 return (int) $menu->id === $foodId;
             });
-            if ($byId) {
-                return $byId;
-            }
         }
 
-        $productName = self::norm($prod->name);
-        if ($productName !== '') {
-            $best = null;
-            $bestLen = 0;
-            foreach ($foodMenus as $menu) {
-                $menuName = self::norm($menu->name);
-                if ($menuName === '' || strlen($menuName) < 8) {
-                    continue;
-                }
-                if (strpos($productName, $menuName) !== false && strlen($menuName) > $bestLen) {
-                    $best = $menu;
-                    $bestLen = strlen($menuName);
-                }
-            }
-            if ($best) {
-                return $best;
-            }
-        }
-
-        return self::fallbackFoodMenu($foodMenus);
-    }
-
-    protected static function fallbackFoodMenu($foodMenus)
-    {
-        $hot = $foodMenus->first(function ($menu) {
-            return self::norm($menu->name) === 'hot desserts';
-        });
-        if ($hot) {
-            return $hot;
-        }
-        return $foodMenus->first();
-    }
-
-    protected static function norm($value)
-    {
-        $value = strtolower((string) $value);
-        $value = preg_replace("/[^a-z0-9]+/", ' ', $value);
-        return trim(preg_replace('/\s+/', ' ', $value));
+        return null;
     }
 }

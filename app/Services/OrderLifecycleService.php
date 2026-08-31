@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Branch;
 use App\Models\BusinessSetting;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -9,9 +10,11 @@ use App\Models\OrderItemToppings;
 use App\Models\OrderModification;
 use App\Models\OrderPayment;
 use App\Models\OrderReceipt;
+use App\Models\Product;
 use App\Models\Topping;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
@@ -20,10 +23,13 @@ class OrderLifecycleService
 {
     /** @var BusinessTimeService */
     protected $time;
+    /** @var WholesaleScheduleService */
+    protected $wholesale;
 
-    public function __construct(BusinessTimeService $time)
+    public function __construct(BusinessTimeService $time, WholesaleScheduleService $wholesale)
     {
         $this->time = $time;
+        $this->wholesale = $wholesale;
     }
 
     public function addToOrderMinutes(): int
@@ -50,8 +56,11 @@ class OrderLifecycleService
 
     public function isWholesale($order): bool
     {
+        if (is_object($order) && !empty($order->wholesale_delivery_date)) {
+            return true;
+        }
         $type = is_object($order) ? ($order->order_type ?? $order->menu_type ?? '') : (string) $order;
-        return in_array(strtolower((string) $type), ['wholesale', 'dessert_wholesale'], true);
+        return in_array(strtolower((string) $type), ['wholesale', 'dessert_wholesale', 'dessert-wholesale'], true);
     }
 
     public function initializeNewOrder(Order $order, array $meta = []): Order
@@ -71,25 +80,14 @@ class OrderLifecycleService
         }
 
         $isWholesale = $this->isWholesale($orderType) || $this->isWholesale($menuType);
-        // #region agent log
-        file_put_contents(base_path('debug-1796d5.log'), json_encode([
-            'sessionId' => '1796d5',
-            'hypothesisId' => 'W3',
-            'location' => 'OrderLifecycleService.php:initializeNewOrder',
-            'message' => 'init order type and timer window',
-            'data' => [
-                'order_id' => $order->id,
-                'orderType' => $orderType,
-                'menuType' => $menuType,
-                'isWholesale' => $isWholesale,
-                'has_wholesale_date' => !empty($meta['wholesale_delivery_date']),
-            ],
-            'timestamp' => (int) round(microtime(true) * 1000),
-        ]) . "\n", FILE_APPEND);
-        // #endregion
         if (!$isWholesale && empty($meta['is_scheduled']) && !$this->time->isOpen()) {
             $meta['is_scheduled'] = true;
             $meta['scheduled_at'] = $this->time->nextOpening();
+        }
+
+        if (!empty($meta['wholesale_delivery_date']) && Schema::hasColumn('orders', 'wholesale_delivery_date')) {
+            $order->wholesale_delivery_date = $meta['wholesale_delivery_date'];
+            $isWholesale = true;
         }
 
         $this->startAddWindow($order, $isWholesale);
@@ -100,10 +98,6 @@ class OrderLifecycleService
             if ($order->scheduled_at) {
                 $order->status = 'Scheduled';
             }
-        }
-
-        if (!empty($meta['wholesale_delivery_date']) && Schema::hasColumn('orders', 'wholesale_delivery_date')) {
-            $order->wholesale_delivery_date = $meta['wholesale_delivery_date'];
         }
 
         $this->applyDriveInDiscount($order, $orderType);
@@ -129,12 +123,22 @@ class OrderLifecycleService
             return;
         }
         $wholesale = $isWholesale ?? $this->isWholesale($order);
-        $order->add_items_until = $wholesale ? null : $this->deadlineUtc();
+        if ($wholesale) {
+            $until = $this->wholesaleModifyDeadline($order);
+            if ($until) {
+                $order->add_items_until = $until->copy()->utc();
+                return;
+            }
+            $base = $order->getRawOriginal('created_at') ?: $order->created_at ?: $this->utcNow();
+            $order->add_items_until = $this->asCarbonUtc($base)->addDays(7);
+            return;
+        }
+        $order->add_items_until = $this->deadlineUtc();
     }
 
     public function rememberActiveOrder(Order $order): void
     {
-        if (!$order->id || !$order->add_items_until) {
+        if (!$order->id || !$order->add_items_until || $this->isWholesale($order)) {
             return;
         }
         Session::put('active_add_order_id', $order->id);
@@ -158,8 +162,39 @@ class OrderLifecycleService
         return false;
     }
 
+    public function cancelWholesaleAddToOrderSession(): void
+    {
+        $id = Session::get('adding_to_order_id');
+        if (!$id) {
+            return;
+        }
+        $order = Order::find($id);
+        if (!$order || !$this->isWholesale($order)) {
+            return;
+        }
+        Session::forget('adding_to_order_id');
+        if (session('selected_order_type') === 'wholesale') {
+            Session::put('selected_order_type', 'standard');
+        }
+        Session::forget('wholesale_delivery_date');
+    }
+
     public function modifyDeadline(Order $order): ?Carbon
     {
+        if ($this->isWholesale($order)) {
+            $until = $this->wholesaleModifyDeadline($order);
+            if ($until) {
+                return $until;
+            }
+            if (Schema::hasColumn('orders', 'add_items_until')) {
+                $stored = $order->getRawOriginal('add_items_until') ?: $order->add_items_until;
+                if ($stored) {
+                    return $this->asCarbonUtc($stored);
+                }
+            }
+            $base = $order->getRawOriginal('created_at') ?: $order->created_at;
+            return $base ? $this->asCarbonUtc($base)->addDays(7) : null;
+        }
         $until = null;
         if (Schema::hasColumn('orders', 'add_items_until')) {
             $until = $order->getRawOriginal('add_items_until') ?: $order->add_items_until;
@@ -176,11 +211,21 @@ class OrderLifecycleService
         return $this->asCarbonUtc($until);
     }
 
+    public function wholesaleModifyDeadline(Order $order): ?Carbon
+    {
+        $date = $order->wholesale_delivery_date ?? null;
+        if (!$date) {
+            return null;
+        }
+        $until = $this->wholesale->modifyUntil((string) $date);
+        if (!$until) {
+            return null;
+        }
+        return $until->copy()->utc();
+    }
+
     public function canModify(Order $order): bool
     {
-        if ($this->isWholesale($order)) {
-            return false;
-        }
         if (in_array($order->status, ['Delivered', 'Cancelled', 'Canceled', 'completed'], true)) {
             return false;
         }
@@ -217,6 +262,21 @@ class OrderLifecycleService
         }
 
         $canAdd = $this->canModify($order);
+        $isWholesale = $this->isWholesale($order);
+        $lockLocal = null;
+        if ($isWholesale) {
+            $lock = $this->wholesaleModifyDeadline($order);
+            $lockLocal = $lock ? $lock->copy()->setTimezone($this->time->timezone())->format('g:i A, l j M Y') : null;
+        }
+        if ($isWholesale) {
+            $message = $canAdd
+                ? 'You can add or remove items until 6 hours before your wholesale delivery time' . ($lockLocal ? ' (by ' . $lockLocal . ')' : '') . '.'
+                : $this->wholesale->lockedMessage();
+        } else {
+            $message = $canAdd
+                ? 'You have ' . $this->addToOrderMinutes() . ' minutes to add or remove items. Any change cancels the old receipt, issues a new one, and restarts this timer. If you do nothing, the order stays placed.'
+                : 'Your time to change this order has ended. The order stays as placed.';
+        }
         return [
             'current_order' => [
                 'id' => $order->id,
@@ -234,20 +294,23 @@ class OrderLifecycleService
             'scheduled_time' => $order->scheduled_at,
             'order_type' => $order->order_type,
             'wholesale_delivery_date' => $order->wholesale_delivery_date,
-            'message' => $canAdd
-                ? 'You have ' . $this->addToOrderMinutes() . ' minutes to add or remove items. Any change cancels the old receipt, issues a new one, and restarts this timer. If you do nothing, the order stays placed.'
-                : ($this->isWholesale($order) ? null : 'Your time to change this order has ended. The order stays as placed.'),
+            'is_wholesale' => $isWholesale,
+            'channel' => $order->channelKey(),
+            'channel_label' => $order->channelLabel(),
+            'lock_at_label' => $lockLocal,
+            'message' => $message,
         ];
     }
 
     public function assertCanModify(Order $order): void
     {
+        if ($this->canModify($order)) {
+            return;
+        }
         if ($this->isWholesale($order)) {
-            throw new \RuntimeException('Wholesale orders cannot be modified after checkout.');
+            throw new \RuntimeException($this->wholesale->lockedMessage());
         }
-        if (!$this->canModify($order)) {
-            throw new \RuntimeException('The time to add items to this order has ended.');
-        }
+        throw new \RuntimeException('The time to add items to this order has ended.');
     }
 
     public function addSessionCartToOrder(Order $order, array $cart, array $meta = []): Order
@@ -398,9 +461,14 @@ class OrderLifecycleService
 
     public function updateItemQuantity(Order $order, int $itemId, int $quantity): Order
     {
+        return $this->updateItemOptions($order, $itemId, ['quantity' => $quantity]);
+    }
+
+    public function updateItemOptions(Order $order, int $itemId, array $options): Order
+    {
         $this->assertCanModify($order);
 
-        return DB::transaction(function () use ($order, $itemId, $quantity) {
+        return DB::transaction(function () use ($order, $itemId, $options) {
             $locked = Order::where('id', $order->id)->lockForUpdate()->first();
             $this->assertCanModify($locked);
             $previousTotal = (float) $locked->total_amount;
@@ -410,15 +478,27 @@ class OrderLifecycleService
                 throw new \RuntimeException('Order item not found.');
             }
 
+            $quantity = array_key_exists('quantity', $options)
+                ? (int) $options['quantity']
+                : (int) $item->quantity;
+
             if ($quantity <= 0) {
                 OrderItemToppings::where('order_item_id', $item->id)->delete();
                 $item->delete();
                 $action = 'remove_item';
             } else {
+                $product = Product::with('variants')->find($item->product_id);
+                $this->applyVariantToItem($item, $product, $options);
+                if (array_key_exists('toppings', $options) || array_key_exists('toppings_by_category', $options)) {
+                    $this->replaceItemToppings($item, $options);
+                }
                 $item->quantity = $quantity;
-                $item->sub_total = floatval($item->product_price) * $quantity;
                 $item->save();
-                $action = 'update_quantity';
+                $action = 'update_item';
+            }
+
+            if (array_key_exists('delivery_status', $options) && !$this->isWholesale($locked)) {
+                $this->applyFulfillment($locked, $options);
             }
 
             $this->recalculateTotals($locked);
@@ -442,7 +522,55 @@ class OrderLifecycleService
                 'order_id' => $locked->id,
                 'user_id' => $locked->user_id,
                 'action' => $action,
-                'payload' => ['item_id' => $itemId, 'quantity' => $quantity],
+                'payload' => [
+                    'item_id' => $itemId,
+                    'quantity' => $quantity,
+                    'variant_id' => $options['variant_id'] ?? null,
+                    'toppings' => $options['toppings'] ?? ($options['toppings_by_category'] ?? null),
+                    'delivery_status' => $options['delivery_status'] ?? null,
+                    'delivery_address' => $options['delivery_address'] ?? null,
+                ],
+                'previous_total' => $previousTotal,
+                'new_total' => $locked->total_amount,
+                'receipt_version' => $locked->receipt_version,
+            ]);
+
+            return $locked->fresh(['orderItem.orderToppings.toppings']);
+        });
+    }
+
+    public function updateOrderFulfillment(Order $order, array $options): Order
+    {
+        $this->assertCanModify($order);
+
+        return DB::transaction(function () use ($order, $options) {
+            $locked = Order::where('id', $order->id)->lockForUpdate()->first();
+            $this->assertCanModify($locked);
+            $previousTotal = (float) $locked->total_amount;
+            $this->applyFulfillment($locked, $options);
+            $this->recalculateTotals($locked);
+            $this->applyDriveInDiscount($locked, $locked->order_type);
+            $locked->last_modified_at = $this->utcNow();
+            $this->startAddWindow($locked);
+            $locked->save();
+            $this->supersedeReceipts($locked);
+            try {
+                $this->generateReceipt($locked, 'updated');
+            } catch (\Throwable $e) {
+                Log::warning('Receipt rotate failed after fulfillment update', [
+                    'order_id' => $locked->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+            $this->rememberActiveOrder($locked);
+            OrderModification::create([
+                'order_id' => $locked->id,
+                'user_id' => $locked->user_id,
+                'action' => 'update_fulfillment',
+                'payload' => [
+                    'delivery_status' => $options['delivery_status'] ?? null,
+                    'delivery_address' => $options['delivery_address'] ?? null,
+                ],
                 'previous_total' => $previousTotal,
                 'new_total' => $locked->total_amount,
                 'receipt_version' => $locked->receipt_version,
@@ -450,6 +578,104 @@ class OrderLifecycleService
 
             return $locked->fresh(['orderItem']);
         });
+    }
+
+    protected function applyFulfillment(Order $order, array $options): void
+    {
+        if (!Schema::hasColumn('order_items', 'delivery_status')) {
+            return;
+        }
+
+        $status = (int) ($options['delivery_status'] ?? 1);
+        if (!in_array($status, [1, 2], true)) {
+            $status = 1;
+        }
+
+        $address = trim((string) ($options['delivery_address'] ?? ''));
+        $lat = $options['lat'] ?? null;
+        $lng = $options['lng'] ?? null;
+
+        if ($status === 2) {
+            if ($address === '') {
+                throw new \RuntimeException('Please enter a delivery address.');
+            }
+            $existing = OrderItem::where('order_id', $order->id)->first();
+            $sameAddress = $existing && trim((string) ($existing->delivery_address ?? '')) === $address
+                && (int) ($existing->delivery_status ?? 0) === 2;
+            $hasCoords = $lat !== null && $lat !== '' && $lng !== null && $lng !== '';
+            if (!$hasCoords && !$sameAddress) {
+                throw new \RuntimeException('Please select a valid address from the suggestions.');
+            }
+            if (!$hasCoords) {
+                $lat = null;
+                $lng = null;
+            }
+        } else {
+            $address = null;
+        }
+
+        $items = OrderItem::where('order_id', $order->id)->get();
+        foreach ($items as $row) {
+            $row->delivery_status = (string) $status;
+            if (Schema::hasColumn('order_items', 'delivery_address')) {
+                $row->delivery_address = $address;
+            }
+            $row->save();
+        }
+
+        if (Schema::hasColumn('orders', 'delivery_charge')) {
+            if ($status === 2 && $lat && $lng) {
+                $order->delivery_charge = $this->deliveryChargeForCoords($items->first(), $lat, $lng);
+            } elseif ($status !== 2) {
+                $order->delivery_charge = 0;
+            }
+        }
+    }
+
+    protected function deliveryChargeForCoords($item, $lat, $lng): float
+    {
+        $branch = $item && $item->branch_id
+            ? Branch::find($item->branch_id)
+            : Branch::where('status', 1)->first();
+        $branchLat = optional($branch)->latitude ?? 0;
+        $branchLng = optional($branch)->longitude ?? 0;
+        $distance = $this->distanceMiles($branchLat, $branchLng, $lat, $lng);
+        if ($distance <= 1) {
+            return 1.99;
+        }
+        if ($distance <= 2) {
+            return 2.99;
+        }
+        if ($distance <= 3) {
+            return 3.49;
+        }
+        if ($distance <= 5) {
+            return 4.99;
+        }
+        return 5.99;
+    }
+
+    protected function distanceMiles($originLat, $originLng, $destLat, $destLng): float
+    {
+        try {
+            $apiKey = env('GOOGLE_MAPS_API_KEY');
+            if (!$apiKey) {
+                return 0;
+            }
+            $response = Http::get('https://maps.googleapis.com/maps/api/distancematrix/json', [
+                'origins' => $originLat . ',' . $originLng,
+                'destinations' => $destLat . ',' . $destLng,
+                'units' => 'imperial',
+                'key' => $apiKey,
+            ]);
+            $data = $response->json();
+            if (isset($data['rows'][0]['elements'][0]['distance']['value'])) {
+                return ((float) $data['rows'][0]['elements'][0]['distance']['value']) * 0.000621371;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Delivery distance lookup failed', ['error' => $e->getMessage()]);
+        }
+        return 0;
     }
 
     public function recalculateTotals(Order $order): void
@@ -688,9 +914,112 @@ class OrderLifecycleService
 
     protected function formatRemaining(int $seconds): string
     {
-        $m = floor($seconds / 60);
+        if ($seconds >= 3600) {
+            $h = (int) floor($seconds / 3600);
+            $m = (int) floor(($seconds % 3600) / 60);
+            return $h . 'h ' . str_pad((string) $m, 2, '0', STR_PAD_LEFT) . 'm';
+        }
+        $m = (int) floor($seconds / 60);
         $s = $seconds % 60;
         return str_pad((string) $m, 2, '0', STR_PAD_LEFT) . ':' . str_pad((string) $s, 2, '0', STR_PAD_LEFT);
+    }
+
+    protected function applyVariantToItem(OrderItem $item, ?Product $product, array $options): void
+    {
+        $variants = collect();
+        if ($product) {
+            $variants = $product->relationLoaded('variants') ? $product->variants : $product->variants()->get();
+        }
+
+        $variant = null;
+        if (!empty($options['variant_id'])) {
+            $variant = DB::table('product_variants')->where('id', (int) $options['variant_id'])->first();
+            if (!$variant && $product) {
+                $variants = $product->relationLoaded('variants') ? $product->variants : $product->variants()->get();
+                $variant = $variants->firstWhere('id', (int) $options['variant_id']);
+            }
+            if (!$variant) {
+                throw new \RuntimeException('That size is not available for this item.');
+            }
+        } else {
+            $size = strtolower(trim((string) ($options['product_size'] ?? $item->product_size ?? '')));
+            if ($size !== '' && Schema::hasTable('product_variants')) {
+                $ids = \App\Support\ProductEditOptions::relatedProductIds($item->product_id, $item->product_name);
+                $variant = DB::table('product_variants')
+                    ->whereIn('product_id', $ids)
+                    ->get()
+                    ->first(function ($row) use ($size) {
+                        return strtolower(trim((string) $row->size)) === $size;
+                    });
+            }
+        }
+
+        if (!$variant && (isset($options['toppings']) || isset($options['toppings_by_category']))) {
+            $variant = $variants->first(function ($row) {
+                return strtolower((string) $row->size) === 'regular' && (float) $row->price > 0;
+            }) ?: $variants->first();
+        }
+
+        if ($variant) {
+            $item->product_size = $variant->size;
+            $price = (float) $variant->price;
+            if ($price <= 0) {
+                $price = (float) ($variant->original_price ?? 0);
+            }
+            $item->product_price = $price;
+            if (Schema::hasColumn('order_items', 'variant_id')) {
+                $item->variant_id = $variant->id;
+            }
+        }
+    }
+
+    protected function replaceItemToppings(OrderItem $item, array $options): void
+    {
+        $rows = [];
+        if (!empty($options['toppings_by_category']) && is_array($options['toppings_by_category'])) {
+            foreach ($options['toppings_by_category'] as $categoryId => $toppingIds) {
+                foreach ((array) $toppingIds as $toppingId) {
+                    if (!$toppingId) {
+                        continue;
+                    }
+                    $rows[] = [
+                        'topping_id' => (int) $toppingId,
+                        'category_id' => is_numeric($categoryId) ? (int) $categoryId : null,
+                    ];
+                }
+            }
+        } else {
+            foreach ((array) ($options['toppings'] ?? []) as $entry) {
+                if (is_array($entry)) {
+                    $toppingId = (int) ($entry['topping_id'] ?? $entry['id'] ?? 0);
+                    $categoryId = isset($entry['category_id']) ? (int) $entry['category_id'] : null;
+                } else {
+                    $toppingId = (int) $entry;
+                    $categoryId = isset($options['topping_category'][$toppingId])
+                        ? (int) $options['topping_category'][$toppingId]
+                        : null;
+                }
+                if ($toppingId > 0) {
+                    $rows[] = ['topping_id' => $toppingId, 'category_id' => $categoryId];
+                }
+            }
+        }
+
+        OrderItemToppings::where('order_item_id', $item->id)->delete();
+        foreach ($rows as $row) {
+            $topping = Topping::find($row['topping_id']);
+            if (!$topping) {
+                continue;
+            }
+            $line = new OrderItemToppings();
+            $line->order_item_id = $item->id;
+            $line->topping_id = $row['topping_id'];
+            $line->category_id = $row['category_id'];
+            if (Schema::hasColumn('order_item_toppings', 'topping_price')) {
+                $line->topping_price = $topping->price;
+            }
+            $line->save();
+        }
     }
 
     protected function deadlineUtc(): Carbon

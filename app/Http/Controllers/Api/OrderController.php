@@ -36,11 +36,13 @@ public function myOrders(Request $request)
         return response()->json([
             'status' => 'success',
             'data' => [
-                'items' => []
+                'items' => [],
+                'orders' => [],
             ]
         ]);
     }
 
+    $lifecycle = app(\App\Services\OrderLifecycleService::class);
     $allItems = collect();
 
     foreach ($orders as $order) {
@@ -89,14 +91,24 @@ public function myOrders(Request $request)
                 }
 
                 return [
+                    'order_id'         => $order->id,
+                    'order_code'       => $order->code,
+                    'order_item_id'    => $item->id,
                     'product_id'       => $item->product_id,
                     'product_name'     => $item->product_name,
                     'product_image'    => $item->product->image ?? null,
                     'product_size'     => $item->product_size,
                     'product_price'    => $item->product_price,
                     'product_original_price' => $item->original_price,
+                    'quantity'         => $item->quantity,
                     'delivery_address' => $item->delivery_address,
-                    'order_type'       => $item->order_type,
+                    'order_type'       => $item->order_type ?: $order->order_type,
+                    'channel'          => $order->channelKey(),
+                    'channel_label'    => $order->channelLabel(),
+                    'fulfillment_label'=> \App\Support\CartCheckout::fulfillmentLabel($item, $order->order_type),
+                    'wholesale_delivery_date' => $order->wholesale_delivery_date,
+                    'receipt_print_url'=> url('/api/orders/' . $order->id . '/receipt?html=1'),
+                    'can_modify'       => $lifecycle->canModify($order),
                     'toppings'         => $toppings,
 
                     // ✅ NEW FIELD
@@ -107,15 +119,32 @@ public function myOrders(Request $request)
     $allItems = $allItems->merge($orderItems);
     }
 
-    $lifecycle = app(\App\Services\OrderLifecycleService::class);
     $primary = $orders->first();
     $state = $lifecycle->publicState($primary);
+    $orderCards = $orders->map(function ($order) use ($lifecycle) {
+        return [
+            'id' => $order->id,
+            'code' => $order->code,
+            'status' => $order->status,
+            'channel' => $order->channelKey(),
+            'channel_label' => $order->channelLabel(),
+            'total_amount' => $order->total_amount,
+            'discount_amount' => $order->discount_amount,
+            'discount_label' => $order->discount_label,
+            'wholesale_delivery_date' => $order->wholesale_delivery_date,
+            'can_modify' => $lifecycle->canModify($order),
+            'receipt_print_url' => url('/api/orders/' . $order->id . '/receipt?html=1'),
+            'receipt_json_url' => url('/api/orders/' . $order->id . '/receipt'),
+            'state' => $lifecycle->publicState($order),
+        ];
+    });
 
     if (in_array($status, ['Pending', 'Order Ready', 'Scheduled'])) {
         return response()->json([
             'status' => 'success',
             'data' => array_merge($state, [
-                'items' => $allItems
+                'items' => $allItems,
+                'orders' => $orderCards,
             ])
         ]);
     }
@@ -134,8 +163,11 @@ public function myOrders(Request $request)
                 "order_code"       => $primary->code,
                 'estimated_amount' => $primary->estimated_total ?? 0,
                 'order_type'       => $primary?->order_type ?: $primary?->orderItem?->first()?->order_type,
+                'channel'          => $primary?->channelKey(),
+                'channel_label'    => $primary?->channelLabel(),
                 'delivery_address' => $primary?->orderItem?->first()?->delivery_address,
                 'items'            => $allItems,
+                'orders'           => $orderCards,
             ]
         ]);
     }
@@ -143,7 +175,8 @@ public function myOrders(Request $request)
     return response()->json([
         'status' => 'success',
         'data' => [
-            'items' => $allItems
+            'items' => $allItems,
+            'orders' => $orderCards,
         ]
     ]);
 }

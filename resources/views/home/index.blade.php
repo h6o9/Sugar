@@ -416,10 +416,10 @@
         {{-- ========================
              FEATURED / POPULAR CARDS
              ======================== --}}
-        <div class="container-xxl pt-5 pb-3" id="pappi-special">
+        <div class="container-xxl pt-5 pb-3" id="featured-items">
             <div class="container">
                 <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
-                    <h5 class="section-title ff-secondary text-center fw-normal">Pappi Special</h5>
+                    <h5 class="section-title ff-secondary text-center fw-normal">Featured</h5>
                     <h3 class="mb-5 col-sm-8 mx-auto">Featured Items</h3>
                 </div>
                 <div class="owl-carousel popular-carousel gallery-carousel">

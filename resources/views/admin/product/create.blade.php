@@ -47,7 +47,7 @@
                     <option value="{{ $menu->id }}">{{ $menu->name }}@if(!empty($menu->type)) ({{ $menu->type }})@endif</option>
 @endforeach
 </select>
-<small class="text-muted">Dessert Wholesale par lagaoge to neeche normal category bhi choose karo taake Menu page pe bhi dikhe.</small>
+<small class="text-muted">Dessert Wholesale items also show on Home and Menu with all items. Pappi Special items only show on the Pappi Special page.</small>
 </div>
 </div>
 <div class="col-sm-6">

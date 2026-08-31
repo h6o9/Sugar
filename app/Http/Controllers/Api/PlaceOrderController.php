@@ -110,6 +110,7 @@ class PlaceOrderController extends Controller
         // ── Store order context in Stripe metadata ────────────────────────────
         // Cart items are NOT stored here — on success we re-read from DB.
         // We DO store the expected_total as a tamper-detection snapshot.
+        $ctx = \App\Support\AppCartContext::get($userId);
         $metaOrderType       = (string) ($request->input('order_type',       'delivery'));
         $metaDeliveryAddress = (string) ($request->input('delivery_address', ''));
         $metaDeliveryCharges = (string) ($request->input('delivery_charges', '0'));
@@ -117,7 +118,12 @@ class PlaceOrderController extends Controller
         $metaBranchId        = (string) ($request->input('branch_id',        ''));
         $metaVehicleColor    = (string) ($request->input('vehicle_color',    ''));
         $metaVehicleNumber   = (string) ($request->input('vehicle_number',   ''));
-        $metaPickupTime      = (string) ($request->input('pickup_time',      ''));
+        $metaPickupTime      = (string) ($request->input('pickup_time',      $ctx['pickup_time'] ?? ''));
+        $metaChannel         = \App\Support\AppCartContext::normalizeChannel($request->input('channel', $ctx['channel'] ?? 'regular'));
+        $metaMenuType        = (string) ($request->input('menu_type', $metaChannel === 'regular' ? 'food' : $metaChannel));
+        $metaWholesaleDate   = (string) ($request->input('wholesale_delivery_date', $ctx['wholesale_delivery_date'] ?? ''));
+        $metaFulfillment     = (string) ($request->input('fulfillment', $ctx['fulfillment'] ?? ''));
+        $metaCartItemIds     = implode(',', array_map('intval', (array) ($request->input('cart_item_ids', $ctx['checkout_item_ids'] ?? []))));
 
         try {
             Stripe::setApiKey(config('services.stripe.secret'));
@@ -146,6 +152,13 @@ class PlaceOrderController extends Controller
                     'vehicle_color'    => $metaVehicleColor,
                     'vehicle_number'   => $metaVehicleNumber,
                     'pickup_time'      => $metaPickupTime,
+                    'channel'          => $metaChannel,
+                    'menu_type'        => $metaMenuType,
+                    'fulfillment'      => $metaFulfillment,
+                    'wholesale_delivery_date' => $metaWholesaleDate,
+                    'cart_item_ids'    => $metaCartItemIds,
+                    'is_scheduled'     => ($request->boolean('is_scheduled') || !empty($ctx['is_scheduled'])) ? '1' : '0',
+                    'scheduled_at'     => (string) ($request->input('scheduled_at') ?: ($ctx['scheduled_at'] ?? '')),
                 ],
                 'success_url' => url('/api/payment/stripe/webview/success?session_id={CHECKOUT_SESSION_ID}'),
                 'cancel_url'  => url('/api/payment/stripe/webview/cancel'),
@@ -181,6 +194,8 @@ class PlaceOrderController extends Controller
                 'tip'              => round($preValidatedData['tip'], 2),
                 'delivery_charge'  => round($preValidatedData['deliveryCharges'], 2),
                 'points_discount'  => round($preValidatedData['pointsDiscount'], 2),
+                'drive_in_discount'=> round($preValidatedData['driveInDiscount'] ?? 0, 2),
+                'channel'          => $preValidatedData['channel'] ?? $metaChannel,
                 'total_before_fee' => round($finalTotal, 2),
                 'gateway_fee'      => $gatewayFee,
                 'final_total'      => $finalTotalWithFee,

@@ -15,6 +15,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Http;
+use App\Support\MenuCatalog;
 
 class CartController extends Controller
 {
@@ -184,7 +185,8 @@ public function addToCart(Request $request)
             foreach ($toppingsByCategory as $toppingCategory) {
                 $categoryId   = $toppingCategory['category_id'];
                 $toppingIds   = $toppingCategory['toppings'];
-                $categoryName = Category::findOrFail($categoryId)->name;
+                $category = $categoryId ? Category::find($categoryId) : null;
+                $categoryName = $category->name ?? 'Toppings';
                 $toppingNames = Topping::whereIn('id', $toppingIds)->pluck('name')->toArray();
 
                 $cart[$cartKey]['toppingsName_by_categoryName'][] = [
@@ -205,9 +207,33 @@ public function addToCart(Request $request)
         // ✅ Save ONCE at the end
         Session::put('cart', $cart);
 
+        $addingToOrderId = Session::get('adding_to_order_id');
+        $pendingOrder = null;
+        $lifecycle = null;
+        if ($addingToOrderId && Auth::guard('user')->check()) {
+            $pendingOrder = \App\Models\Order::where('id', $addingToOrderId)
+                ->where('user_id', Auth::guard('user')->id())
+                ->first();
+            $lifecycle = app(\App\Services\OrderLifecycleService::class);
+            if ($pendingOrder && $lifecycle->isWholesale($pendingOrder) && $pendingOrder->wholesale_delivery_date) {
+                $raw = $pendingOrder->wholesale_delivery_date;
+                try {
+                    $date = $raw instanceof \Carbon\Carbon
+                        ? $raw->toDateString()
+                        : \Carbon\Carbon::parse((string) $raw)->toDateString();
+                } catch (\Throwable $e) {
+                    $date = substr((string) $raw, 0, 10);
+                }
+                if ($date) {
+                    Session::put('wholesale_delivery_date', $date);
+                    Session::put('selected_order_type', 'wholesale');
+                }
+            }
+        }
+
         $fromWholesalePage = $request->boolean('wholesale') || (string) $request->input('wholesale') === '1';
-        $isWholesale = $fromWholesalePage;
-        if ($isWholesale && !session('wholesale_delivery_date')) {
+        $isWholesale = $fromWholesalePage || ($pendingOrder && $lifecycle && $lifecycle->isWholesale($pendingOrder));
+        if ($isWholesale && !session('wholesale_delivery_date') && !$pendingOrder) {
             return response()->json([
                 'success' => false,
                 'message' => 'Please select a wholesale delivery date (Monday, Thursday or Saturday, 7:00 PM – 10:00 PM) before adding items.',
@@ -218,9 +244,15 @@ public function addToCart(Request $request)
             $cart[$cartKey]['fulfillment'] = 'wholesale';
             $cart[$cartKey]['delivery_status'] = 2;
             Session::put('cart', $cart);
+        } elseif (MenuCatalog::isSpecial(optional($product)->menu)) {
+            if (session('selected_order_type') !== 'drive_in') {
+                Session::put('selected_order_type', 'special');
+            }
         } elseif (session('selected_order_type') === 'wholesale') {
             Session::put('selected_order_type', 'standard');
             Session::forget('wholesale_delivery_date');
+        } elseif (session('selected_order_type') === 'special') {
+            Session::put('selected_order_type', 'standard');
         }
         if (empty($cart[$cartKey]['fulfillment'])) {
             $cart[$cartKey]['fulfillment'] = ((int) ($cart[$cartKey]['delivery_status'] ?? 1) === 2)
@@ -253,21 +285,21 @@ public function addToCart(Request $request)
 
         $addingToOrderId = Session::get('adding_to_order_id');
         if ($addingToOrderId && Auth::guard('user')->check()) {
-            $order = \App\Models\Order::where('id', $addingToOrderId)
+            $order = $pendingOrder ?: \App\Models\Order::where('id', $addingToOrderId)
                 ->where('user_id', Auth::guard('user')->id())
                 ->first();
-            $lifecycle = app(\App\Services\OrderLifecycleService::class);
-            if ($order && $lifecycle->canModify($order)) {
+            $lifecycle = $lifecycle ?: app(\App\Services\OrderLifecycleService::class);
+            $orderIsWholesale = $order && $lifecycle->isWholesale($order);
+            $sameChannel = $orderIsWholesale ? (bool) $isWholesale : !$isWholesale;
+            if ($order && $lifecycle->canModify($order) && $sameChannel) {
                 try {
                     $lifecycle->addSessionCartToOrder($order, $cart, ['source' => 'web-add']);
                 } catch (\Throwable $e) {
                     Session::forget('adding_to_order_id');
                     return response()->json([
-                        'success' => true,
-                        'data' => count($cart),
-                        'cart' => $cart,
-                        'message' => 'Item kept in cart. Place a new order when you are ready.',
-                    ]);
+                        'success' => false,
+                        'message' => $e->getMessage() ?: 'You can no longer update this order.',
+                    ], 422);
                 }
                 Session::forget('cart');
                 return response()->json([
@@ -279,6 +311,12 @@ public function addToCart(Request $request)
                 ]);
             }
             Session::forget('adding_to_order_id');
+            if ($orderIsWholesale && $isWholesale && $order && !$lifecycle->canModify($order)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can no longer update this order.',
+                ], 422);
+            }
         }
 
         return response()->json([

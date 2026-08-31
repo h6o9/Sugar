@@ -154,6 +154,7 @@ if ($product) {
 </div>
 @endif
 
+{{--
 <div class="app-download-banner">
     <p>🍕 Craving your favorites? Get the Sugar Pappi App for exclusive offers!</p>
     <div>
@@ -165,6 +166,7 @@ if ($product) {
         </a>
     </div>
 </div>
+--}}
 
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-dark px-4 px-lg-5 py-lg-0 py-2">
@@ -651,7 +653,7 @@ window.spInitStorefront = function () {
         if (!productId) { toastr.error('Product not found'); resetBtn(); return; }
 
         var isWholesaleAdd = !!$btn.data('wholesale') || !!window.spWholesalePage;
-        if (isWholesaleAdd && !window.spWholesaleDate) {
+        if (isWholesaleAdd && !window.spWholesaleDate && !window.spAddingToOrder) {
             toastr.error('Select and save a wholesale delivery date first (Monday / Thursday / Saturday, 7–10 PM).');
             var bar = document.getElementById('wholesaleDateBar');
             if (bar) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -719,7 +721,7 @@ window.spInitStorefront = function () {
                         $btn.closest('.modal').modal('hide');
                         return;
                     }
-                    toastr.success(window.spAddingToOrder ? 'Your product has been added in My Orders.' : (isWholesaleAdd ? 'Added. Open My Cart, then Place Order. No timer on wholesale.' : 'Product added to cart!'));
+                    toastr.success(window.spAddingToOrder ? 'Your product has been added in My Orders.' : (isWholesaleAdd ? 'Added. Open My Cart, then Place Order. You can update the order until 6 hours before delivery.' : 'Product added to cart!'));
                     var count = data && data.cart ? Object.keys(data.cart).length : 0;
                     $('.cart-counter-1').text(count);
                     if (typeof window.updateCartUI === 'function') window.updateCartUI(data);

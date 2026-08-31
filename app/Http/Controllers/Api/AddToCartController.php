@@ -4,7 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use Log;
 use Exception;
+use App\Models\Order;
 use App\Models\Topping;
+use App\Services\OrderLifecycleService;
+use App\Services\WholesaleScheduleService;
+use App\Support\AppCartContext;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\AddToCartItem;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +28,11 @@ public function addToCart(Request $request)
     try {
 
         $userId = auth()->id();
+
+        $channelGate = $this->applyStorefrontChannel($request, (int) $userId);
+        if ($channelGate !== null) {
+            return $channelGate;
+        }
 
         // =========================
         // BASIC INPUTS
@@ -178,7 +188,8 @@ public function addToCart(Request $request)
         return response()->json([
             'success' => true,
             'message' => 'Item added to cart successfully',
-            'cart_item_id' => $cartItemId
+            'cart_item_id' => $cartItemId,
+            'context' => AppCartContext::get((int) $userId),
         ]);
 
     } catch (\Illuminate\Validation\ValidationException $e) {
@@ -277,6 +288,15 @@ public function proceedToPayment(Request $request)
         
         $estimatedTotal = $subtotal + $taxAmount + $tips + $deliveryCharges;
         $originalEstimatedAmount = $originalPriceSum + $taxAmount + $tips + $deliveryCharges;
+        $ctx = AppCartContext::get((int) $userId);
+        $channel = AppCartContext::normalizeChannel($request->input('channel', $ctx['channel'] ?? 'regular'));
+        $driveInDiscount = 0;
+        if ($channel === 'drive_in') {
+            $drivePercent = app(OrderLifecycleService::class)->driveInPercent();
+            $driveInDiscount = round($subtotal * ($drivePercent / 100), 2);
+            $estimatedTotal = max(0, $estimatedTotal - $driveInDiscount);
+            $originalEstimatedAmount = max(0, $originalEstimatedAmount - $driveInDiscount);
+        }
         
         // =========================
         // POINTS REDEMPTION LOGIC (ONLY IF points_to_redeem > 0)
@@ -379,6 +399,8 @@ public function proceedToPayment(Request $request)
                 'tax_amount' => round($taxAmount, 2),
                 'delivery_charges' => round($deliveryCharges, 2),
                 'tips' => round($tips, 2),
+                'drive_in_discount' => round($driveInDiscount, 2),
+                'channel' => $channel,
                 'estimated_total' => round($finalTotal, 2),
                 'original_estimated_amount' => round($originalEstimatedAmount, 2),
             ]
@@ -560,13 +582,32 @@ public function getUserCartItems(Request $request)
     // ESTIMATED TOTAL = subtotal + delivery_charges + tips + tax
     $estimatedTotal = $subtotal + $totalDeliveryCharges + $finalTip + $taxAmount;
 
+    $ctx = AppCartContext::get((int) $userId);
+    $channel = AppCartContext::normalizeChannel($ctx['channel'] ?? 'regular');
+    $driveInDiscount = 0;
+    $driveInPercent = 0;
+    if ($channel === 'drive_in') {
+        $driveInPercent = app(OrderLifecycleService::class)->driveInPercent();
+        $driveInDiscount = round($subtotal * ($driveInPercent / 100), 2);
+        $estimatedTotal = max(0, $estimatedTotal - $driveInDiscount);
+    }
+
     $summary = [
         'subtotal' => round($subtotal, 2),
         'total_price' => round($totalPrice, 2),
         'tax_amount' => round($taxAmount, 2),
         'tips' => round($finalTip, 2),
         'delivery_charges' => round($totalDeliveryCharges, 2),
+        'drive_in_discount' => round($driveInDiscount, 2),
+        'drive_in_percent' => $driveInPercent,
         'estimated_total' => round($estimatedTotal, 2),
+        'channel' => $channel,
+        'channel_label' => AppCartContext::channelLabel($channel),
+        'wholesale_delivery_date' => $ctx['wholesale_delivery_date'] ?? null,
+        'requires_pickup_time' => $channel !== 'wholesale',
+        'adding_to_order_id' => $ctx['adding_to_order_id'] ?? null,
+        'pickup_date' => $ctx['pickup_date'] ?? null,
+        'pickup_time' => $ctx['pickup_time'] ?? null,
     ];
 
     /*
@@ -662,6 +703,7 @@ public function getUserCartItems(Request $request)
         'status_code' => 200,
         'message' => "Cart items retrieved successfully",
         'summary' => $summary,
+        'context' => $ctx,
         'items' => $items
     ], 200);
 }
@@ -861,5 +903,59 @@ public function getBranchInfo()
         ], 500);
     }
 }
+
+    protected function applyStorefrontChannel(Request $request, int $userId)
+    {
+        $channel = AppCartContext::normalizeChannel(
+            $request->input('channel', $request->boolean('wholesale') ? 'wholesale' : null)
+        );
+        $ctx = AppCartContext::get($userId);
+        $addingId = (int) ($request->input('adding_to_order_id') ?: ($ctx['adding_to_order_id'] ?? 0));
+        $pending = $addingId
+            ? Order::where('id', $addingId)->where('user_id', $userId)->first()
+            : null;
+        $lifecycle = app(OrderLifecycleService::class);
+
+        if ($pending && $lifecycle->isWholesale($pending) && $channel !== 'wholesale') {
+            AppCartContext::clearAddToOrder($userId);
+            $pending = null;
+            $addingId = 0;
+        }
+
+        if ($channel === 'wholesale') {
+            $date = $request->input('wholesale_delivery_date') ?: ($ctx['wholesale_delivery_date'] ?? null);
+            if ($pending && $lifecycle->isWholesale($pending) && $pending->wholesale_delivery_date) {
+                $date = Carbon::parse((string) $pending->wholesale_delivery_date)->toDateString();
+            } elseif (!$date || !app(WholesaleScheduleService::class)->isValidDate($date)) {
+                return response()->json([
+                    'success' => false,
+                    'status' => false,
+                    'code' => 'WHOLESALE_DATE',
+                    'message' => 'Please select a wholesale delivery date (Monday, Thursday or Saturday, 7:00 PM – 10:00 PM) before adding items.',
+                ], 422);
+            }
+
+            AppCartContext::put($userId, [
+                'channel' => 'wholesale',
+                'fulfillment' => 'wholesale',
+                'wholesale_delivery_date' => $date,
+                'adding_to_order_id' => $addingId ?: null,
+            ]);
+            return null;
+        }
+
+        if ($pending && $lifecycle->isWholesale($pending)) {
+            AppCartContext::clearAddToOrder($userId);
+            $addingId = 0;
+        }
+
+        AppCartContext::put($userId, [
+            'channel' => $channel,
+            'wholesale_delivery_date' => null,
+            'adding_to_order_id' => $addingId ?: ($ctx['adding_to_order_id'] ?? null),
+        ]);
+
+        return null;
+    }
 
 }

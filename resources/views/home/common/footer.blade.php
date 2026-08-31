@@ -9,6 +9,7 @@
                 <a class="btn btn-link" href="{{route('private-bookings')}}">Private Bookings</a>
                 <a class="btn btn-link" href="{{ $whatsappUrl ?? 'https://wa.me/447727412922' }}" target="_blank" rel="noopener">WhatsApp Us</a>
                 <a class="btn btn-link" href="{{route('get-faqs')}}">FAQ's</a>
+                {{--
                 <div class="mt-3">
                     <a href="#" class="d-inline-block">
                         <img src="{{ asset('public/img/gslogo.png') }}" alt="Google Play" width="145">
@@ -17,6 +18,7 @@
                         <img src="{{ asset('public/img/pslogo.png') }}" alt="App Store" width="145">
                     </a>
                 </div>
+                --}}
             </div>
             <div class="col-lg-4 col-md-6">
                 <h4 class="section-title ff-secondary text-start fw-normal mb-4 text-white">Contact Us</h4>

@@ -244,13 +244,20 @@
         $branches = $branches ?? collect();
         $wholesaleSelectedDate = session('wholesale_delivery_date');
         $wholesaleDates = $dates ?? [];
+        $updatingOrder = $updatingOrder ?? null;
     @endphp
     @if($wholesaleMode)
         @include('home.partials.page-hero', ['title' => 'Dessert Wholesale'])
         <div class="sp-wholesale-bar" id="wholesaleDateBar">
             <div class="container py-3">
                 <div class="fw-bold mb-1" style="color:#ff2d87;letter-spacing:.04em;">WHOLESALE DELIVERY</div>
-                <p class="mb-2 text-white">Deliveries: Monday, Thursday and Saturday, <strong>7:00 PM – 10:00 PM</strong>. Order any time until 7:00 PM that day. No add-to-order timer.</p>
+                @if($addingToOrder && $updatingOrder)
+                    <p class="mb-2 text-white">Adding items to order <strong>#{{ $updatingOrder->code }}</strong>. Delivery stays <strong>{{ $wholesaleSelectedDate }}</strong>, 7:00 PM – 10:00 PM.</p>
+                    <div class="alert alert-success mt-3 mb-0">
+                        Choose a product and tap <strong>Add to Order</strong>. It will update this order, not start a new one.
+                    </div>
+                @else
+                <p class="mb-2 text-white">Deliveries: Monday, Thursday and Saturday, <strong>7:00 PM – 10:00 PM</strong>. Order any time until 7:00 PM that day. After placing, you can add or remove items until 6 hours before delivery.</p>
                 <p class="mb-3 small text-white-50">Flow: 1) Save a date &nbsp; 2) Add to Cart &nbsp; 3) Open My Cart → Continue to Payment → Place Order</p>
                 <form method="POST" action="{{ route('wholesale.date') }}" class="row g-2 align-items-end">
                     @csrf
@@ -278,6 +285,7 @@
                     </div>
                 @else
                     <div class="alert alert-warning mt-3 mb-0">Save a delivery date first. Add to Cart stays locked until a date is saved.</div>
+                @endif
                 @endif
             </div>
         </div>
@@ -384,9 +392,7 @@
                                     <ul class="nav menu-category-tabs cz-cats" id="menuTabs">
                                         @foreach ($menuCategories as $index => $menuCat)
                                             @php
-                                                $isSpecial = strtolower((string) ($menuCat->type ?? '')) === 'special'
-                                                    || strtolower((string) ($menuCat->slug ?? '')) === 'pappi-special'
-                                                    || stripos((string) $menuCat->name, 'Pappi Special') !== false;
+                                                $isSpecial = \App\Support\MenuCatalog::isSpecial($menuCat);
                                             @endphp
                                             <li class="nav-item" role="presentation">
                                                 <button class="nav-link cz-cat @if($index==0) active @endif"
@@ -410,9 +416,7 @@
                     <div class="tab-content" id="menuContent">
                         @foreach ($menuCategories as $index => $menuCat)
                             @php
-                                $isSpecialPane = strtolower((string) ($menuCat->type ?? '')) === 'special'
-                                    || strtolower((string) ($menuCat->slug ?? '')) === 'pappi-special'
-                                    || stripos((string) $menuCat->name, 'Pappi Special') !== false;
+                                $isSpecialPane = \App\Support\MenuCatalog::isSpecial($menuCat);
                             @endphp
                             <div class="tab-pane @if($index==0) active @endif @if($isSpecialPane) sp-special-pane @endif"
                                 id="menuTab{{ $menuCat->id }}" role="tabpanel"
@@ -666,12 +670,14 @@
                                     {{-- Toppings --}}
                                     @if ($prod->category && $prod->category->isNotEmpty())
                                         @foreach ($prod->category as $toppingIndex => $category)
+                                            @php $toppingCat = $category->getCategory ?? null; @endphp
+                                            @if($toppingCat)
                                             <div class="description p-3">
                                                 <div class="arrow" style="cursor:pointer"
                                                     data-bs-toggle="collapse"
                                                     data-bs-target="#toppingFull{{ $toppingIndex }}{{ $category->id }}{{ $prod->id }}">
                                                     <div class="d-flex justify-content-between">
-                                                        <h6 class="m-0">{{ $category->getCategory->name }}</h6>
+                                                        <h6 class="m-0">{{ $toppingCat->name }}</h6>
                                                         <h6 class="fw-normal m-0 d-flex align-items-center">
                                                             Optional
                                                             <span class="h5 m-0 p-0 ri-arrow-up-s-line"></span>
@@ -682,17 +688,20 @@
                                                     id="toppingFull{{ $toppingIndex }}{{ $category->id }}{{ $prod->id }}">
                                                     @php
                                                         $categoryToppings = App\Models\CategoryTopping::where(
-                                                            'category_id', $category->getCategory->id
+                                                            'category_id', $toppingCat->id
                                                         )->get();
                                                     @endphp
                                                     @foreach ($categoryToppings as $categoryTopping)
+                                                        @if(!$categoryTopping->topping)
+                                                            @continue
+                                                        @endif
                                                         <div class="d-flex justify-content-between">
                                                             <div class="form-check">
                                                                 <input class="form-check-input" type="checkbox"
                                                                     name="toppings[]"
                                                                     id="toppingchekFull{{ $toppingIndex }}{{ $category->id }}{{ $categoryTopping->topping->id }}{{ $prod->id }}"
                                                                     value="{{ $categoryTopping->topping->id }}"
-                                                                    data-category-id="{{ $category->getCategory->id }}">
+                                                                    data-category-id="{{ $toppingCat->id }}">
                                                                 <label class="form-check-label m-0"
                                                                     for="toppingchekFull{{ $toppingIndex }}{{ $category->id }}{{ $categoryTopping->topping->id }}{{ $prod->id }}">
                                                                     {{ $categoryTopping->topping->name }}
@@ -705,6 +714,7 @@
                                                     @endforeach
                                                 </div>
                                             </div>
+                                            @endif
                                         @endforeach
                                     @endif
 

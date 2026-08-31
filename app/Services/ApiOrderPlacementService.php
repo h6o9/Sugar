@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemToppings;
 use App\Models\User;
+use App\Support\AppCartContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -31,9 +32,7 @@ class ApiOrderPlacementService
     public function validateOrderBeforePayment(int $userId, Request $request): array
     {
         // ── [V1] Cart must not be empty ───────────────────────────────────────
-        $cartItems = DB::table('add_to_cart_items')
-            ->where('user_id', $userId)
-            ->get();
+        $cartItems = $this->selectedCartItems($userId, $request);
 
         if ($cartItems->isEmpty()) {
             return [
@@ -111,15 +110,30 @@ class ApiOrderPlacementService
         $orderType       = $request->input('order_type', $cartItems->first()->order_type ?? 'delivery');
         $deliveryAddress = $request->input('delivery_address', $cartItems->first()->delivery_address ?? '');
 
-        if ($orderType === 'wholesale' || $request->input('menu_type') === 'wholesale') {
+        $channel = $this->resolveChannel($request, $userId);
+        if ($channel === 'wholesale' || $orderType === 'wholesale' || $request->input('menu_type') === 'wholesale') {
             $wholesale = app(\App\Services\WholesaleScheduleService::class);
-            $date = $request->input('wholesale_delivery_date');
+            $date = $request->input('wholesale_delivery_date')
+                ?: (AppCartContext::get($userId)['wholesale_delivery_date'] ?? null);
             if (!$date || !$wholesale->isValidDate($date)) {
                 return [
                     'valid' => false,
                     'code' => 'WHOLESALE_DATE',
                     'message' => $wholesale->cutoffMessage(),
                 ];
+            }
+            $request->merge(['wholesale_delivery_date' => $date, 'channel' => 'wholesale', 'menu_type' => 'wholesale']);
+        } elseif ($request->filled('channel') || $request->filled('fulfillment')) {
+            $fulfillment = strtolower((string) ($request->input('fulfillment', $orderType)));
+            if (in_array($fulfillment, ['pickup', 'takeaway', 'collection'], true)) {
+                $pickup = $request->input('pickup_time') ?: (AppCartContext::get($userId)['pickup_time'] ?? null);
+                if (!$pickup) {
+                    return [
+                        'valid' => false,
+                        'code' => 'PICKUP_TIME',
+                        'message' => 'Please select a pickup date and time before continuing to payment.',
+                    ];
+                }
             }
         }
 
@@ -223,9 +237,7 @@ class ApiOrderPlacementService
     // ─────────────────────────────────────────────────────────────────────────
     public function calculateOrderData(int $userId, Request $request): array
     {
-        $cartItems = DB::table('add_to_cart_items')
-            ->where('user_id', $userId)
-            ->get();
+        $cartItems = $this->selectedCartItems($userId, $request);
 
         if ($cartItems->isEmpty()) {
             throw new \RuntimeException('Your cart is empty. Please add items before placing an order.');
@@ -266,7 +278,17 @@ class ApiOrderPlacementService
         }
 
         $deliveryStatus = $orderType === 'pickup' ? '1' : '2';
-        $estimatedTotal = $subtotal + $totalTax + $tip + $deliveryCharges;
+        $channel = $this->resolveChannel($request, $userId);
+        $driveInDiscount = 0;
+        $driveInPercent = 0;
+        if ($channel === 'drive_in' || in_array(strtolower((string) $orderType), ['drive_in', 'drive-in', 'drivein'], true)) {
+            $driveInPercent = app(\App\Services\OrderLifecycleService::class)->driveInPercent();
+            $driveInDiscount = round((float) $subtotal * ($driveInPercent / 100), 2);
+        }
+        if ($channel === 'wholesale') {
+            $deliveryCharges = (float) $request->input('delivery_charges', $deliveryCharges);
+        }
+        $estimatedTotal = $subtotal + $totalTax + $tip + $deliveryCharges - $driveInDiscount;
 
         $pointsToRedeem = (int) $request->input(
             'points_to_redeem',
@@ -316,7 +338,10 @@ class ApiOrderPlacementService
             'estimatedTotal',
             'pointsToRedeem',
             'pointsDiscount',
-            'userRewards'
+            'userRewards',
+            'channel',
+            'driveInDiscount',
+            'driveInPercent'
         );
     }
 
@@ -340,9 +365,7 @@ class ApiOrderPlacementService
 
 
         // ── Guard: cart must exist ────────────────────────────────────────────
-        $cartItems = DB::table('add_to_cart_items')
-            ->where('user_id', $userId)
-            ->get();
+        $cartItems = $this->selectedCartItems($userId, $request);
 
         if ($cartItems->isEmpty()) {
             // Last-chance idempotency check before throwing
@@ -489,22 +512,42 @@ class ApiOrderPlacementService
                 ->delete();
 
             DB::table('add_to_cart_items')
-                ->where('user_id', $userId)
+                ->whereIn('id', $cartItems->pluck('id'))
                 ->delete();
 
             // Loyalty points (earning)
             $this->applyLoyaltyPoints($userId, (float) $order->total_amount);
 
-            $orderType = $request->input('order_type', $firstItem->order_type ?? 'delivery');
-            if (in_array($orderType, ['delivery', 'pickup', 'home'], true) && $request->input('menu_type') === 'wholesale') {
+            $channel = $this->resolveChannel($request, $userId);
+            $orderType = strtolower((string) $request->input('order_type', $firstItem->order_type ?? 'delivery'));
+            $menuType = strtolower((string) $request->input('menu_type', 'food'));
+            $wholesaleDate = $request->input('wholesale_delivery_date')
+                ?: (AppCartContext::get($userId)['wholesale_delivery_date'] ?? null);
+            if ($channel === 'wholesale' || $menuType === 'wholesale' || $orderType === 'wholesale') {
                 $orderType = 'wholesale';
+                $menuType = 'wholesale';
+            } elseif ($channel === 'drive_in' || in_array($orderType, ['drive_in', 'drive-in', 'drivein'], true)) {
+                $orderType = 'drive_in';
+                $menuType = 'food';
+            } elseif ($channel === 'special' || $menuType === 'special' || in_array($orderType, ['special', 'pappi_special', 'pappi-special'], true)) {
+                $orderType = 'special';
+                $menuType = 'special';
+            }
+            if (!empty($data['driveInDiscount']) && Schema::hasColumn('orders', 'discount_amount')) {
+                $order->discount_amount = $data['driveInDiscount'];
+                $order->discount_label = ($data['driveInPercent'] ?? 20) . '% Drive-In off';
+                $order->save();
             }
             app(\App\Services\OrderLifecycleService::class)->initializeNewOrder($order, [
-                'order_type' => $request->input('menu_type') === 'wholesale' ? 'wholesale' : $orderType,
-                'menu_type' => $request->input('menu_type', 'food'),
+                'order_type' => $orderType,
+                'menu_type' => $menuType,
                 'is_scheduled' => $request->boolean('is_scheduled'),
                 'scheduled_at' => $request->input('scheduled_at'),
-                'wholesale_delivery_date' => $request->input('wholesale_delivery_date'),
+                'wholesale_delivery_date' => $wholesaleDate,
+            ]);
+            AppCartContext::put($userId, [
+                'adding_to_order_id' => null,
+                'checkout_item_ids' => null,
             ]);
 
             // COMMIT
@@ -585,5 +628,26 @@ class ApiOrderPlacementService
         }
 
         return null;
+    }
+
+    private function selectedCartItems(int $userId, Request $request)
+    {
+        $query = DB::table('add_to_cart_items')->where('user_id', $userId);
+        $ids = $request->input('cart_item_ids');
+        if (!$ids) {
+            $ids = AppCartContext::get($userId)['checkout_item_ids'] ?? null;
+        }
+        if (is_array($ids) && $ids !== []) {
+            $query->whereIn('id', array_map('intval', $ids));
+        }
+        return $query->get();
+    }
+
+    private function resolveChannel(Request $request, int $userId): string
+    {
+        $ctx = AppCartContext::get($userId);
+        return AppCartContext::normalizeChannel(
+            $request->input('channel', $request->input('menu_type', $ctx['channel'] ?? 'regular'))
+        );
     }
 }

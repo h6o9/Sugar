@@ -29,11 +29,15 @@ public function index()
 {
     $user = Auth::user();
 
-    $products = Product::with(['variants', 'category', 'complementaryProductSingle.complementary'])
+    $products = Product::with(['menu', 'variants', 'category', 'complementaryProductSingle.complementary'])
         ->where('status', 1)
         ->where('is_featured', 1)
         ->orderBy('id', 'DESC')
-        ->get();
+        ->get()
+        ->filter(function ($product) {
+            return !MenuCatalog::isSpecial($product->menu);
+        })
+        ->values();
 
     // Set default price for products with variants
     foreach ($products as $product) {
@@ -69,9 +73,13 @@ public function index()
         \Log::warning('Home landing extras skipped: '.$e->getMessage());
     }
 
-    $menuCategories = MenuCatalog::forStorefront(true, true);
+    $menuCategories = MenuCatalog::forStorefront(true, false);
 
     $userId = Auth::guard('user')->id();
+    try {
+        app(\App\Services\OrderLifecycleService::class)->cancelWholesaleAddToOrderSession();
+    } catch (\Throwable $e) {
+    }
 
     $userTimeSlots = UserTimeSlotes::where('user_id', $userId)->first();
 
@@ -140,14 +148,18 @@ public function index()
         $searchTerm = '';
         $filteredProducts = collect();
 
-        $menuCategories = MenuCatalog::forStorefront(true, true);
+        $menuCategories = MenuCatalog::forStorefront(true, false);
 
         $addingToOrder = false;
         try {
-            $addingToOrder = app(\App\Services\OrderLifecycleService::class)
-                ->hasActiveAddToOrderSession($userId ? (int) $userId : null);
+            $lifecycle = app(\App\Services\OrderLifecycleService::class);
+            $lifecycle->cancelWholesaleAddToOrderSession();
+            $addingToOrder = $lifecycle->hasActiveAddToOrderSession($userId ? (int) $userId : null);
         } catch (\Throwable $e) {
             $addingToOrder = false;
+        }
+        if (!$addingToOrder && session('selected_order_type') === 'special') {
+            Session::put('selected_order_type', 'standard');
         }
 
         // #region agent log
@@ -250,14 +262,15 @@ public function index()
         }
     }
 
-    $menuCategories = MenuCatalog::forStorefront(true, true);
+    $menuCategories = MenuCatalog::forStorefront(true, false);
 
     $menuGalleries = MenuGallery::orderBy('id', 'DESC')->take(4)->get();
 
     $addingToOrder = false;
     try {
-        $addingToOrder = app(\App\Services\OrderLifecycleService::class)
-            ->hasActiveAddToOrderSession($userId ? (int) $userId : null);
+        $lifecycle = app(\App\Services\OrderLifecycleService::class);
+        $lifecycle->cancelWholesaleAddToOrderSession();
+        $addingToOrder = $lifecycle->hasActiveAddToOrderSession($userId ? (int) $userId : null);
     } catch (\Throwable $e) {
         $addingToOrder = false;
     }

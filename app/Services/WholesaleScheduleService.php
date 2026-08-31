@@ -82,6 +82,30 @@ class WholesaleScheduleService
         return "Today's wholesale delivery ordering period has closed. Please select the next available delivery date.";
     }
 
+    public function modifyLockHours(): int
+    {
+        return 6;
+    }
+
+    public function lockedMessage(): string
+    {
+        return 'You can no longer update this order.';
+    }
+
+    public function modifyUntil(?string $date): ?Carbon
+    {
+        if (!$date) {
+            return null;
+        }
+        try {
+            $deliveryDay = Carbon::parse($date, $this->time->timezone())->startOfDay();
+        } catch (\Throwable $e) {
+            return null;
+        }
+        [$h, $m] = array_map('intval', explode(':', $this->windowStart()) + [0, 0]);
+        return $deliveryDay->copy()->setTime($h, $m, 0)->subHours($this->modifyLockHours());
+    }
+
     public function windowLabel(): string
     {
         return $this->formatTime($this->windowStart()) . ' – ' . $this->formatTime($this->windowEnd());

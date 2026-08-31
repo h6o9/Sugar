@@ -323,7 +323,10 @@ Route::get('/orders/{id}/receipt', [StorefrontController::class, 'printReceipt']
 Route::middleware('user')->group(function () {
     Route::get('/orders/{orderId}/add-items', [StorefrontController::class, 'startAddToOrder'])->name('orders.add-items');
     Route::post('/orders/confirm-add-items', [StorefrontController::class, 'confirmAddToOrder'])->name('orders.confirm-add-items');
+    Route::get('/orders/{orderId}/items/{itemId}/edit', [StorefrontController::class, 'editOrderItem'])->name('orders.edit-item');
     Route::post('/orders/{orderId}/items/{itemId}', [StorefrontController::class, 'updateOrderItem'])->name('orders.update-item');
+    Route::get('/orders/{orderId}/delivery-method', [StorefrontController::class, 'editFulfillment'])->name('orders.edit-fulfillment');
+    Route::post('/orders/{orderId}/delivery-method', [StorefrontController::class, 'updateFulfillment'])->name('orders.update-fulfillment');
     Route::post('/orders/{orderId}/remove-items', [StorefrontController::class, 'removeOrderItems'])->name('orders.remove-items');
     Route::get('/orders/balance-success', [StorefrontController::class, 'balanceSuccess'])->name('order.balance.success');
 });

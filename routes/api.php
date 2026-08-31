@@ -104,6 +104,20 @@ Route::get('/reward-history', [\App\Http\Controllers\Api\RewardHistoryController
 Route::get('/order-state', [StorefrontApiController::class, 'orderState']);
 Route::post('/orders/add-items', [StorefrontApiController::class, 'addItems']);
 Route::post('/orders/update-item', [StorefrontApiController::class, 'updateItem']);
+Route::get('/orders/{orderId}/items/{itemId}/options', [StorefrontApiController::class, 'itemOptions']);
+Route::post('/orders/remove-items', [StorefrontApiController::class, 'removeItems']);
+Route::post('/orders/add-from-cart', [StorefrontApiController::class, 'addFromCart']);
+Route::post('/orders/{id}/start-add-items', [StorefrontApiController::class, 'startAddItems']);
+Route::post('/orders/{id}/cancel-add-items', [StorefrontApiController::class, 'cancelAddItems']);
+Route::get('/orders', [StorefrontApiController::class, 'myOrders']);
+Route::get('/orders/{id}', [StorefrontApiController::class, 'orderDetail']);
+Route::get('/orders/{id}/receipt', [StorefrontApiController::class, 'receipt']);
+Route::get('/storefront/cart-context', [StorefrontApiController::class, 'cartContext']);
+Route::post('/storefront/cart-context', [StorefrontApiController::class, 'setCartContext']);
+Route::post('/storefront/set-wholesale-date', [StorefrontApiController::class, 'setWholesaleDate']);
+Route::post('/storefront/save-pickup-time', [StorefrontApiController::class, 'savePickupTime']);
+Route::post('/storefront/checkout-preview', [StorefrontApiController::class, 'checkoutPreview']);
+Route::post('/storefront/schedule', [StorefrontApiController::class, 'setSchedule']);
 
 });
 
@@ -111,6 +125,17 @@ Route::get('/business-status', [StorefrontApiController::class, 'businessStatus'
 Route::get('/stores', [StorefrontApiController::class, 'stores']);
 Route::get('/wholesale-dates', [StorefrontApiController::class, 'wholesaleDates']);
 Route::get('/wholesale-menu', [StorefrontApiController::class, 'wholesaleMenu']);
+Route::get('/storefront/config', [StorefrontApiController::class, 'config']);
+Route::get('/storefront/home-menu', [StorefrontApiController::class, 'homeMenu']);
+Route::get('/storefront/menu', [StorefrontApiController::class, 'homeMenu']);
+Route::get('/storefront/special-menu', [StorefrontApiController::class, 'specialMenu']);
+Route::get('/storefront/wholesale-menu', [StorefrontApiController::class, 'wholesaleMenu']);
+Route::get('/storefront/drive-in-menu', [StorefrontApiController::class, 'driveInMenu']);
+Route::get('/storefront/pickup-slots', [StorefrontApiController::class, 'pickupSlots']);
+Route::get('/time-intervals', [StorefrontApiController::class, 'pickupSlots']);
+Route::get('/storefront/navigation', [StorefrontApiController::class, 'navigation']);
+Route::get('/storefront/product/{id}', [StorefrontApiController::class, 'productDetail']);
+Route::get('/storefront/private-bookings', [StorefrontApiController::class, 'privateBookings']);
 
 // Webview Payment Routes for App
 Route::get('/payment/stripe/webview/success', [\App\Http\Controllers\Api\PaymentController::class, 'stripeWebviewSuccess'])->name('api.payment.stripe.webview.success');

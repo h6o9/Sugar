@@ -71,6 +71,10 @@ class StorefrontController extends Controller
     public function driveIn()
     {
         Session::put('selected_order_type', 'drive_in');
+        try {
+            $this->orders->cancelWholesaleAddToOrderSession();
+        } catch (\Throwable $e) {
+        }
         $products = $this->foodProducts();
         $hours = $this->time->status();
         return view('home.drive-in', compact('products', 'hours'));
@@ -87,12 +91,16 @@ class StorefrontController extends Controller
         $filteredProducts = collect();
         $addingToOrder = false;
         try {
+            $this->orders->cancelWholesaleAddToOrderSession();
             $addingToOrder = $this->orders->hasActiveAddToOrderSession($userId ? (int) $userId : null);
         } catch (\Throwable $e) {
             $addingToOrder = false;
         }
         $specialPage = true;
         $wholesaleMode = false;
+        if (!$addingToOrder) {
+            Session::put('selected_order_type', 'special');
+        }
         $hours = $this->time->status();
         $defaultBranch = Branch::where('status', 1)->first() ?: Branch::first();
 
@@ -114,7 +122,7 @@ class StorefrontController extends Controller
     public function wholesale()
     {
         $menu = $this->findWholesaleMenu();
-        $menuCategories = MenuCatalog::forStorefront(true, true);
+        $menuCategories = MenuCatalog::forWholesale();
         $dates = $this->wholesale->availableDates();
         $content = Schema::hasColumn('cibo_express', 'page_key')
             ? CiboExpress::where('page_key', 'wholesale')->first()
@@ -123,7 +131,24 @@ class StorefrontController extends Controller
         $defaultBranch = Branch::where('status', 1)->first() ?: Branch::first();
         $branches = Branch::all();
         $wholesaleMode = true;
+        $userId = Auth::guard('user')->id();
+        $pendingAddId = Session::get('adding_to_order_id');
+        $updatingOrder = null;
+        if ($pendingAddId && $userId) {
+            $updatingOrder = Order::where('id', $pendingAddId)->where('user_id', $userId)->first();
+            if ($updatingOrder && $this->orders->isWholesale($updatingOrder)) {
+                $this->restoreWholesaleSessionFromOrder($updatingOrder);
+            }
+        }
         $addingToOrder = false;
+        try {
+            $addingToOrder = $this->orders->hasActiveAddToOrderSession($userId ? (int) $userId : null);
+        } catch (\Throwable $e) {
+            $addingToOrder = false;
+        }
+        if (!$addingToOrder) {
+            $updatingOrder = null;
+        }
         $searchTerm = '';
         $filteredProducts = collect();
         // #region agent log
@@ -161,6 +186,7 @@ class StorefrontController extends Controller
             'branches',
             'wholesaleMode',
             'addingToOrder',
+            'updatingOrder',
             'searchTerm',
             'filteredProducts'
         ));
@@ -182,6 +208,10 @@ class StorefrontController extends Controller
             $this->orders->assertCanModify($order);
             Session::put('adding_to_order_id', $order->id);
             Session::forget('cart');
+            if ($this->orders->isWholesale($order)) {
+                $this->restoreWholesaleSessionFromOrder($order);
+                return redirect()->route('dessert-wholesale');
+            }
             return redirect()->route('get-our-menu');
         } catch (\RuntimeException $e) {
             return redirect()->route('my-order')->with(['status' => false, 'message' => $e->getMessage()]);
@@ -198,7 +228,10 @@ class StorefrontController extends Controller
         $order = Order::where('id', $orderId)->where('user_id', $user->id)->first();
         if (!$order || !$this->orders->canModify($order)) {
             Session::forget('adding_to_order_id');
-            return redirect()->route('checkout')->with(['status' => false, 'message' => 'Place this as a new order.']);
+            $message = ($order && $this->orders->isWholesale($order))
+                ? 'You can no longer update this order.'
+                : 'Place this as a new order.';
+            return redirect()->route('my-order')->with(['status' => false, 'message' => $message]);
         }
         $cart = session('cart', []);
         if (empty($cart)) {
@@ -237,7 +270,10 @@ class StorefrontController extends Controller
             return redirect($session->url);
         }
 
-        return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order #' . $updated->code . ' updated. Old receipt cancelled, new receipt issued. ' . $this->orders->addToOrderMinutes() . '-minute timer restarted.']);
+        $timerNote = $this->orders->isWholesale($updated)
+            ? 'You can still add or remove items until 6 hours before wholesale delivery.'
+            : $this->orders->addToOrderMinutes() . '-minute timer restarted.';
+        return redirect()->route('my-order')->with(['status' => true, 'message' => 'Order #' . $updated->code . ' updated. Old receipt cancelled, new receipt issued. ' . $timerNote]);
     }
 
     public function balanceSuccess(Request $request)
@@ -260,13 +296,67 @@ class StorefrontController extends Controller
         return redirect()->route('my-order')->with(['status' => true, 'message' => 'Additional payment recorded for order #' . $order->code]);
     }
 
+    public function editOrderItem($orderId, $itemId)
+    {
+        $order = Order::where('id', $orderId)->where('user_id', Auth::guard('user')->id())->firstOrFail();
+        try {
+            $this->orders->assertCanModify($order);
+        } catch (\RuntimeException $e) {
+            return redirect()->route('my-order')->with(['status' => false, 'message' => $e->getMessage()]);
+        }
+
+        $item = OrderItem::with(['orderToppings.toppings', 'branch'])
+            ->where('order_id', $order->id)
+            ->where('id', $itemId)
+            ->firstOrFail();
+
+        $options = \App\Support\ProductEditOptions::forItem($item);
+        $product = $options['product'];
+        $variants = $options['variants'];
+        $toppingGroups = $options['topping_groups'];
+        $selectedToppingIds = $options['selected_topping_ids'];
+
+        return view('home.edit-order-item', compact(
+            'order',
+            'item',
+            'product',
+            'variants',
+            'toppingGroups',
+            'selectedToppingIds'
+        ));
+    }
+
     public function updateOrderItem(Request $request, $orderId, $itemId)
     {
         try {
             $order = Order::where('id', $orderId)->where('user_id', Auth::guard('user')->id())->firstOrFail();
-            $qty = (int) $request->input('quantity', 0);
-            $this->orders->updateItemQuantity($order, (int) $itemId, $qty);
-            return redirect()->back()->with(['status' => true, 'message' => 'New receipt generated.']);
+            $qty = $request->has('quantity') ? (int) $request->input('quantity') : null;
+            $options = [];
+            if ($qty !== null) {
+                $options['quantity'] = $qty;
+            }
+            if ($request->filled('variant_id')) {
+                $options['variant_id'] = (int) $request->input('variant_id');
+            }
+            if ($request->boolean('update_toppings') || $request->has('toppings') || $request->has('toppings_by_category')) {
+                $options['toppings_by_category'] = $request->input('toppings_by_category', []);
+                $options['toppings'] = $request->input('toppings', []);
+                $options['topping_category'] = $request->input('topping_category', []);
+            }
+            if ($request->filled('delivery_status') && !$this->orders->isWholesale($order)) {
+                $options['delivery_status'] = (int) $request->input('delivery_status');
+                $options['delivery_address'] = $request->input('delivery_address');
+                $options['lat'] = $request->input('lat');
+                $options['lng'] = $request->input('lng');
+            }
+            $this->orders->updateItemOptions($order, (int) $itemId, $options);
+            $message = $this->orders->isWholesale($order)
+                ? 'Item updated. Old receipt cancelled, new receipt issued.'
+                : 'Item updated. Old receipt cancelled, new receipt issued, and the timer has started again.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => true, 'message' => $message]);
+            }
+            return redirect()->route('my-order')->with(['status' => true, 'message' => $message]);
         } catch (\RuntimeException $e) {
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
@@ -291,13 +381,51 @@ class StorefrontController extends Controller
             return redirect()->back()->with(['status' => false, 'message' => $e->getMessage()]);
         }
         $remaining = $updated->orderItem ? $updated->orderItem->count() : 0;
-        $message = $remaining === 0
-            ? 'Item removed. Your order is now empty.'
-            : 'Product removed. The ' . $this->orders->addToOrderMinutes() . '-minute timer has started again.';
+        if ($remaining === 0) {
+            $message = 'Item removed. Your order is now empty.';
+        } elseif ($this->orders->isWholesale($updated)) {
+            $message = 'Product removed. You can still update this order until 6 hours before wholesale delivery.';
+        } else {
+            $message = 'Product removed. The ' . $this->orders->addToOrderMinutes() . '-minute timer has started again.';
+        }
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json(['success' => true, 'message' => $message, 'remaining' => $remaining]);
         }
         return redirect()->back()->with(['status' => true, 'message' => $message]);
+    }
+
+    public function editFulfillment($orderId)
+    {
+        $order = Order::with(['orderItem.branch'])->where('id', $orderId)->where('user_id', Auth::guard('user')->id())->firstOrFail();
+        try {
+            $this->orders->assertCanModify($order);
+        } catch (\RuntimeException $e) {
+            return redirect()->route('my-order')->with(['status' => false, 'message' => $e->getMessage()]);
+        }
+        $item = $order->orderItem->first();
+        $pickupBranch = optional($item)->branch ?: Branch::where('status', 1)->first();
+        $currentDelivery = (int) optional($item)->delivery_status === 2 ? 2 : 1;
+
+        return view('home.edit-order-fulfillment', compact('order', 'item', 'pickupBranch', 'currentDelivery'));
+    }
+
+    public function updateFulfillment(Request $request, $orderId)
+    {
+        try {
+            $order = Order::where('id', $orderId)->where('user_id', Auth::guard('user')->id())->firstOrFail();
+            $this->orders->updateOrderFulfillment($order, [
+                'delivery_status' => (int) $request->input('delivery_status', 1),
+                'delivery_address' => $request->input('delivery_address'),
+                'lat' => $request->input('lat'),
+                'lng' => $request->input('lng'),
+            ]);
+            return redirect()->route('my-order')->with([
+                'status' => true,
+                'message' => 'Delivery method updated. Old receipt cancelled, new receipt issued.',
+            ]);
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->with(['status' => false, 'message' => $e->getMessage()])->withInput();
+        }
     }
 
     public function printReceipt($orderId)
@@ -317,6 +445,12 @@ class StorefrontController extends Controller
 
     public function setWholesaleDate(Request $request)
     {
+        if (Session::get('adding_to_order_id')) {
+            return redirect()->route('dessert-wholesale')->with([
+                'status' => true,
+                'message' => 'This delivery date is already set on your order. Add items to update it.',
+            ]);
+        }
         $date = $request->input('wholesale_delivery_date');
         if (!$this->wholesale->isValidDate($date)) {
             return redirect()->back()->with(['status' => false, 'message' => $this->wholesale->cutoffMessage()]);
@@ -335,6 +469,25 @@ class StorefrontController extends Controller
         Session::put('scheduled_order', 1);
         Session::put('scheduled_at', $status['next_opening_at']);
         return redirect()->back()->with(['status' => true, 'message' => 'Your order will be scheduled for ' . $status['next_opening_display']]);
+    }
+
+    protected function restoreWholesaleSessionFromOrder(Order $order): void
+    {
+        $raw = $order->wholesale_delivery_date ?? null;
+        if (!$raw) {
+            return;
+        }
+        try {
+            $date = $raw instanceof \Carbon\Carbon
+                ? $raw->toDateString()
+                : \Carbon\Carbon::parse((string) $raw)->toDateString();
+        } catch (\Throwable $e) {
+            $date = substr((string) $raw, 0, 10);
+        }
+        if ($date) {
+            Session::put('wholesale_delivery_date', $date);
+            Session::put('selected_order_type', 'wholesale');
+        }
     }
 
     protected function findWholesaleMenu()
@@ -365,7 +518,7 @@ class StorefrontController extends Controller
         if (Schema::hasColumn('menus', 'type')) {
             $query->whereHas('menu', function ($q) {
                 $q->where(function ($inner) {
-                    $inner->whereNull('type')->orWhere('type', 'food')->orWhere('type', 'special');
+                    $inner->whereNull('type')->orWhere('type', 'food');
                 });
             });
         }

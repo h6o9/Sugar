@@ -16,11 +16,9 @@
         <div class="sp-menu-cats" id="spMenuCats" hidden>
             @foreach(($navMenus ?? collect()) as $menu)
                 @php
-                    $type = strtolower((string) ($menu->type ?? 'food'));
                     $isSpecial = \App\Support\MenuCatalog::isSpecial($menu);
-                    $isWholesale = \App\Support\MenuCatalog::isWholesale($menu);
                 @endphp
-                @if($type !== 'wholesale' && !$isSpecial && !$isWholesale)
+                @if(!$isSpecial)
                     <a class="sp-nav-link ps-4" href="{{ route('get-our-menu') }}#menuTab{{ $menu->id }}">
                         <i class="{{ $menu->icon ?: 'ri-restaurant-line' }}"></i> {{ $menu->name }}
                     </a>

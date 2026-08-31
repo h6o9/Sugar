@@ -163,7 +163,6 @@
                             : asset('public/img/logo.png'));
                 @endphp
                 <div class="sp-page-hero sp-cart-hero" style="background-image:url('{{ $cartHero }}')">
-                    @include('home.partials.order-timer')
                     <h1>Your Cart</h1>
                 </div>
             </div>

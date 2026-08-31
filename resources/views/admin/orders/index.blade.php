@@ -276,12 +276,21 @@
                                             @endif
                                         </td>
                                         <td>
-                                            {{ $order->order_type ?: 'standard' }}
+                                            @php $channel = $order->channelKey(); @endphp
+                                            @if($channel === 'wholesale')
+                                                <span class="badge p-2 text-white" style="background:#6f42c1;">Dessert Wholesale</span>
+                                            @elseif($channel === 'drive_in')
+                                                <span class="badge p-2 text-white" style="background:#111;">Drive-In</span>
+                                            @elseif($channel === 'special')
+                                                <span class="badge p-2 text-white" style="background:#ff2d87;">Sugar Papi Special</span>
+                                            @else
+                                                <span class="badge p-2 badge-secondary">Regular Order</span>
+                                            @endif
                                             @if($order->is_scheduled)
-                                                <div class="small">{{ $order->scheduled_at }}</div>
+                                                <div class="small mt-1">{{ $order->scheduled_at }}</div>
                                             @endif
                                             @if($order->wholesale_delivery_date)
-                                                <div class="small">Wholesale: {{ $order->wholesale_delivery_date }}</div>
+                                                <div class="small mt-1">Delivery: {{ $order->wholesale_delivery_date }}</div>
                                             @endif
                                         </td>
                                         <td>

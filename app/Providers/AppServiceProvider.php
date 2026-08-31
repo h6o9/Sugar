@@ -58,9 +58,7 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $shared['pappiSpecialMenu'] = $shared['navMenus']->first(function ($m) {
-                $type = strtolower((string) ($m->type ?? ''));
-                $slug = strtolower((string) ($m->slug ?? ''));
-                return $type === 'special' || $slug === 'pappi-special' || stripos((string) $m->name, 'Pappi Special') !== false;
+                return \App\Support\MenuCatalog::isSpecial($m);
             });
 
             try {

@@ -54,7 +54,7 @@ class OrderController extends Controller
             ->get();
 
         $timerOrders = $orders->filter(function ($order) use ($lifecycle) {
-            return $lifecycle->canModify($order) && $lifecycle->remainingSeconds($order) > 0;
+            return $lifecycle->canModify($order);
         })->values();
         // #region agent log
         $firstTimer = $timerOrders->first();
@@ -79,7 +79,7 @@ class OrderController extends Controller
         // #endregion
 
         $pendingOrders = $orders->filter(function ($order) use ($lifecycle) {
-            if ($lifecycle->canModify($order) && $lifecycle->remainingSeconds($order) > 0) {
+            if ($lifecycle->canModify($order)) {
                 return false;
             }
             $status = strtolower((string) $order->status);
@@ -355,16 +355,9 @@ class OrderController extends Controller
             }
 
             $orderCode = $order->code;
-            $orderType = session('selected_order_type', 'standard');
             $lifecycle = app(\App\Services\OrderLifecycleService::class);
             try {
-                $lifecycle->initializeNewOrder($order, [
-                    'order_type' => $orderType,
-                    'menu_type' => $orderType === 'wholesale' ? 'wholesale' : 'food',
-                    'is_scheduled' => session('scheduled_order') ? 1 : 0,
-                    'scheduled_at' => session('scheduled_at'),
-                    'wholesale_delivery_date' => session('wholesale_delivery_date'),
-                ]);
+                $lifecycle->initializeNewOrder($order, $this->placementChannelMeta());
             } catch (\Throwable $e) {
                 \Log::warning('initializeNewOrder skipped after place order', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             }
@@ -549,16 +542,9 @@ public function stripeSuccess()
                 ]);
             }
 
-            $orderType = session('selected_order_type', 'standard');
             $lifecycle = app(\App\Services\OrderLifecycleService::class);
             try {
-                $lifecycle->initializeNewOrder($order, [
-                    'order_type' => $orderType,
-                    'menu_type' => $orderType === 'wholesale' ? 'wholesale' : 'food',
-                    'is_scheduled' => session('scheduled_order') ? 1 : 0,
-                    'scheduled_at' => session('scheduled_at'),
-                    'wholesale_delivery_date' => session('wholesale_delivery_date'),
-                ]);
+                $lifecycle->initializeNewOrder($order, $this->placementChannelMeta());
             } catch (\Throwable $e) {
                 \Log::warning('initializeNewOrder skipped after stripe order', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             }
@@ -605,43 +591,69 @@ public function stripeSuccess()
         }
     }
 
+    private function placementChannelMeta(): array
+    {
+        $orderType = strtolower((string) session('selected_order_type', 'standard'));
+        if ($this->cartLooksWholesale()) {
+            $orderType = 'wholesale';
+        } elseif ($orderType !== 'drive_in' && $this->cartLooksSpecial()) {
+            $orderType = 'special';
+        } elseif (!in_array($orderType, ['drive_in', 'wholesale', 'special'], true)) {
+            $orderType = 'standard';
+        }
+
+        $menuType = 'food';
+        if ($orderType === 'wholesale') {
+            $menuType = 'wholesale';
+        } elseif ($orderType === 'special') {
+            $menuType = 'special';
+        }
+
+        return [
+            'order_type' => $orderType,
+            'menu_type' => $menuType,
+            'is_scheduled' => session('scheduled_order') ? 1 : 0,
+            'scheduled_at' => session('scheduled_at'),
+            'wholesale_delivery_date' => session('wholesale_delivery_date'),
+        ];
+    }
+
     private function cartLooksWholesale(): bool
     {
         $cart = session('cart', []);
-        if (empty($cart)) {
-            return session('selected_order_type') === 'wholesale' && (bool) session('wholesale_delivery_date');
-        }
         foreach ($cart as $item) {
             if (($item['fulfillment'] ?? '') === 'wholesale') {
                 return true;
             }
         }
+        return session('selected_order_type') === 'wholesale' && (bool) session('wholesale_delivery_date');
+    }
+
+    private function cartLooksSpecial(): bool
+    {
+        if (session('selected_order_type') === 'special') {
+            return true;
+        }
         $ids = [];
-        foreach ($cart as $item) {
+        foreach (session('cart', []) as $item) {
             if (!empty($item['product_id'])) {
                 $ids[] = (int) $item['product_id'];
             }
         }
         if (!$ids) {
-            return session('selected_order_type') === 'wholesale';
+            return false;
         }
         try {
-            $products = \App\Models\Product::with('menu')->whereIn('id', $ids)->get();
+            $products = \App\Models\Product::with('menu')->whereIn('id', array_unique($ids))->get();
         } catch (\Throwable $e) {
-            return session('selected_order_type') === 'wholesale';
+            return false;
         }
         foreach ($products as $product) {
-            $menu = $product->menu;
-            if (!$menu) {
-                continue;
-            }
-            $type = strtolower((string) ($menu->type ?? ''));
-            $slug = strtolower((string) ($menu->slug ?? ''));
-            if ($type === 'wholesale' || $slug === 'dessert-wholesale') {
+            if (\App\Support\MenuCatalog::isSpecial($product->menu ?? null)) {
                 return true;
             }
         }
-        return session('selected_order_type') === 'wholesale';
+        return false;
     }
 
     private function rejectInvalidWholesaleSession()

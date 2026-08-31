@@ -1861,3 +1861,15 @@
 {"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero play ok","data":{"readyState":4,"paused":false,"ms":18516},"timestamp":1787673890942}
 {"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero canplay","data":{"readyState":4,"paused":true,"ms":21416},"timestamp":1787673893842}
 {"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero play ok","data":{"readyState":4,"paused":false,"ms":21419},"timestamp":1787673893845}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero canplay","data":{"readyState":4,"paused":true,"ms":26196},"timestamp":1787673898622}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero play ok","data":{"readyState":4,"paused":false,"ms":26199},"timestamp":1787673898625}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero canplay","data":{"readyState":4,"paused":true,"ms":37596},"timestamp":1787673910022}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero play ok","data":{"readyState":4,"paused":false,"ms":37653},"timestamp":1787673910079}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero play ok","data":{"readyState":4,"paused":false,"ms":117886},"timestamp":1787673990312}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero canplay","data":{"readyState":4,"paused":false,"ms":117883},"timestamp":1787673990309}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero play ok","data":{"readyState":4,"paused":false,"ms":125089},"timestamp":1787673997515}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero canplay","data":{"readyState":4,"paused":false,"ms":125082},"timestamp":1787673997508}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero canplay","data":{"readyState":4,"paused":false,"ms":132309},"timestamp":1787674004735}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero play ok","data":{"readyState":4,"paused":false,"ms":132314},"timestamp":1787674004740}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero canplay","data":{"readyState":4,"paused":false,"ms":139555},"timestamp":1787674011981}
+{"sessionId":"1796d5","hypothesisId":"V1","location":"landing-hero.blade.php","message":"hero play ok","data":{"readyState":4,"paused":false,"ms":139561},"timestamp":1787674011987}

@@ -11,7 +11,7 @@
 
     <div class="alert" style="background:#111;color:#fff;">
         Choose your preferred wholesale delivery date. Deliveries are available Monday, Thursday and Saturday from {{ $dates[0]['window'] ?? '7:00 PM – 10:00 PM' }}.
-        Wholesale orders have no add-to-order timer. Add trays here, then place the order from My Cart.
+        Wholesale orders can be updated until 6 hours before delivery. Add trays here, then place the order from My Cart.
     </div>
 
     <form method="POST" action="{{ route('wholesale.date') }}" class="mb-4">

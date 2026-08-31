@@ -65,6 +65,8 @@ Route::post('/cart-update-quantity/{id}', [AddToCartController::class, 'updateCa
 Route::post('/delete-cart-item/{id}', [AddToCartController::class, 'deleteCartItem']);
 Route::post('/continue-to-payments', [AddToCartController::class, 'proceedToPayment']);
 Route::post('/place-order', [PlaceOrderController::class, 'placeOrder']);
+Route::get('/place-order/{orderId}', [PlaceOrderController::class, 'getConfirmation']);
+Route::get('/order-confirmation/{orderId}', [PlaceOrderController::class, 'getConfirmation']);
 Route::get('/get-branch-info', [AddToCartController::class, 'getBranchInfo']);
 
 // filter data 

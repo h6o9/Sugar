@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 
@@ -53,5 +54,17 @@ class Handler extends ExceptionHandler
             }
             return redirect()->route('my-cart')->with(['status' => false, 'message' => $message]);
         });
+    }
+
+    protected function unauthenticated($request, AuthenticationException $exception)
+    {
+        if ($request->is('api/*') || $request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Send Authorization: Bearer {token}',
+            ], 401);
+        }
+
+        return redirect()->guest($exception->redirectTo() ?? route('login'));
     }
 }

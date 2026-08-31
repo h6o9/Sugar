@@ -90,19 +90,51 @@
         .cz-card-media {
             display: block;
             width: 100%;
-            height: 180px;
-            overflow: hidden !important;
+            height: auto !important;
+            overflow: visible !important;
             border: 0;
             background: #fff;
-            padding: 0;
+            padding: 12px 12px 0;
             position: relative;
         }
-        .cz-card-media img {
+        .cz-card-media-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 8px;
+        }
+        .cz-card-media img.cz-card-main-img,
+        .cz-card-media .cz-card-main-img {
             width: 100% !important;
-            height: 180px !important;
+            height: 170px !important;
             max-width: 100% !important;
             object-fit: cover !important;
             display: block;
+            border-radius: 10px;
+        }
+        .cz-card-plus {
+            font-size: 22px;
+            font-weight: 800;
+            color: #000;
+            line-height: 1;
+            margin: 6px 0;
+        }
+        .cz-card-media img.cz-card-comp-img,
+        .cz-card-media .cz-card-comp-img {
+            width: 100px !important;
+            height: 100px !important;
+            max-width: 100px !important;
+            object-fit: cover !important;
+            display: block;
+            border-radius: 10px;
+        }
+        .cz-card-bogo { margin: 8px 0 4px; }
+        .cz-card-comp-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #111;
+            margin: 0 0 4px;
+            text-align: center;
         }
         .cz-card-body { padding: 12px 16px 16px; }
         .cz-card-body h5 { font-weight: 800; font-size: 18px; margin: 0 0 6px; color: #111; }
@@ -437,7 +469,15 @@
                                                     @if($d['hasDiscount'])
                                                         <span class="badge bg-danger cz-card-badge">{{ $d['badgeText'] }}</span>
                                                     @endif
-                                                    <img src="{{ asset($prod->image) }}" alt="{{ $prod->name }}">
+                                                    <span class="cz-card-media-stack">
+                                                        <img class="cz-card-main-img" src="{{ asset($prod->image) }}" alt="{{ $prod->name }}">
+                                                        @if(optional($d['comp'])->complementary)
+                                                            <span class="cz-card-plus">+</span>
+                                                            <img class="cz-card-comp-img" src="{{ asset($d['comp']->complementary->image) }}" alt="{{ $d['comp']->complementary->name }}">
+                                                            <span class="badge bg-success cz-card-bogo">BUY 1 GET 1 FREE</span>
+                                                            <span class="cz-card-comp-name">{{ $d['comp']->complementary->name }}</span>
+                                                        @endif
+                                                    </span>
                                                 </button>
                                                 <div class="cz-card-body">
                                                     <h5>{{ $prod->name }}</h5>

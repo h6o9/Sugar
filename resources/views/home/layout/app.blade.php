@@ -40,7 +40,7 @@
     <link href="{{ asset('public/css/sidebar.css') }}" rel="stylesheet">
     <link href="{{ asset('public/css/common.css') }}" rel="stylesheet">
     <link href="{{ asset('public/css/style.css') }}" rel="stylesheet">
-    <link href="{{ asset('public/css/sugarpappi-update.css') }}?v=20260831ws2" rel="stylesheet">
+    <link href="{{ asset('public/css/sugarpappi-update.css') }}?v=20260831comp2" rel="stylesheet">
     @if(request()->is('/'))
         <link rel="preload" as="video" href="{{ asset('public/videos/hero.mp4') }}" type="video/mp4">
     @endif

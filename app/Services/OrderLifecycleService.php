@@ -302,6 +302,48 @@ class OrderLifecycleService
         ];
     }
 
+    public function timerPayload(Order $order): array
+    {
+        $minutes = $this->addToOrderMinutes();
+        $until = $this->modifyDeadline($order);
+        $startRaw = $order->getRawOriginal('last_modified_at')
+            ?: $order->last_modified_at
+            ?: $order->getRawOriginal('created_at')
+            ?: $order->created_at;
+        $started = $startRaw ? $this->asCarbonUtc($startRaw) : null;
+        $remaining = $this->remainingSeconds($order);
+        $running = $this->canModify($order) && $remaining > 0;
+        $tz = $this->time->timezone();
+        $isWholesale = $this->isWholesale($order);
+
+        if ($isWholesale) {
+            $message = $running
+                ? 'You can add or remove items until 6 hours before your wholesale delivery time.'
+                : $this->wholesale->lockedMessage();
+        } else {
+            $message = $running
+                ? 'Your order is placed. You have ' . $minutes . ' minutes to add items, remove items, or change size and toppings. Any change restarts this timer.'
+                : 'Your time to change this order has ended. The order stays as placed.';
+        }
+
+        return [
+            'minutes' => $minutes,
+            'add_minutes' => $minutes,
+            'started_at' => $started ? $started->toIso8601String() : null,
+            'started_at_label' => $started ? $started->copy()->setTimezone($tz)->format('g:i A') : null,
+            'started_at_unix' => $started ? $started->timestamp : null,
+            'ends_at' => $until ? $until->toIso8601String() : null,
+            'ends_at_label' => $until ? $until->copy()->setTimezone($tz)->format('g:i A') : null,
+            'ends_at_unix' => $until ? $until->timestamp : null,
+            'remaining_seconds' => $remaining,
+            'remaining_time' => $this->formatRemaining($remaining),
+            'is_running' => $running,
+            'can_add_items' => $running,
+            'timezone' => $tz,
+            'message' => $message,
+        ];
+    }
+
     public function assertCanModify(Order $order): void
     {
         if ($this->canModify($order)) {
@@ -855,7 +897,7 @@ class OrderLifecycleService
             return;
         }
         $method = strtolower((string) $order->payment);
-        if (in_array($method, ['stripe', 'card', 'online'], true)) {
+        if ($this->isOnlinePayment($method)) {
             $order->paid_amount = floatval($order->total_amount);
             $order->balance_due = 0;
         } else {
@@ -897,8 +939,8 @@ class OrderLifecycleService
             'customer' => optional($order->user)->name,
             'order_type' => $order->order_type,
             'status' => $order->status,
-            'payment' => $order->payment,
-            'payment_status' => floatval($order->balance_due ?? 0) > 0 ? 'Balance due' : 'Paid',
+            'payment' => $this->receiptPaymentMethod($order->payment),
+            'payment_status' => $this->receiptPaymentStatus($order),
             'items' => $items,
             'subtotal' => $order->subtotal,
             'discount' => $order->discount_amount,
@@ -909,6 +951,43 @@ class OrderLifecycleService
             'wholesale_delivery_date' => $order->wholesale_delivery_date,
             'scheduled_at' => $order->scheduled_at,
             'notes' => $order->notes,
+        ];
+    }
+
+    public function isOnlinePayment($payment): bool
+    {
+        $method = strtolower(trim((string) $payment));
+        return in_array($method, [
+            'stripe',
+            'card',
+            'online',
+            'paid',
+            'test_skip_stripe',
+        ], true);
+    }
+
+    public function receiptPaymentMethod($payment): string
+    {
+        return 'Online';
+    }
+
+    public function receiptPaymentStatus(Order $order): string
+    {
+        return 'Paid';
+    }
+
+    public function paymentPayload(Order $order): array
+    {
+        $method = $this->receiptPaymentMethod($order->payment);
+        $status = $this->receiptPaymentStatus($order);
+
+        return [
+            'method' => $method,
+            'method_key' => 'online',
+            'status' => $status,
+            'label' => $method . ' / ' . $status,
+            'paid_amount' => round((float) ($order->paid_amount ?? $order->total_amount ?? 0), 2),
+            'balance_due' => 0,
         ];
     }
 

@@ -98,7 +98,23 @@ public function homeProducts(Request $request)
         'menu_id' => 'required|string', // number or 'all'
     ]);
 
-    $menuId = $request->menu_id;
+    $menuId = (string) $request->menu_id;
+    $channelFromId = [
+        '-1' => 'special',
+        'special' => 'special',
+        'pappi-special' => 'special',
+        'sugar-pappi-special' => 'special',
+        '-2' => 'drive_in',
+        'drive_in' => 'drive_in',
+        'drive-in' => 'drive_in',
+        '-3' => 'wholesale',
+        'wholesale' => 'wholesale',
+        'dessert-wholesale' => 'wholesale',
+    ];
+    if (isset($channelFromId[strtolower($menuId)])) {
+        $request->merge(['channel' => $channelFromId[strtolower($menuId)]]);
+        $menuId = 'all';
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -422,15 +438,19 @@ private function getFeaturedDisplayText($product)
 			? AppCartContext::normalizeChannel($request->input('channel'))
 			: null;
 
-		$menueitems = Menu::orderBy('id')->get()->map(function ($menu) {
+		$categories = Menu::orderBy('id')->get()->map(function ($menu) {
 			$isSpecial = MenuCatalog::isSpecial($menu);
 			$isWholesale = MenuCatalog::isWholesale($menu);
 			return [
 				'id' => $menu->id,
 				'name' => $menu->name,
 				'slug' => $menu->slug ?? null,
-				'type' => $menu->type ?? null,
+				'type' => $menu->type ?? ($isSpecial ? 'special' : ($isWholesale ? 'wholesale' : 'food')),
 				'image' => $menu->image ?? null,
+				'icon' => $menu->icon ?? null,
+				'sort_order' => $menu->sort_order ?? 0,
+				'is_visible' => (int) ($menu->is_visible ?? 1),
+				'is_channel' => false,
 				'is_special' => $isSpecial,
 				'is_wholesale' => $isWholesale,
 				'channel' => $isSpecial ? 'special' : ($isWholesale ? 'wholesale' : 'regular'),
@@ -439,11 +459,12 @@ private function getFeaturedDisplayText($product)
 				'visible_on_special' => $isSpecial,
 				'visible_on_wholesale' => $isWholesale,
 				'visible_on_drive_in' => !$isSpecial && !$isWholesale,
+				'endpoint' => '/api/home-products?menu_id=' . $menu->id,
 			];
 		});
 
 		if ($channel) {
-			$menueitems = $menueitems->filter(function ($menu) use ($channel) {
+			$categories = $categories->filter(function ($menu) use ($channel) {
 				if ($channel === 'special') {
 					return $menu['is_special'];
 				}
@@ -457,9 +478,83 @@ private function getFeaturedDisplayText($product)
 			})->values();
 		}
 
+		$screens = $this->menuChannelScreens();
+		$data = $channel ? $categories->values() : $screens->concat($categories->values())->values();
+
 		return response()->json([
 			'status' => true,
-			'data'   => $menueitems->values(),
+			'data'   => $data,
+			'screens' => $screens,
+			'categories' => $categories->values(),
+		]);
+	}
+
+	protected function menuChannelScreens()
+	{
+		return collect([
+			[
+				'id' => -1,
+				'name' => 'Sugar Pappi Special',
+				'slug' => 'pappi-special',
+				'type' => 'special',
+				'image' => null,
+				'icon' => null,
+				'sort_order' => -3,
+				'is_visible' => 1,
+				'is_channel' => true,
+				'is_special' => true,
+				'is_wholesale' => false,
+				'channel' => 'special',
+				'visible_on_home' => false,
+				'visible_on_menu' => false,
+				'visible_on_special' => true,
+				'visible_on_wholesale' => false,
+				'visible_on_drive_in' => false,
+				'endpoint' => '/api/storefront/special-menu',
+				'products_endpoint' => '/api/home-products?menu_id=all&channel=special',
+			],
+			[
+				'id' => -2,
+				'name' => 'Drive-In',
+				'slug' => 'drive-in',
+				'type' => 'drive_in',
+				'image' => null,
+				'icon' => null,
+				'sort_order' => -2,
+				'is_visible' => 1,
+				'is_channel' => true,
+				'is_special' => false,
+				'is_wholesale' => false,
+				'channel' => 'drive_in',
+				'visible_on_home' => false,
+				'visible_on_menu' => false,
+				'visible_on_special' => false,
+				'visible_on_wholesale' => false,
+				'visible_on_drive_in' => true,
+				'endpoint' => '/api/storefront/drive-in-menu',
+				'products_endpoint' => '/api/home-products?menu_id=all&channel=drive_in',
+			],
+			[
+				'id' => -3,
+				'name' => 'Dessert Wholesale',
+				'slug' => 'dessert-wholesale',
+				'type' => 'wholesale',
+				'image' => null,
+				'icon' => null,
+				'sort_order' => -1,
+				'is_visible' => 1,
+				'is_channel' => true,
+				'is_special' => false,
+				'is_wholesale' => true,
+				'channel' => 'wholesale',
+				'visible_on_home' => false,
+				'visible_on_menu' => false,
+				'visible_on_special' => false,
+				'visible_on_wholesale' => true,
+				'visible_on_drive_in' => false,
+				'endpoint' => '/api/storefront/wholesale-menu',
+				'products_endpoint' => '/api/home-products?menu_id=all&channel=wholesale',
+			],
 		]);
 	}
 

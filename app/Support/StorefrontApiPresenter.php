@@ -18,6 +18,22 @@ class StorefrontApiPresenter
         return asset($path);
     }
 
+    public static function complementaryProduct(Product $product): ?array
+    {
+        $row = $product->complementaryProductSingle;
+        $comp = $row ? $row->complementary : null;
+        if (!$comp) {
+            return null;
+        }
+
+        return [
+            'id' => $comp->id,
+            'name' => $comp->name,
+            'image' => self::imageUrl($comp->image),
+            'badge' => 'BUY 1 GET 1 FREE',
+        ];
+    }
+
     public static function product(Product $product, $menu = null): array
     {
         $menu = $menu ?: ($product->relationLoaded('menu') ? $product->menu : $product->menu);
@@ -50,6 +66,7 @@ class StorefrontApiPresenter
                 ? 'special'
                 : (MenuCatalog::isWholesale($menu) ? 'wholesale' : 'food'),
             'variants' => $variants,
+            'complementary_product' => self::complementaryProduct($product),
         ];
     }
 

@@ -40,7 +40,7 @@
     <link href="{{ asset('public/css/sidebar.css') }}" rel="stylesheet">
     <link href="{{ asset('public/css/common.css') }}" rel="stylesheet">
     <link href="{{ asset('public/css/style.css') }}" rel="stylesheet">
-    <link href="{{ asset('public/css/sugarpappi-update.css') }}?v=20260831comp2" rel="stylesheet">
+    <link href="{{ asset('public/css/sugarpappi-update.css') }}?v=20260901comp1" rel="stylesheet">
     @if(request()->is('/'))
         <link rel="preload" as="video" href="{{ asset('public/videos/hero.mp4') }}" type="video/mp4">
     @endif
@@ -59,6 +59,16 @@
 @php
     $hideSiteChrome = request()->is('login', 'getRegistor', 'forgot-password')
         || request()->routeIs('login', 'getRegistor', 'forgot-password');
+    $updatingOrder = $updatingOrder ?? null;
+    if (!$updatingOrder && !$hideSiteChrome && \Illuminate\Support\Facades\Auth::guard('user')->check()) {
+        $pendingAddId = session('adding_to_order_id');
+        if ($pendingAddId) {
+            $updatingOrder = \App\Models\Order::with(['orderItem.branch'])
+                ->where('id', $pendingAddId)
+                ->where('user_id', \Illuminate\Support\Facades\Auth::guard('user')->id())
+                ->first();
+        }
+    }
 @endphp
 <body class="{{ $hideSiteChrome ? 'sp-auth-page' : '' }}">
     <div id="app" class="bg-white">
@@ -129,6 +139,11 @@
         }
         $(window).on('resize', spSyncHeaderOffset);
         $(spSyncHeaderOffset);
+        $(document).on('show.bs.modal', '.menu-modal', function () {
+            if (this.parentElement !== document.body) {
+                document.body.appendChild(this);
+            }
+        });
         function activateMenuTab(hash) {
             if (!hash) return;
             var id = hash.replace('#', '');

@@ -3,7 +3,9 @@
 namespace App\Exceptions;
 
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -37,6 +39,33 @@ class Handler extends ExceptionHandler
     {
         $this->reportable(function (Throwable $e) {
             //
+        });
+
+        $this->renderable(function (ModelNotFoundException $e, $request) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
+                return null;
+            }
+            $model = class_basename($e->getModel() ?: '');
+            $message = $model === 'Order'
+                ? 'Order not found for this account. Use the numeric id from GET /api/orders (field "id").'
+                : 'Record not found.';
+
+            return response()->json(['status' => false, 'message' => $message], 404);
+        });
+
+        $this->renderable(function (NotFoundHttpException $e, $request) {
+            if (!($request->is('api/*') || $request->expectsJson())) {
+                return null;
+            }
+            $previous = $e->getPrevious();
+            if ($previous instanceof ModelNotFoundException && class_basename($previous->getModel() ?: '') === 'Order') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Order not found for this account. Use the numeric id from GET /api/orders (field "id").',
+                ], 404);
+            }
+
+            return null;
         });
 
         $this->renderable(function (\RuntimeException $e, $request) {

@@ -343,12 +343,6 @@ class StorefrontController extends Controller
                 $options['toppings'] = $request->input('toppings', []);
                 $options['topping_category'] = $request->input('topping_category', []);
             }
-            if ($request->filled('delivery_status') && !$this->orders->isWholesale($order)) {
-                $options['delivery_status'] = (int) $request->input('delivery_status');
-                $options['delivery_address'] = $request->input('delivery_address');
-                $options['lat'] = $request->input('lat');
-                $options['lng'] = $request->input('lng');
-            }
             $this->orders->updateItemOptions($order, (int) $itemId, $options);
             $message = $this->orders->isWholesale($order)
                 ? 'Item updated. Old receipt cancelled, new receipt issued.'

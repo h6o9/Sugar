@@ -185,11 +185,57 @@ public function addToCart(Request $request)
 
         DB::commit();
 
+        $ctx = AppCartContext::get((int) $userId);
+        $addingId = (int) ($ctx['adding_to_order_id'] ?? 0);
+        if ($addingId) {
+            $lifecycle = app(OrderLifecycleService::class);
+            $order = Order::where('id', $addingId)->where('user_id', $userId)->first();
+            if ($order && $lifecycle->canModify($order)) {
+                $fresh = AddToCartItem::find($cartItemId);
+                $toppings = AddToCartItemTopping::where('add_to_cart_item_id', $cartItemId)->get();
+                $byCategory = [];
+                foreach ($toppings as $topping) {
+                    $byCategory[$topping->category_id ?? 0][] = $topping->topping_id;
+                }
+                $payload = [[
+                    'product_id' => $fresh->product_id,
+                    'name' => $fresh->product_name,
+                    'price' => $fresh->price,
+                    'quantity' => $fresh->quantity,
+                    'branch_id' => $fresh->branch_id,
+                    'complementary_id' => $fresh->product_complementary_id,
+                    'size' => $fresh->variant_id ? (string) $fresh->variant_id : 'NULL',
+                    'delivery_status' => optional($order->orderItem->first())->delivery_status,
+                    'delivery_address' => $fresh->delivery_address,
+                    'toppings_by_category' => $byCategory,
+                ]];
+                try {
+                    $updated = $lifecycle->addSessionCartToOrder($order, $payload, ['source' => 'api-cart']);
+                    AddToCartItemTopping::where('add_to_cart_item_id', $cartItemId)->delete();
+                    AddToCartItem::where('id', $cartItemId)->delete();
+                    return response()->json([
+                        'success' => true,
+                        'status' => true,
+                        'receipt_generated' => true,
+                        'message' => 'Item added to your existing order.',
+                        'order_id' => $updated->id,
+                        'context' => $ctx,
+                    ]);
+                } catch (\RuntimeException $e) {
+                    return response()->json([
+                        'success' => false,
+                        'status' => false,
+                        'message' => $e->getMessage(),
+                    ], 422);
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Item added to cart successfully',
             'cart_item_id' => $cartItemId,
-            'context' => AppCartContext::get((int) $userId),
+            'context' => $ctx,
         ]);
 
     } catch (\Illuminate\Validation\ValidationException $e) {

@@ -391,6 +391,9 @@ if ($product) {
                     </div>
 
                     <!-- How to get it -->
+                    @if(!empty($updatingOrder) || !empty($spAddingToOrder))
+                        @include('home.partials.locked-fulfillment', ['productId' => $product->id])
+                    @else
                     <div class="description p-3">
                         <div class="d-flex justify-content-between">
                             <h6>How to get it</h6>
@@ -454,6 +457,7 @@ if ($product) {
                             @endif
                         @endforeach
                     </div>
+                    @endif
 
                     <!-- Toppings -->
                     @if(isset($product->category) && $product->category && $product->category->isNotEmpty())
@@ -512,7 +516,7 @@ if ($product) {
                         class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
                         data-bs-dismiss="modal"></button>
                     <div class="text-center mx-auto">
-                        <button class="btn btn-danger addto-cart px-sm-5 px-4">Add To Order</button>
+                        <button class="btn btn-danger addto-cart px-sm-5 px-4" data-product-id="{{ $product->id }}">Add To Order</button>
                     </div>
                 </div>
             </div>
@@ -636,10 +640,15 @@ window.spInitStorefront = function () {
         var $btn   = $(this);
         if ($btn.data('spAdding')) return;
         $btn.data('spAdding', true);
-        var $modal = $btn.closest('.food-modal');
+        // Menu modals are moved to <body> on open (z-index). Do not use .food-modal —
+        // that wrapper is left behind and product_id looks empty ("Product not found").
+        var $modal = $btn.closest('.menu-modal');
+        if (!$modal.length) {
+            $modal = $btn.closest('.food-modal');
+        }
         var addLabel = $btn.data('addLabel') || (window.spAddingToOrder ? 'Add to Order' : 'Add to Cart');
 
-        var productId       = $modal.find('input[name="product_id"]').val();
+        var productId       = $btn.attr('data-product-id') || $modal.find('input[name="product_id"]').val();
         var quantity        = $modal.find('input[name="quantity"]').val() || 1;
         var branchId        = $modal.find('input[name="branch_id"]').first().val();
         var complementaryId = $modal.find('input[name="complementary_id"]').length
@@ -648,6 +657,22 @@ window.spInitStorefront = function () {
         function resetBtn() {
             $btn.data('spAdding', false);
             $btn.prop('disabled', false).text(addLabel);
+        }
+
+        function hideProductModal() {
+            var modalEl = $btn.closest('.modal')[0];
+            if (!modalEl) return;
+            if (window.bootstrap && bootstrap.Modal) {
+                var inst = bootstrap.Modal.getInstance(modalEl);
+                if (!inst) {
+                    inst = new bootstrap.Modal(modalEl);
+                }
+                inst.hide();
+                return;
+            }
+            if (window.jQuery && typeof $btn.closest('.modal').modal === 'function') {
+                $btn.closest('.modal').modal('hide');
+            }
         }
 
         if (!productId) { toastr.error('Product not found'); resetBtn(); return; }
@@ -663,7 +688,7 @@ window.spInitStorefront = function () {
         var deliveryStatus  = isWholesaleAdd ? '2' : ($modal.find('input[name^="status_"]:checked').val() || '1');
         var deliveryAddress = '', lat = '', lng = '';
 
-        if (!isWholesaleAdd && deliveryStatus == '2') {
+        if (!isWholesaleAdd && deliveryStatus == '2' && !window.spAddingToOrder) {
             deliveryAddress = $modal.find('input[name="delivery_address_' + productId + '"]').val();
             lat             = $modal.find('input[name="lat_' + productId + '"]').val();
             lng             = $modal.find('input[name="lng_' + productId + '"]').val();
@@ -718,7 +743,6 @@ window.spInitStorefront = function () {
                         var count = 0;
                         $('.cart-counter-1').text(count);
                         if (typeof window.updateCartUI === 'function') window.updateCartUI({ cart: {} });
-                        $btn.closest('.modal').modal('hide');
                         return;
                     }
                     toastr.success(window.spAddingToOrder ? 'Your product has been added in My Orders.' : (isWholesaleAdd ? 'Added. Open My Cart, then Place Order. You can update the order until 6 hours before delivery.' : 'Product added to cart!'));
@@ -728,7 +752,9 @@ window.spInitStorefront = function () {
                     if (count > 0) {
                         $('a[href*="my-cart"]').removeClass('disabled').prop('disabled', false);
                     }
-                    $btn.closest('.modal').modal('hide');
+                    if (!window.spAddingToOrder) {
+                        hideProductModal();
+                    }
                 },
                 error: function (xhr) {
                     console.error('Cart error:', xhr.responseText);
@@ -740,22 +766,31 @@ window.spInitStorefront = function () {
             });
         }
 
-        if (window.spAddingToOrder && typeof Swal !== 'undefined') {
-            Swal.fire({
-                title: 'Are you sure?',
-                text: 'Are you sure you want to add this product in your order?',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#ff2d87',
-                confirmButtonText: 'Yes',
-                cancelButtonText: 'Cancel'
-            }).then(function (result) {
-                if (!result.isConfirmed) {
-                    resetBtn();
+        if (window.spAddingToOrder) {
+            hideProductModal();
+            resetBtn();
+            var ask = function () {
+                if (typeof Swal === 'undefined') {
+                    if (window.confirm('Are you sure you want to add this product in your order?')) {
+                        sendAdd();
+                    }
                     return;
                 }
-                sendAdd();
-            });
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'Are you sure you want to add this product in your order?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff2d87',
+                    confirmButtonText: 'Yes',
+                    cancelButtonText: 'Cancel'
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        sendAdd();
+                    }
+                });
+            };
+            setTimeout(ask, 250);
             return;
         }
         sendAdd();

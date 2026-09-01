@@ -205,16 +205,19 @@ Response includes Stripe checkout URL (same payment-first flow as before).
 
 | Method | Path | Use |
 |---|---|---|
-| GET | `/orders` | Full list with `channel`, `can_modify`, `state`, items |
+| GET | `/orders` or `/my-orders` | Grouped My Orders: `pending_wholesale`, `pending_regular`, `pending_special`, `pending_drive_in`, `past_orders`, `all_orders`. Add `?flat=1` for the old list. Each item includes `fulfillment` (pickup + delivery addresses). |
 | GET | `/orders/{id}` | Detail |
 | GET | `/my-orders-status?status=Pending` | Legacy list + extra `orders[]`, `channel_label`, `receipt_print_url` |
 | GET | `/order-state?order_id=` | Timer / wholesale lock text, `remaining_seconds`, `message` |
-| GET | `/orders/{id}/receipt` | JSON snapshot (print this in-app) |
-| GET | `/orders/{id}/receipt?html=1` | 80mm HTML (WebView; send Bearer) |
+| GET | `/orders/{id}/receipt` or `/orders/{id}/print-receipt` | Print JSON only (logo, company, addresses, items, totals). App should layout this. |
+| GET | `/orders/{id}/receipt?html=1` | 80mm HTML (WebView; send Bearer). Includes Sugar Pappi logo. |
 
 Receipt rules:
 
-- Labels: Takeaway / Home Delivery / Wholesale Delivery
+- Pickup: `fulfillment.pickup_address` (store) and `fulfillment.display_address`
+- Home delivery / wholesale: `fulfillment.delivery_address` and `fulfillment.display_address`
+- Website My Orders and print receipt show the same addresses
+- JSON includes `logo_url` / `company.logo_url` so the app can print the Sugar Pappi logo
 - Wholesale shows delivery date + 7:00 PM – 10:00 PM
 - Drive-In shows 20% discount
 - Only the **active** receipt. After an edit, previous receipt is cancelled
@@ -258,6 +261,29 @@ POST /orders/remove-items
 
 Any successful change: old receipt cancelled, new receipt, timer restarts (non-wholesale).
 
+**Change pickup / delivery / address** (regular, special, drive-in, **wholesale**)
+
+```
+POST /orders/{id}/delivery-method
+```
+
+```json
+{
+  "delivery_status": 2,
+  "delivery_address": "Aldow Industrial Park, Manchester",
+  "lat": 53.48,
+  "lng": -2.23
+}
+```
+
+- `delivery_status`: `1` = Store Pickup, `2` = Home Delivery
+- Delivery (`2`) needs address + `lat` / `lng` from Google Places (same as website)
+- Pickup (`1`): no address required
+- Wholesale: same endpoint while the 6-hour window is open
+- Old receipt cancelled, new receipt issued
+
+`GET /orders/{id}` includes `fulfillment.method`, `fulfillment.delivery_status`, `fulfillment.delivery_address`, `drive_in_discount_percent`.
+
 ---
 
 ## 4. Flow cheatsheet
@@ -267,7 +293,9 @@ Any successful change: old receipt cancelled, new receipt, timer restarts (non-w
 | Normal dessert | Home / Menu | Pickup or delivery + pickup time | 10-min window + print receipt |
 | Bulk wholesale | Dessert Wholesale | Save Mon/Thu/Sat date, then add | No 10-min. Edit until 6h before delivery. Receipt shows wholesale date |
 | Special items | Pappi Special | Order like a normal item | 10-min + receipt |
-| 20% off full food menu | Drive-In | Checkout applies 20% | 10-min + receipt shows discount |
+| 20% off full food menu | Drive-In | `channel=drive_in`; 20% at checkout not on list prices | 10-min + receipt shows discount |
+
+Drive-In 20%: `GET /storefront/drive-in-menu` → `discount_percent`. Add/place with `channel=drive_in`. `POST /storefront/checkout-preview` and `POST /place-order` apply it.
 
 ---
 

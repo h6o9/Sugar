@@ -29,7 +29,11 @@
             @csrf
             <div class="mb-3">
                 <label class="form-label fw-bold">Quantity</label>
-                <input type="number" name="quantity" class="form-control" min="1" value="{{ old('quantity', $item->quantity) }}" required>
+                <input type="number" name="quantity" id="editQty" class="form-control" min="1" value="{{ old('quantity', $item->quantity) }}" required>
+                <p class="fw-bold mt-2 mb-0" id="editLineTotal">
+                    Line total: £{{ number_format((float) $item->product_price * max(1, (int) old('quantity', $item->quantity)), 2) }}
+                    <span class="small text-muted fw-normal">(£{{ number_format((float) $item->product_price, 2) }} each)</span>
+                </p>
             </div>
 
             @if(count($variants) > 0)
@@ -38,7 +42,7 @@
                     <select name="variant_id" class="form-control" required>
                         @foreach($variants as $variant)
                             @php $variantPrice = (float) (($variant->price ?? 0) > 0 ? $variant->price : ($variant->original_price ?? 0)); @endphp
-                            <option value="{{ $variant->id }}" {{ (int) $selectedVariantId === (int) $variant->id ? 'selected' : '' }}>
+                            <option value="{{ $variant->id }}" data-price="{{ $variantPrice }}" {{ (int) $selectedVariantId === (int) $variant->id ? 'selected' : '' }}>
                                 {{ $variant->size }} — £{{ number_format($variantPrice, 2) }}
                             </option>
                         @endforeach
@@ -70,45 +74,7 @@
                 @endforeach
             @endif
 
-            @php
-                $isWholesaleOrder = app(\App\Services\OrderLifecycleService::class)->isWholesale($order);
-                $currentDelivery = (int) old('delivery_status', $item->delivery_status ?? 1);
-                if ($currentDelivery !== 2) {
-                    $currentDelivery = 1;
-                }
-                $pickupBranch = $item->branch ?: \App\Models\Branch::where('status', 1)->first();
-            @endphp
-            @if(!$isWholesaleOrder)
-            <div class="mb-3">
-                <label class="form-label fw-bold">How to get it</label>
-                <p class="small text-muted">This updates the whole order. Switch pickup to home delivery if you changed your mind.</p>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="delivery_status" id="editPickup" value="1" {{ $currentDelivery === 1 ? 'checked' : '' }}>
-                    <label class="form-check-label fw-bold" for="editPickup">Store Pickup</label>
-                </div>
-                @if($pickupBranch && $pickupBranch->location)
-                    <p class="small mb-2" id="editPickupNote">{{ $pickupBranch->location }}</p>
-                @endif
-                <div class="form-check mt-2">
-                    <input class="form-check-input" type="radio" name="delivery_status" id="editDelivery" value="2" {{ $currentDelivery === 2 ? 'checked' : '' }}>
-                    <label class="form-check-label fw-bold" for="editDelivery">Home Delivery</label>
-                </div>
-                <div id="editDeliveryFields" class="mt-2" style="{{ $currentDelivery === 2 ? '' : 'display:none;' }}">
-                    <input type="text"
-                        name="delivery_address"
-                        id="deliveryInputedit_fulfillment"
-                        class="form-control location-input"
-                        data-product="edit"
-                        data-branch="fulfillment"
-                        value="{{ old('delivery_address', $item->delivery_address) }}"
-                        placeholder="Enter your delivery address"
-                        autocomplete="off">
-                    <input type="hidden" name="lat" id="latedit_fulfillment" value="{{ old('lat') }}">
-                    <input type="hidden" name="lng" id="lngedit_fulfillment" value="{{ old('lng') }}">
-                    <p class="small text-muted mt-1 mb-0">Pick an address from the Google suggestions.</p>
-                </div>
-            </div>
-            @endif
+            <p class="small text-muted mb-0">To change pickup or home delivery, go back to My Orders and use <strong>Change delivery method</strong>.</p>
 
             <div class="d-flex gap-2 mt-4">
                 <button type="submit" class="btn sp-btn-pink">Save changes</button>
@@ -120,12 +86,30 @@
 @endsection
 @section('js')
 <script>
-document.querySelectorAll('input[name="delivery_status"]').forEach(function (radio) {
-    radio.addEventListener('change', function () {
-        var box = document.getElementById('editDeliveryFields');
-        if (!box) return;
-        box.style.display = this.value === '2' ? '' : 'none';
-    });
-});
+(function () {
+    var qty = document.getElementById('editQty');
+    var totalEl = document.getElementById('editLineTotal');
+    var sizeSel = document.querySelector('select[name="variant_id"]');
+    var unit = {{ json_encode((float) $item->product_price) }};
+    function currentUnit() {
+        if (sizeSel && sizeSel.options.length) {
+            var opt = sizeSel.options[sizeSel.selectedIndex];
+            var p = parseFloat(opt.getAttribute('data-price'));
+            if (!isNaN(p) && p > 0) return p;
+        }
+        return unit;
+    }
+    function refresh() {
+        if (!qty || !totalEl) return;
+        var n = parseInt(qty.value, 10);
+        if (!n || n < 1) n = 1;
+        var each = currentUnit();
+        var line = (each * n).toFixed(2);
+        totalEl.innerHTML = 'Line total: £' + line + ' <span class="small text-muted fw-normal">(£' + each.toFixed(2) + ' × ' + n + ')</span>';
+    }
+    if (qty) qty.addEventListener('input', refresh);
+    if (sizeSel) sizeSel.addEventListener('change', refresh);
+    refresh();
+})();
 </script>
 @endsection

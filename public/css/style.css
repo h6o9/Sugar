@@ -971,8 +971,9 @@ button.tab-scroll-btn.left.disabled, button.tab-scroll-btn.right.disabled {
 }
 
 .menu-modal img[alt="product-img"] {
-    height: 88px;
-    object-fit: cover;
+    height: auto;
+    max-height: 260px;
+    object-fit: contain;
     object-position: center;
 }
 

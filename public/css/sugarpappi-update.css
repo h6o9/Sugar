@@ -572,6 +572,13 @@ body.nav-open {
     font-size: 12px;
 }
 
+.receipt-80mm .receipt-logo {
+    display: block;
+    max-width: 72px;
+    height: auto;
+    margin: 0 auto 6px;
+}
+
 .receipt-80mm table {
     width: 100%;
     border-collapse: collapse;
@@ -833,12 +840,34 @@ body.nav-open {
 .sp-order-item {
     display: flex;
     gap: 12px;
-    align-items: center;
+    align-items: flex-start;
     padding: 8px 0;
     border-top: 1px solid #f3f3f3;
 }
 .sp-order-item img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
 .sp-order-item > div { flex: 1; min-width: 0; }
+.sp-order-comp {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: #f7fff8;
+    border: 1px dashed #9ad7a4;
+    border-radius: 8px;
+}
+.sp-order-comp img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
+.sp-order-comp-badge {
+    display: inline-block;
+    background: #198754;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .03em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+}
 .sp-remove-item {
     background: #111 !important;
     color: #fff !important;
@@ -887,7 +916,27 @@ body.nav-open {
     padding: 8px 16px;
 }
 
-/* Product modal: compact height, keep Add to Cart above the app-download banner */
+/* Product popup: centered, above header, dimmed page, full product image */
+body.modal-open {
+    overflow: hidden !important;
+}
+body.modal-open .sp-site-header,
+body.modal-open .navbar,
+body.modal-open .sidebar.d-lg-none,
+body.modal-open .app-download-banner {
+    z-index: 1 !important;
+}
+.modal-backdrop {
+    z-index: 20000 !important;
+    background-color: #000 !important;
+}
+.modal-backdrop.show {
+    opacity: 0.55 !important;
+}
+.menu-modal {
+    z-index: 20010 !important;
+    padding: 0 !important;
+}
 .menu-modal.show {
     display: flex !important;
     align-items: center;
@@ -895,27 +944,29 @@ body.nav-open {
     height: 100% !important;
     max-height: 100vh;
     overflow: hidden !important;
-    padding: 8px 12px 76px;
-    z-index: 1060;
+    padding: 16px 12px !important;
 }
 .menu-modal .modal-dialog,
+.menu-modal .modal-dialog.modal-dialog-centered,
 .menu-modal .modal-dialog.modal-dialog-scrollable {
-    max-width: 420px;
-    width: 100%;
+    max-width: 520px;
+    width: calc(100% - 16px);
     height: auto !important;
-    max-height: min(72vh, 560px) !important;
-    margin: 0 auto;
+    max-height: calc(100vh - 32px) !important;
+    margin: 0 auto !important;
 }
 .menu-modal .modal-content {
-    max-height: min(72vh, 560px) !important;
+    max-height: calc(100vh - 32px) !important;
     height: auto !important;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.35);
 }
 .menu-modal .modal-body {
     overflow-y: auto;
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     min-height: 0;
     -webkit-overflow-scrolling: touch;
 }
@@ -924,22 +975,23 @@ body.nav-open {
     background: #fff;
     z-index: 3;
     box-shadow: 0 -6px 16px rgba(0,0,0,.08);
-    padding: 6px 10px !important;
+    padding: 10px 12px !important;
 }
 .menu-modal img[alt="product-img"] {
-    height: 88px !important;
-    max-height: 88px;
-    width: 100%;
-    object-fit: cover;
+    height: auto !important;
+    max-height: 260px !important;
+    width: 100% !important;
+    object-fit: contain !important;
     object-position: center;
     display: block;
+    background: #f4f4f4;
 }
 .menu-modal .description {
-    padding: 8px 12px !important;
+    padding: 12px 16px !important;
 }
 .menu-modal .description h3 {
-    font-size: 17px;
-    margin-bottom: 4px;
+    font-size: 20px;
+    margin-bottom: 6px;
 }
 .menu-modal .description h6 {
     font-size: 13px;
@@ -949,8 +1001,8 @@ body.nav-open {
     margin-bottom: 6px;
 }
 .menu-modal .description p.small {
-    max-height: 2.6em;
-    overflow: hidden;
+    max-height: none;
+    overflow: visible;
     margin-bottom: 6px;
 }
 .menu-modal .cart-btn {
@@ -966,20 +1018,25 @@ body.nav-open {
 }
 .menu-modal img.img-fluid.rounded-circle,
 .menu-modal .description img.img-fluid {
-    width: 64px !important;
-    height: 64px !important;
+    width: 100px !important;
+    height: 100px !important;
+    object-fit: cover !important;
 }
 @media (max-width: 575.98px) {
     .menu-modal.show {
-        padding-bottom: 72px;
+        padding: 10px 8px !important;
     }
     .menu-modal .modal-dialog,
     .menu-modal .modal-dialog.modal-dialog-scrollable,
     .menu-modal .modal-content {
-        max-height: min(70vh, 500px) !important;
+        max-height: calc(100vh - 20px) !important;
     }
     .menu-modal img[alt="product-img"] {
-        height: 72px !important;
-        max-height: 72px;
+        max-height: 200px !important;
+        height: auto !important;
     }
+}
+
+.swal2-container {
+    z-index: 30000 !important;
 }

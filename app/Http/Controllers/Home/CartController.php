@@ -106,10 +106,10 @@ class CartController extends Controller
 public function addToCart(Request $request)
 {
     try {
-        $product = Product::with(['variants', 'menu'])->findOrFail($request->product_id);
+        $product = Product::with(['variants', 'menu', 'complementaryProductSingle.complementary'])->findOrFail($request->product_id);
         $complementryProduct = $request->filled('complementary_id')
             ? Product::where('id', $request->complementary_id)->first()
-            : null;
+            : optional($product->complementaryProductSingle)->complementary;
 
         if ($request->branch_id) {
             $branch = Branch::where('id', $request->branch_id)->first();
@@ -228,6 +228,21 @@ public function addToCart(Request $request)
                     Session::put('wholesale_delivery_date', $date);
                     Session::put('selected_order_type', 'wholesale');
                 }
+            }
+        }
+
+        if ($pendingOrder) {
+            $existingLine = $pendingOrder->orderItem()->first();
+            if ($existingLine) {
+                $cart[$cartKey]['delivery_status'] = $existingLine->delivery_status ?? 1;
+                $cart[$cartKey]['delivery_address'] = $existingLine->delivery_address ?? '';
+                $cart[$cartKey]['fulfillment'] = ((int) ($existingLine->delivery_status ?? 1) === 2)
+                    ? 'home_delivery'
+                    : 'takeaway';
+                if ($existingLine->branch_id) {
+                    $cart[$cartKey]['branch_id'] = $existingLine->branch_id;
+                }
+                Session::put('cart', $cart);
             }
         }
 

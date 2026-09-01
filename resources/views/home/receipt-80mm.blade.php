@@ -7,6 +7,7 @@
     <style>
         body { background:#f4f4f4; }
         .wrap { padding: 16px; }
+        .receipt-logo { display:block; max-width:72px; height:auto; margin:0 auto 6px; }
     </style>
 </head>
 <body>
@@ -16,12 +17,21 @@
             <p style="color:red">This receipt has been {{ $receipt->status }} and should not be used.</p>
         @endif
     </div>
-    @php $snap = $receipt->snapshot ?: []; @endphp
+    @php
+        $snap = $receipt->snapshot ?: [];
+        $firstItem = $order->orderItem->first();
+        $ff = $firstItem ? \App\Support\CartCheckout::fulfillmentDetails($firstItem, $order) : null;
+        $logoUrl = $snap['logo_url'] ?? \App\Support\CartCheckout::logoUrl();
+        $companyName = $snap['brand'] ?? \App\Support\CartCheckout::companyName();
+        $branchName = $ff['pickup_name'] ?? optional(optional($firstItem)->branch)->name;
+        $branchAddress = $ff['pickup_address'] ?? optional(optional($firstItem)->branch)->location;
+    @endphp
     <div class="receipt-80mm">
         <div style="text-align:center;border-bottom:1px dashed #000;padding-bottom:8px;margin-bottom:8px;">
-            <strong>SUGAR PAPPI</strong><br>
-            {{ optional(optional($order->orderItem->first())->branch)->name }}<br>
-            {{ optional(optional($order->orderItem->first())->branch)->location }}
+            <img class="receipt-logo" src="{{ $logoUrl }}" alt="{{ $companyName }}" style="display:block;max-width:72px;height:auto;margin:0 auto 6px;">
+            <strong>{{ strtoupper($companyName) }}</strong><br>
+            {{ $branchName }}<br>
+            {{ $branchAddress }}
         </div>
         <div>Order #{{ $snap['order_number'] ?? $order->code }}</div>
         <div>Receipt {{ $snap['receipt_number'] ?? $receipt->receipt_number }} (v{{ $receipt->version }})</div>
@@ -31,6 +41,14 @@
         <div>Type: {{ $snap['order_type'] ?? $order->order_type }}</div>
         <div>Order status: {{ $order->status }}</div>
         @if(!empty($snap['customer']))<div>Customer: {{ $snap['customer'] }}</div>@endif
+        @if($ff)
+            <div>{{ $ff['label'] }}</div>
+            @if($ff['is_delivery'] && !empty($ff['delivery_address']))
+                <div>Delivery address: {{ $ff['delivery_address'] }}</div>
+            @elseif(!empty($ff['pickup_address']))
+                <div>Pickup address: {{ $ff['pickup_address'] }}</div>
+            @endif
+        @endif
         @if($order->wholesale_delivery_date)<div>Wholesale delivery: {{ $order->wholesale_delivery_date }} (7PM–10PM)</div>@endif
         @if($order->is_scheduled)<div>Scheduled: {{ $order->scheduled_at }}</div>@endif
         <hr>
@@ -45,7 +63,12 @@
                         {{ $item['name'] }}
                         @if(!empty($item['size']) && $item['size'] !== 'NULL') ({{ $item['size'] }}) @endif
                         @if(!empty($item['fulfillment']))
-                            <div style="font-size:11px;font-weight:700;">{{ $item['fulfillment'] }}</div>
+                            <div style="font-size:11px;font-weight:700;">{{ is_array($item['fulfillment']) ? ($item['fulfillment']['label'] ?? '') : $item['fulfillment'] }}</div>
+                        @endif
+                        @if(!empty($item['address']))
+                            <div style="font-size:11px;">{{ $item['address'] }}</div>
+                        @elseif(!empty($item['fulfillment']['display_address']))
+                            <div style="font-size:11px;">{{ $item['fulfillment']['display_address'] }}</div>
                         @endif
                         @foreach(($item['modifiers'] ?? []) as $mod)
                             <div style="font-size:11px">+ {{ $mod['name'] }}</div>

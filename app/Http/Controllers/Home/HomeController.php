@@ -222,11 +222,11 @@ public function index()
             'complementaryProductSingle.complementary.variants',
         ])
         ->where('status', 1)
-        ->where('name', 'like', "%{$searchTerm}%")
-        ->get()
-        ->filter(function ($product) {
-            return !MenuCatalog::isSpecial($product->menu);
+        ->where(function ($q) use ($searchTerm) {
+            $q->where('name', 'like', "%{$searchTerm}%")
+                ->orWhere('description', 'like', "%{$searchTerm}%");
         })
+        ->get()
         ->values();
 
     // ✅ FIX: Set default_price, original_price, featured_* on each filtered product
@@ -262,15 +262,17 @@ public function index()
         }
     }
 
-    $menuCategories = MenuCatalog::forStorefront(true, false);
+    $menuCategories = MenuCatalog::forStorefront(false, false);
 
     $menuGalleries = MenuGallery::orderBy('id', 'DESC')->take(4)->get();
 
     $addingToOrder = false;
     try {
         $lifecycle = app(\App\Services\OrderLifecycleService::class);
-        $lifecycle->cancelWholesaleAddToOrderSession();
         $addingToOrder = $lifecycle->hasActiveAddToOrderSession($userId ? (int) $userId : null);
+        if (!$addingToOrder) {
+            $lifecycle->cancelWholesaleAddToOrderSession();
+        }
     } catch (\Throwable $e) {
         $addingToOrder = false;
     }

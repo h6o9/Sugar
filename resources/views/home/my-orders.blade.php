@@ -63,26 +63,17 @@
                             <strong>{{ $item->product_name ?: optional($item->product)->name }}</strong>
                             <div class="small text-muted">
                                 Qty {{ $item->quantity }}
-                                @if($item->product_size)
-                                    · {{ $item->product_size }}
+                                @if($item->displaySize())
+                                    · {{ $item->displaySize() }}
                                 @endif
-                                · £{{ number_format((float) $item->product_price, 2) }}
+                                · £{{ number_format($item->lineTotal(), 2) }}
+                                <span class="d-block">£{{ number_format((float) $item->product_price, 2) }} each</span>
                             </div>
                             @if($toppingNames->isNotEmpty())
                                 <div class="small text-muted">Toppings: {{ $toppingNames->implode(', ') }}</div>
                             @endif
-                            @php
-                                $isDelivery = (int) ($item->delivery_status ?? 1) === 2;
-                                if ($isDelivery) {
-                                    $fulfillText = 'Home Delivery';
-                                    if ($item->delivery_address) {
-                                        $fulfillText .= ' · ' . $item->delivery_address;
-                                    }
-                                } else {
-                                    $fulfillText = 'Store Pickup';
-                                }
-                            @endphp
-                            <div class="small text-muted">{{ $fulfillText }}</div>
+                            @include('home.partials.order-item-fulfillment', ['item' => $item, 'order' => $order])
+                            @include('home.partials.order-item-complementary', ['item' => $item])
                         </div>
                         <div class="sp-item-actions">
                             <a class="btn btn-sm sp-edit-item" href="{{ route('orders.edit-item', [$order->id, $item->id]) }}">Edit</a>
@@ -124,26 +115,17 @@
                             <strong>{{ $item->product_name ?: optional($item->product)->name }}</strong>
                             <div class="small text-muted">
                                 Qty {{ $item->quantity }}
-                                @if($item->product_size)
-                                    · {{ $item->product_size }}
+                                @if($item->displaySize())
+                                    · {{ $item->displaySize() }}
                                 @endif
-                                · £{{ number_format((float) $item->product_price, 2) }}
+                                · £{{ number_format($item->lineTotal(), 2) }}
+                                <span class="d-block">£{{ number_format((float) $item->product_price, 2) }} each</span>
                             </div>
                             @if($toppingNames->isNotEmpty())
                                 <div class="small text-muted">Toppings: {{ $toppingNames->implode(', ') }}</div>
                             @endif
-                            @php
-                                $isDelivery = (int) ($item->delivery_status ?? 1) === 2;
-                                if ($isDelivery) {
-                                    $fulfillText = 'Home Delivery';
-                                    if ($item->delivery_address) {
-                                        $fulfillText .= ' · ' . $item->delivery_address;
-                                    }
-                                } else {
-                                    $fulfillText = 'Store Pickup';
-                                }
-                            @endphp
-                            <div class="small text-muted">{{ $fulfillText }}</div>
+                            @include('home.partials.order-item-fulfillment', ['item' => $item, 'order' => $order])
+                            @include('home.partials.order-item-complementary', ['item' => $item])
                         </div>
                         @if($lifecycle->canModify($order))
                         <div class="sp-item-actions">
@@ -186,7 +168,9 @@
                         <img src="{{ asset(optional($item->product)->image ?: 'public/img/logo.png') }}" alt="">
                         <div>
                             <strong>{{ $item->product_name ?: optional($item->product)->name }}</strong>
-                            <div class="small text-muted">Qty {{ $item->quantity }} · £{{ number_format((float) $item->product_price, 2) }}</div>
+                            <div class="small text-muted">Qty {{ $item->quantity }} · £{{ number_format($item->lineTotal(), 2) }} <span class="d-block">£{{ number_format((float) $item->product_price, 2) }} each</span></div>
+                            @include('home.partials.order-item-fulfillment', ['item' => $item, 'order' => $order])
+                            @include('home.partials.order-item-complementary', ['item' => $item])
                         </div>
                     </div>
                 @endforeach

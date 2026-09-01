@@ -45,7 +45,7 @@ class OrderController extends Controller
         $orders = \App\Models\Order::with([
                 'orderItem.complementaryProduct',
                 'orderItem.branch',
-                'orderItem.product',
+                'orderItem.product.complementaryProductSingle.complementary',
                 'orderItem.orderToppings.category',
                 'orderItem.orderToppings.toppings',
             ])

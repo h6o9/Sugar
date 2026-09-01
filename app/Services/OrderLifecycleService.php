@@ -277,7 +277,7 @@ class OrderLifecycleService
                 ? 'You have ' . $this->addToOrderMinutes() . ' minutes to add or remove items. Any change cancels the old receipt, issues a new one, and restarts this timer. If you do nothing, the order stays placed.'
                 : 'Your time to change this order has ended. The order stays as placed.';
         }
-        return [
+        $payload = [
             'current_order' => [
                 'id' => $order->id,
                 'code' => $order->code,
@@ -288,7 +288,6 @@ class OrderLifecycleService
             'add_items_until' => $order->add_items_until,
             'remaining_seconds' => $this->remainingSeconds($order),
             'remaining_time' => $this->formatRemaining($this->remainingSeconds($order)),
-            'add_minutes' => $this->addToOrderMinutes(),
             'receipt_version' => $order->receipt_version ?? 1,
             'is_scheduled' => (bool) ($order->is_scheduled ?? false),
             'scheduled_time' => $order->scheduled_at,
@@ -300,6 +299,11 @@ class OrderLifecycleService
             'lock_at_label' => $lockLocal,
             'message' => $message,
         ];
+        if (!$isWholesale) {
+            $payload['add_minutes'] = $this->addToOrderMinutes();
+        }
+
+        return $payload;
     }
 
     public function timerPayload(Order $order): array
@@ -326,9 +330,7 @@ class OrderLifecycleService
                 : 'Your time to change this order has ended. The order stays as placed.';
         }
 
-        return [
-            'minutes' => $minutes,
-            'add_minutes' => $minutes,
+        $payload = [
             'started_at' => $started ? $started->toIso8601String() : null,
             'started_at_label' => $started ? $started->copy()->setTimezone($tz)->format('g:i A') : null,
             'started_at_unix' => $started ? $started->timestamp : null,
@@ -342,6 +344,12 @@ class OrderLifecycleService
             'timezone' => $tz,
             'message' => $message,
         ];
+        if (!$isWholesale) {
+            $payload['minutes'] = $minutes;
+            $payload['add_minutes'] = $minutes;
+        }
+
+        return $payload;
     }
 
     public function assertCanModify(Order $order): void
@@ -369,22 +377,60 @@ class OrderLifecycleService
                 if (empty($details['product_id'])) {
                     continue;
                 }
+                $qty = max(1, (int) ($details['quantity'] ?? 1));
+                $price = floatval($details['price'] ?? 0);
+                $compId = $details['complementary']['id'] ?? ($details['complementary_id'] ?? null);
+                if (!$compId) {
+                    $catalog = Product::with('complementaryProductSingle.complementary')->find($details['product_id']);
+                    $compId = optional(optional($catalog)->complementaryProductSingle)->complementary->id ?? null;
+                }
+                $size = $this->normalizeLineSize($details['size'] ?? null);
+                $toppingMap = is_array($details['toppings_by_category'] ?? null) ? $details['toppings_by_category'] : [];
+                $toppingKey = $this->toppingFingerprintFromMap($toppingMap);
+
+                $matches = OrderItem::where('order_id', $locked->id)
+                    ->where('product_id', $details['product_id'])
+                    ->lockForUpdate()
+                    ->get()
+                    ->filter(function ($row) use ($size, $toppingKey) {
+                        return $this->normalizeLineSize($row->product_size) === $size
+                            && $this->itemToppingFingerprint($row) === $toppingKey;
+                    })->values();
+
+                if ($matches->isNotEmpty()) {
+                    $keep = $matches->first();
+                    $extraQty = 0;
+                    foreach ($matches->skip(1) as $dup) {
+                        $extraQty += (int) $dup->quantity;
+                        OrderItemToppings::where('order_item_id', $dup->id)->delete();
+                        $dup->delete();
+                    }
+                    $keep->quantity = (int) $keep->quantity + $extraQty + $qty;
+                    $keep->product_price = $price > 0 ? $price : $keep->product_price;
+                    $keep->sub_total = floatval($keep->product_price) * (int) $keep->quantity;
+                    if ($compId && !$keep->product_complementary_id) {
+                        $keep->product_complementary_id = $compId;
+                    }
+                    $keep->save();
+                    continue;
+                }
+
                 $orderItem = new OrderItem();
                 $orderItem->order_id = $locked->id;
                 $orderItem->product_id = $details['product_id'];
-                $orderItem->product_complementary_id = $details['complementary']['id'] ?? ($details['complementary_id'] ?? null);
-                $orderItem->product_size = $details['size'] ?? 'NULL';
-                $orderItem->product_price = $details['price'];
+                $orderItem->product_complementary_id = $compId;
+                $orderItem->product_size = $size;
+                $orderItem->product_price = $price;
                 $orderItem->branch_id = $details['branch_id'] ?? $locked->branch_id;
                 $orderItem->product_name = $details['name'] ?? '';
-                $orderItem->quantity = $details['quantity'] ?? 1;
-                $orderItem->sub_total = floatval($details['price']) * floatval($details['quantity'] ?? 1);
+                $orderItem->quantity = $qty;
+                $orderItem->sub_total = $price * $qty;
                 $orderItem->delivery_status = $details['delivery_status'] ?? null;
                 $orderItem->delivery_address = $details['delivery_address'] ?? null;
                 $orderItem->save();
 
-                if (!empty($details['toppings_by_category']) && is_array($details['toppings_by_category'])) {
-                    foreach ($details['toppings_by_category'] as $categoryId => $toppingIds) {
+                if (!empty($toppingMap)) {
+                    foreach ($toppingMap as $categoryId => $toppingIds) {
                         foreach ((array) $toppingIds as $toppingId) {
                             $row = new OrderItemToppings();
                             $row->order_item_id = $orderItem->id;
@@ -431,8 +477,11 @@ class OrderLifecycleService
     {
         $this->assertCanModify($order);
         $ids = array_values(array_unique(array_map('intval', $itemIds)));
+        $ids = array_values(array_filter($ids, function ($id) {
+            return $id > 0;
+        }));
         if (!$ids) {
-            throw new \RuntimeException('Please select the item you want to remove.');
+            throw new \RuntimeException('Send item_ids as an array of order line ids, e.g. {"order_id":665,"item_ids":[12]}. Use items[].id from GET /api/orders/665, not the product id.');
         }
 
         return DB::transaction(function () use ($order, $ids) {
@@ -442,7 +491,16 @@ class OrderLifecycleService
 
             $items = OrderItem::where('order_id', $locked->id)->whereIn('id', $ids)->lockForUpdate()->get();
             if ($items->isEmpty()) {
-                throw new \RuntimeException('Please select the item you want to remove.');
+                $items = OrderItem::where('order_id', $locked->id)->whereIn('product_id', $ids)->lockForUpdate()->get();
+            }
+            if ($items->isEmpty()) {
+                $valid = OrderItem::where('order_id', $locked->id)->get(['id', 'product_id', 'product_name']);
+                $hint = $valid->isEmpty()
+                    ? 'This order has no items left.'
+                    : 'Valid item_ids on this order: ' . $valid->pluck('id')->implode(', ') . '.';
+                throw new \RuntimeException(
+                    'Item not found on this order. item_ids must be the line id (items[].id), not product_id. ' . $hint
+                );
             }
 
             foreach ($items as $item) {
@@ -517,7 +575,16 @@ class OrderLifecycleService
 
             $item = OrderItem::where('order_id', $locked->id)->where('id', $itemId)->lockForUpdate()->first();
             if (!$item) {
-                throw new \RuntimeException('Order item not found.');
+                $item = OrderItem::where('order_id', $locked->id)->where('product_id', $itemId)->lockForUpdate()->first();
+            }
+            if (!$item) {
+                $valid = OrderItem::where('order_id', $locked->id)->get(['id', 'product_id', 'product_name']);
+                $hint = $valid->isEmpty()
+                    ? 'This order has no items.'
+                    : 'Valid item_id values: ' . $valid->map(function ($row) {
+                        return $row->id . ' (' . $row->product_name . ', product_id ' . $row->product_id . ')';
+                    })->implode(', ') . '.';
+                throw new \RuntimeException('Order item not found. ' . $hint);
             }
 
             $quantity = array_key_exists('quantity', $options)
@@ -787,7 +854,13 @@ class OrderLifecycleService
 
     public function generateReceipt(Order $order, string $reason = 'created'): OrderReceipt
     {
-        $order->loadMissing(['orderItem.orderToppings.toppings', 'orderItem.branch', 'user']);
+        $order->loadMissing([
+            'orderItem.orderToppings.toppings',
+            'orderItem.branch',
+            'orderItem.product.complementaryProductSingle.complementary',
+            'orderItem.complementaryProduct',
+            'user',
+        ]);
         $version = (int) ($order->receipt_number_next ?? (($order->receipt_version ?? 0) + ($reason === 'created' ? 0 : 1)));
         if ($reason === 'created') {
             $version = 1;
@@ -908,6 +981,10 @@ class OrderLifecycleService
 
     protected function receiptSnapshot(Order $order, int $version): array
     {
+        $first = $order->orderItem->first();
+        $orderFulfillment = $first
+            ? \App\Support\CartCheckout::fulfillmentDetails($first, $order)
+            : null;
         $items = [];
         foreach ($order->orderItem as $item) {
             $modifiers = [];
@@ -917,20 +994,37 @@ class OrderLifecycleService
                     'price' => optional($topping->toppings)->price,
                 ];
             }
+            $ff = \App\Support\CartCheckout::fulfillmentDetails($item, $order);
+            $gift = $item->complimentaryGift();
             $items[] = [
                 'name' => $item->product_name,
-                'size' => $item->product_size,
+                'size' => $item->displaySize(),
                 'qty' => $item->quantity,
                 'unit_price' => $item->product_price,
-                'line_total' => $item->sub_total,
+                'line_total' => $item->lineTotal(),
                 'modifiers' => $modifiers,
-                'fulfillment' => \App\Support\CartCheckout::fulfillmentLabel($item, $order->order_type),
+                'fulfillment' => $ff['label'],
+                'fulfillment_details' => $ff,
+                'address' => $ff['display_address'],
                 'delivery_status' => $item->delivery_status,
+                'complementary' => $gift ? [
+                    'id' => $gift->id,
+                    'name' => $gift->name,
+                    'image' => \App\Support\StorefrontApiPresenter::imageUrl($gift->image ?? null),
+                    'badge' => 'BUY 1 GET 1 FREE',
+                ] : null,
             ];
         }
 
         return [
-            'brand' => 'Sugar Pappi',
+            'brand' => \App\Support\CartCheckout::companyName(),
+            'logo_url' => \App\Support\CartCheckout::logoUrl(),
+            'company' => [
+                'name' => \App\Support\CartCheckout::companyName(),
+                'logo_url' => \App\Support\CartCheckout::logoUrl(),
+                'branch_name' => $orderFulfillment['pickup_name'] ?? optional(optional($first)->branch)->name,
+                'address' => $orderFulfillment['pickup_address'] ?? optional(optional($first)->branch)->location,
+            ],
             'order_number' => $order->code,
             'receipt_number' => $order->code . '-R' . $version,
             'version' => $version,
@@ -941,16 +1035,18 @@ class OrderLifecycleService
             'status' => $order->status,
             'payment' => $this->receiptPaymentMethod($order->payment),
             'payment_status' => $this->receiptPaymentStatus($order),
+            'fulfillment' => $orderFulfillment,
             'items' => $items,
             'subtotal' => $order->subtotal,
             'discount' => $order->discount_amount,
             'discount_label' => $order->discount_label,
             'delivery_charge' => $order->delivery_charge,
-            'tax' => optional(optional($order->orderItem->first())->branch)->tax ?? 0,
+            'tax' => optional(optional($first)->branch)->tax ?? 0,
             'grand_total' => $order->total_amount,
             'wholesale_delivery_date' => $order->wholesale_delivery_date,
             'scheduled_at' => $order->scheduled_at,
             'notes' => $order->notes,
+            'thank_you' => 'Thank you',
         ];
     }
 
@@ -1178,5 +1274,44 @@ class OrderLifecycleService
                 $row->save();
             }
         }
+    }
+
+    protected function normalizeLineSize($size): ?string
+    {
+        if ($size === null) {
+            return null;
+        }
+        $size = trim((string) $size);
+        if ($size === '' || strcasecmp($size, 'null') === 0 || strcasecmp($size, 'default') === 0) {
+            return null;
+        }
+        return strtolower($size);
+    }
+
+    protected function toppingFingerprintFromMap(array $toppingMap): string
+    {
+        $ids = [];
+        foreach ($toppingMap as $toppingIds) {
+            foreach ((array) $toppingIds as $toppingId) {
+                if (is_array($toppingId)) {
+                    $toppingId = $toppingId['topping_id'] ?? null;
+                }
+                $id = (int) $toppingId;
+                if ($id > 0) {
+                    $ids[] = $id;
+                }
+            }
+        }
+        $ids = array_values(array_unique($ids));
+        sort($ids);
+        return implode(',', $ids);
+    }
+
+    protected function itemToppingFingerprint(OrderItem $item): string
+    {
+        $ids = OrderItemToppings::where('order_item_id', $item->id)->pluck('topping_id')->map(function ($id) {
+            return (int) $id;
+        })->filter()->unique()->sort()->values()->all();
+        return implode(',', $ids);
     }
 }

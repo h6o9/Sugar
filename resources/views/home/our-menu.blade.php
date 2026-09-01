@@ -644,6 +644,9 @@
                                     </div>
 
                                     {{-- How to get it --}}
+                                    @if(!empty($addingToOrder))
+                                        @include('home.partials.locked-fulfillment', ['productId' => $prod->id])
+                                    @else
                                     <div class="description p-3">
                                         <div class="d-flex justify-content-between">
                                             <h6>How to get it</h6>
@@ -706,6 +709,7 @@
                                             @endif
                                         @endforeach
                                     </div>
+                                    @endif
 
                                     {{-- Toppings --}}
                                     @if ($prod->category && $prod->category->isNotEmpty())
@@ -766,7 +770,7 @@
                                         class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
                                         data-bs-dismiss="modal"></button>
                                     <div class="text-center mx-auto">
-                                        <button class="btn btn-danger addto-cart px-sm-5 px-4" data-add-label="{{ $addBtnLabel }}" @if(!empty($wholesaleMode)) data-wholesale="1" @endif>
+                                        <button class="btn btn-danger addto-cart px-sm-5 px-4" data-product-id="{{ $prod->id }}" data-add-label="{{ $addBtnLabel }}" @if(!empty($wholesaleMode)) data-wholesale="1" @endif>
                                             {{ $addBtnLabel }}
                                         </button>
                                     </div>

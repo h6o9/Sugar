@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PlaceOrderController;
 use App\Http\Controllers\Api\ProductDetailsController;
+use App\Http\Controllers\Api\GoogleMapsController;
 use App\Http\Controllers\Api\StorefrontApiController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -108,12 +109,15 @@ Route::post('/orders/add-items', [StorefrontApiController::class, 'addItems']);
 Route::post('/orders/update-item', [StorefrontApiController::class, 'updateItem']);
 Route::get('/orders/{orderId}/items/{itemId}/options', [StorefrontApiController::class, 'itemOptions']);
 Route::post('/orders/remove-items', [StorefrontApiController::class, 'removeItems']);
+Route::post('/orders/{id}/delivery-method', [StorefrontApiController::class, 'updateDeliveryMethod']);
 Route::post('/orders/add-from-cart', [StorefrontApiController::class, 'addFromCart']);
 Route::post('/orders/{id}/start-add-items', [StorefrontApiController::class, 'startAddItems']);
 Route::post('/orders/{id}/cancel-add-items', [StorefrontApiController::class, 'cancelAddItems']);
 Route::get('/orders', [StorefrontApiController::class, 'myOrders']);
+Route::get('/my-orders', [StorefrontApiController::class, 'myOrders']);
 Route::get('/orders/{id}', [StorefrontApiController::class, 'orderDetail']);
 Route::get('/orders/{id}/receipt', [StorefrontApiController::class, 'receipt']);
+Route::get('/orders/{id}/print-receipt', [StorefrontApiController::class, 'printReceipt']);
 Route::get('/storefront/cart-context', [StorefrontApiController::class, 'cartContext']);
 Route::post('/storefront/cart-context', [StorefrontApiController::class, 'setCartContext']);
 Route::post('/storefront/set-wholesale-date', [StorefrontApiController::class, 'setWholesaleDate']);
@@ -122,6 +126,10 @@ Route::post('/storefront/checkout-preview', [StorefrontApiController::class, 'ch
 Route::post('/storefront/schedule', [StorefrontApiController::class, 'setSchedule']);
 
 });
+
+Route::get('/maps/autocomplete', [GoogleMapsController::class, 'autocomplete']);
+Route::get('/maps/place-details', [GoogleMapsController::class, 'placeDetails']);
+Route::get('/maps/geocode', [GoogleMapsController::class, 'geocode']);
 
 Route::get('/business-status', [StorefrontApiController::class, 'businessStatus']);
 Route::get('/stores', [StorefrontApiController::class, 'stores']);

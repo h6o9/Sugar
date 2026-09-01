@@ -55,7 +55,7 @@
                             @endforeach
                         </select>
                     @endif
-                    <button type="button" class="btn cz-add-btn addto-cart mt-auto" data-wholesale="1" data-add-label="Add to Cart">
+                    <button type="button" class="btn cz-add-btn addto-cart mt-auto" data-product-id="{{ $product->id }}" data-wholesale="1" data-add-label="Add to Cart">
                         Add to Cart
                     </button>
                 </div>

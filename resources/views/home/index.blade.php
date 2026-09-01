@@ -315,6 +315,9 @@
                             </div>
 
                             {{-- Location --}}
+                            @if(!empty($updatingOrder))
+                                @include('home.partials.locked-fulfillment', ['productId' => $product->id])
+                            @else
                             <div class="description p-3">
                                 <div class="d-flex justify-content-between">
                                     <h6>How to get it</h6>
@@ -362,6 +365,7 @@
                                     @endif
                                 @endforeach
                             </div>
+                            @endif
 
                             {{-- Toppings --}}
                             @if ($product->category->isNotEmpty())
@@ -404,7 +408,7 @@
                                 class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
                                 data-bs-dismiss="modal"></button>
                             <div class="text-center mx-auto">
-                                <button class="btn btn-danger addto-cart px-sm-5 px-4">Add To Order</button>
+                                <button class="btn btn-danger addto-cart px-sm-5 px-4" data-product-id="{{ $product->id }}">Add To Order</button>
                             </div>
                         </div>
                     </div>
@@ -716,6 +720,9 @@
                                         </div>
 
                                         {{-- Location --}}
+                                        @if(!empty($updatingOrder) || !empty($addingToOrder))
+                                            @include('home.partials.locked-fulfillment', ['productId' => $prod->id])
+                                        @else
                                         <div class="description p-3">
                                             <div class="d-flex justify-content-between">
                                                 <h6>How to get it</h6>
@@ -767,6 +774,7 @@
                                                 @endif
                                             @endforeach
                                         </div>
+                                        @endif
 
                                         {{-- Toppings --}}
                                         @if ($prod->category && $prod->category->isNotEmpty())
@@ -809,7 +817,7 @@
                                             class="btn time-modal-close ri-close-circle-line btn-danger px-2 ms-3 py-0"
                                             data-bs-dismiss="modal"></button>
                                         <div class="text-center mx-auto">
-                                            <button class="btn btn-danger addto-cart px-sm-5 px-4">Add To Order</button>
+                                            <button class="btn btn-danger addto-cart px-sm-5 px-4" data-product-id="{{ $prod->id }}">Add To Order</button>
                                         </div>
                                     </div>
                                 </div>

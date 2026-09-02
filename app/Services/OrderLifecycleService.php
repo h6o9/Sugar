@@ -584,7 +584,14 @@ class OrderLifecycleService
                     : 'Valid item_id values: ' . $valid->map(function ($row) {
                         return $row->id . ' (' . $row->product_name . ', product_id ' . $row->product_id . ')';
                     })->implode(', ') . '.';
-                throw new \RuntimeException('Order item not found. ' . $hint);
+                $productName = DB::table('products')->where('id', $itemId)->value('name');
+                $looksLikeProduct = $productName
+                    ? ' Received item_id ' . $itemId . ' is products.id (' . $productName . '), not order_items.id.'
+                    : ' Received item_id ' . $itemId . '.';
+                throw new \RuntimeException(
+                    'Order item not found.' . $looksLikeProduct
+                    . ' Use items[].id from GET /api/orders/{order_id} (not products.id). ' . $hint
+                );
             }
 
             $quantity = array_key_exists('quantity', $options)
